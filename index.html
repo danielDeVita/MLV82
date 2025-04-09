@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Side Scroller</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- UI Overlay (Score, Lives, etc.) -->
+        <div id="ui">
+            <div id="score">Score: 0</div>
+            <div id="lives">Lives: 3</div>
+            <div id="difficulty-level">Level: 0</div>
+            <div id="powerup-status"></div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over" style="display: none;">
+            <h1>GAME OVER</h1>
+            <button id="restartButton">Restart</button>
+        </div>
+
+    </div> <!-- End of game-container -->
+
+    <script type="module" src="js/main.js"></script>
+
+</body>
+</html>

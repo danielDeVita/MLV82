@@ -1,0 +1,102 @@
+/* style.css */
+
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #222;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+}
+
+#game-container {
+    position: relative;
+    border: 2px solid white;
+}
+
+#gameCanvas {
+    display: block;
+    background-color: #0077cc;
+}
+
+#ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 20px;
+    text-shadow: 1px 1px 2px black;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#ui div {
+    margin-bottom: 5px;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.low-lives {
+    color: red !important;
+    font-weight: bold;
+    animation: pulse-red 1s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        text-shadow: 1px 1px 2px black, 0 0 5px red;
+    }
+
+    50% {
+        text-shadow: 1px 1px 2px black, 0 0 15px red;
+    }
+
+    100% {
+        text-shadow: 1px 1px 2px black, 0 0 5px red;
+    }
+}
+
+#powerup-status {
+    font-size: 16px;
+    color: lightgreen;
+    min-height: 1.2em;
+    margin-top: 5px;
+}
+
+#game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    background-color: rgba(0, 0, 0, 0.75);
+    padding: 30px 40px;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 20;
+    font-family: 'Arial', sans-serif;
+}
+
+#game-over h1 {
+    margin: 0 0 20px 0;
+    color: red;
+    font-size: 48px;
+    text-shadow: 2px 2px 4px black;
+}
+
+#restartButton {
+    padding: 12px 25px;
+    font-size: 20px;
+    cursor: pointer;
+    background-color: #eee;
+    border: 1px solid #888;
+    border-radius: 5px;
+    color: #333;
+    font-weight: bold;
+}
+
+#restartButton:hover {
+    background-color: white;
+    border-color: black;
+}

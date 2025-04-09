@@ -1,0 +1,20 @@
+// js/powerUpBomb.js
+import { PowerUp } from './powerUp.js';
+import { playSound } from './audio.js';
+
+export class PowerUpBomb extends PowerUp {
+    constructor(game, x, y) {
+        super(game, x, y); // Call base constructor
+        // Override properties for this type
+        this.type = 'bomb'; // Ensure type matches check in base activate if used
+        this.color = 'purple'; // Choose a distinct color
+        this.letter = 'B'; // Use 'B' for bomb
+    }
+
+    // Override the activate method for specific action
+    activate(player) {
+        this.markedForDeletion = true; // Remove the item itself
+        player.activateBombPowerUp(); // Call the correct method on player
+        playSound('powerup'); // Use generic sound or a specific one
+    }
+}
