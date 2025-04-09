@@ -1,11 +1,11 @@
 // js/main.js
 import { Game } from './game.js';
 
-window.addEventListener('load', function() {
+window.addEventListener('load', function () {
     console.log("Window loaded. Initializing game..."); // Log 1
     const canvasId = 'gameCanvas';
-    const gameWidth = 800;
-    const gameHeight = 600;
+    const gameWidth = 1280; 
+    const gameHeight = 720; 
 
     try {
         const game = new Game(canvasId, gameWidth, gameHeight);

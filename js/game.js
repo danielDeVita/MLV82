@@ -35,6 +35,8 @@ export class Game {
         // Initialize core components
         this.input = new InputHandler(this);
         this.background = new Background(this.width, this.height);
+        this.background.game = this;
+
         this.player = new Player(this);
 
         // Game object arrays
@@ -57,6 +59,7 @@ export class Game {
         this.powerupStatusElement = document.getElementById('powerup-status');
         this.gameOverElement = document.getElementById('game-over');
         this.restartButton = document.getElementById('restartButton');
+
 
         // --- Event Listeners ---
         if (this.restartButton) {
@@ -96,7 +99,7 @@ export class Game {
             this.context.clearRect(0, 0, this.width, this.height);
 
             // --- 2. Update Game Objects ---
-            this.background.update(deltaTime);
+            this.background.update(deltaTime, this.score);
             this.player.update(this.input, deltaTime);
             [...this.projectiles, ...this.enemyProjectiles, ...this.enemies, ...this.explosions, ...this.powerUps].forEach(obj => obj.update(deltaTime));
 
