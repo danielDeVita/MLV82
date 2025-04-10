@@ -312,10 +312,14 @@ export class Game {
       const currentHelperInterval = this.boss1HelperPlaneBaseInterval + Math.random() * this.boss1HelperPlaneRandomInterval;
 
       if (this.boss1HelperPlaneTimer >= currentHelperInterval) {
-        this.boss1HelperPlaneTimer = 0; // Reset with simple zeroing for now
-        console.log("Spawning Boss 1 helper plane...");
-        // Spawn a basic EnemyPlane. Adjust type or speedBoost if desired.
-        this.enemies.push(new EnemyPlane(this, 0)); // No extra speed boost for helpers?
+        this.boss1HelperPlaneTimer = 0;
+        console.log("Spawning Boss 1 helper plane (Dodger)..."); // Updated log message
+
+        // --- >>> CHANGE THIS LINE <<< ---
+        // Was: this.enemies.push(new EnemyPlane(this, 0));
+        // Now: Spawn an EnemyDodgingPlane instead
+        this.enemies.push(new EnemyDodgingPlane(this, 0)); // Speed boost 0, or add a small one?
+        // --- >>> END CHANGE <<< ---
       }
       // --- IMPORTANT: Return here to prevent other spawning logic during boss fight ---
       return;
