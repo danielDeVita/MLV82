@@ -2,12 +2,11 @@
 import { Enemy } from "./enemy.js";
 import { EnemyBullet } from "./enemyBullet.js";
 import { TrackingMissile } from "./trackingMissile.js";
-import { BossWeakPoint } from "./bossWeakPoint.js"; // <<< Import Weak Point
+import { BossWeakPoint } from "./bossWeakPoint.js";
 import { playSound } from "./audio.js";
-import { Bomb } from "./bomb.js"; // <<< ADD THIS IMPORT
-// Optional: Import shooter plane if spawning minions
+import { Bomb } from "./bomb.js"; // Needed for checking projectile type in hit
 import { checkCollision } from "./utils.js";
-import { EnemyShooterPlane } from "./enemyShooterPlane.js";
+// import { EnemyShooterPlane } from "./enemyShooterPlane.js"; // Not needed here
 
 export class Boss1 extends Enemy {
   constructor(game) {
@@ -17,14 +16,14 @@ export class Boss1 extends Enemy {
     // --- Boss Specific Stats ---
     this.width = 300;
     this.height = 100;
-    // this.maxHealth = 180;
-    // this.health = this.maxHealth;
-    this.health = 1;
+    // Keep health low for easier testing of weak point destruction
+    // this.maxHealth = 180; // If using body health
+    this.health = 1; // Boss body itself doesn't take damage, only weak points matter
     this.color = "#383848";
     this.deckColor = "#585868";
     this.detailColor = "#D05050"; // Muted red
     this.scoreValue = 2000;
-    this.enemyType = "ship";
+    this.enemyType = "ship"; // For explosion type on defeat
 
     // --- Movement: Left-to-Right Patrol ---
     this.speedX = 0.6; // Slightly slower patrol
@@ -36,77 +35,90 @@ export class Boss1 extends Enemy {
     this.y = this.targetY; // Set initial Y to the target Y
 
     // Optional Bobbing
-    this.speedY = 0.15;
-    this.driftDirection = 1;
     this.driftRange = 10;
 
-    // Note: 'hasReachedPosition' is not really needed for patrol movement,
-    // but can be kept if entry animation is different later. Let's remove for now.
-    // this.hasReachedPosition = false;
-
-    // --- Weak Points --- <<< NEW
+    // --- Weak Points ---
     this.weakPoints = [];
     this.createWeakPoints(); // Call helper to initialize
     this.activeWeakPoints = this.weakPoints.length; // Track remaining active points
 
     // --- Attack Patterns & Timers ---
-    this.attackPhase = 1;
-    // Artillery (aimed shots)
-    this.artilleryTimer = 2500 + Math.random() * 1000; // Initial delay
-    this.artilleryInterval = 4200; // Time between aimed shots
-    // --- NEW: Spread Gun ---
+    this.attackPhase = 1; // Can represent state based on points left (1=3WP, 2=2WP, 3=1WP)
+
+    // --- Store ORIGINAL intervals ---
+    this.originalArtilleryInterval = 4200;
+    this.originalSpreadGunInterval = 2500;
+    this.originalMissileInterval = 8000;
+
+    // --- Current attack intervals (modified by weak point destruction) ---
+    this.artilleryInterval = this.originalArtilleryInterval;
+    this.spreadGunInterval = this.originalSpreadGunInterval;
+    this.missileInterval = this.originalMissileInterval;
+
+    // --- Attack Timers (count down) ---
+    // Initial delay added to prevent immediate firing
+    this.artilleryTimer = 2500 + Math.random() * 1000;
     this.spreadGunTimer = 1500 + Math.random() * 800;
-    this.spreadGunInterval = 2500; // Fires more often than artillery
-    // Missile Launcher
-    this.missileTimer = 7000 + Math.random() * 2000; // Initial delay
-    this.missileInterval = 8000; // Time between missile launches
+    this.missileTimer = 7000 + Math.random() * 2000;
 
     console.log(`Boss1 Created (Destroyer) with ${this.weakPoints.length} weak points.`);
-
-    // Timers store time *until* next shot (counts down)
-    this.mainGunTimer = 3000 + Math.random() * 1000; // Time until first shot
-    this.mainGunInterval = 4000; // Time between shots
-    this.aaGunTimer = 1000 + Math.random() * 500;
-    this.aaGunInterval = 1200;
-
-    // No minions in this version yet
+    console.log(`  Initial Intervals -> Artillery: ${this.artilleryInterval}, Spread: ${this.spreadGunInterval}, Missile: ${this.missileInterval}`);
   }
 
   createWeakPoints() {
     this.weakPoints = []; // Clear just in case
     // Define weak points relative to boss's top-left (x=0, y=0 is boss origin)
     // Values: offsetX, offsetY, width, height, health, type
-    // Make them slightly larger/easier to hit
-    this.weakPoints.push(new BossWeakPoint(this, 50, -10, 40, 30, 60, "artillery")); // Forward Artillery Turret (on deck)
-    this.weakPoints.push(new BossWeakPoint(this, 130, 0, 50, 25, 45, "spreadGun")); // Mid Spread Gun (on deck)
-    this.weakPoints.push(new BossWeakPoint(this, this.width - 70, 5, 40, 40, 55, "missile")); // Aft Missile Launcher (on deck)
+    this.weakPoints.push(new BossWeakPoint(this, 50, -10, 40, 30, 60, "artillery")); // Forward Artillery Turret
+    this.weakPoints.push(new BossWeakPoint(this, 130, 0, 50, 25, 45, "spreadGun")); // Mid Spread Gun
+    this.weakPoints.push(new BossWeakPoint(this, this.width - 70, 5, 40, 40, 55, "missile")); // Aft Missile Launcher
     this.activeWeakPoints = this.weakPoints.length;
   }
 
   // Called by BossWeakPoint when destroyed
   weakPointDestroyed(type) {
+    if (this.markedForDeletion) return; // Don't do anything if already defeated
+
     this.activeWeakPoints--;
     console.log(`Boss weak point ${type} destroyed! ${this.activeWeakPoints} remaining.`);
 
-    // Optional: Increase attack rate of remaining weapons?
-    if (this.activeWeakPoints === 1 && this.attackPhase === 1) {
-      console.log("Boss1 Phase 2: One weapon left!");
+    // --- Difficulty Scaling Logic based on remaining points ---
+    let boostMultiplier = 1.0; // Default: No boost (when 3 points are left at start)
+
+    if (this.activeWeakPoints === 2) {
+      boostMultiplier = 0.8; // 20% faster when 2 left (phase 2)
       this.attackPhase = 2;
-      this.artilleryInterval *= 0.7; // ~30% faster
-      this.spreadGunInterval *= 0.7;
-      this.missileInterval *= 0.75;
+      console.log(`Boss1 Phase 2 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
+    } else if (this.activeWeakPoints === 1) {
+      boostMultiplier = 0.6; // 40% faster when only 1 left (phase 3)
+      this.attackPhase = 3;
+      console.log(`Boss1 Phase 3 active (${this.activeWeakPoints} point left). Applying boost: ${boostMultiplier}`);
+    } else if (this.activeWeakPoints <= 0) {
+      // Boss is defeated, interval doesn't matter but set to avoid potential division by zero if accessed later
+      boostMultiplier = 1.0;
+      this.attackPhase = 4; // Defeated phase
     }
 
+    // Apply the boost to ALL weapon intervals based on their ORIGINAL value
+    this.artilleryInterval = this.originalArtilleryInterval * boostMultiplier;
+    this.spreadGunInterval = this.originalSpreadGunInterval * boostMultiplier;
+    this.missileInterval = this.originalMissileInterval * boostMultiplier;
+
+    // Log the new intervals for debugging
+    console.log(
+      `  New Intervals -> Artillery: ${this.artilleryInterval.toFixed(0)}, Spread: ${this.spreadGunInterval.toFixed(
+        0
+      )}, Missile: ${this.missileInterval.toFixed(0)}`
+    );
+    // --- End: Difficulty Scaling Logic ---
+
     // --- WIN CONDITION ---
-    if (this.activeWeakPoints <= 0 && !this.markedForDeletion) {
+    if (this.activeWeakPoints <= 0) {
       console.log("Boss1 All Weak Points Destroyed! BOSS DEFEATED!");
-      this.markedForDeletion = true; // Mark the main boss object for deletion
-      // Base cleanup won't add score unless health was 0, so add score here
-      this.game.addScore(this.scoreValue);
-      // Trigger large chain explosion
+      this.markedForDeletion = true;
+      this.game.addScore(this.scoreValue); // Add score upon defeat
       this.triggerDefeatExplosion();
-      // Notify game state (optional - game loop detects markedForDeletion)
-      // this.game.bossDefeated(); // The game loop handles this by checking markedForDeletion now
+      // Game loop handles removal and state update via markedForDeletion
     }
   }
 
@@ -125,8 +137,7 @@ export class Boss1 extends Enemy {
         }
       }, i * (duration / numExplosions) + Math.random() * 100); // Staggered timing
     }
-    // Play final big explosion sound?
-    // playSound('bossExplosion');
+    // playSound('bossExplosion'); // Optional final big explosion sound
   }
 
   update(deltaTime) {
@@ -155,38 +166,48 @@ export class Boss1 extends Enemy {
     // --- Attack Logic ---
     // Update Attack Timers (Count down)
     this.artilleryTimer -= safeDeltaTime;
-    this.spreadGunTimer -= safeDeltaTime; // Update new timer
+    this.spreadGunTimer -= safeDeltaTime;
     this.missileTimer -= safeDeltaTime;
 
-    // Check attacks based on timers AND weak point status
+    // --- Check attacks based on timers AND weak point status ---
     const artilleryWP = this.weakPoints.find((wp) => wp.type === "artillery");
     if (artilleryWP && artilleryWP.isActive && this.artilleryTimer <= 0) {
       this.fireArtillery(artilleryWP);
-      this.artilleryTimer = this.artilleryInterval + Math.random() * 500; // Reset timer
+      const variance = Math.random() * 500 - 250; // Add some randomness to timing
+      const nextInterval = this.artilleryInterval + variance;
+      // --- FIX: Ensure timer is reset to a positive value ---
+      this.artilleryTimer = Math.max(1, nextInterval);
     }
 
-    // --- Fire Spread Gun ---
     const spreadGunWP = this.weakPoints.find((wp) => wp.type === "spreadGun");
     if (spreadGunWP && spreadGunWP.isActive && this.spreadGunTimer <= 0) {
       this.fireSpreadGun(spreadGunWP);
-      this.spreadGunTimer = this.spreadGunInterval + Math.random() * 400; // Reset spread timer
+      const variance = Math.random() * 400 - 200;
+      const nextInterval = this.spreadGunInterval + variance;
+      // --- FIX: Ensure timer is reset to a positive value ---
+      this.spreadGunTimer = Math.max(1, nextInterval);
     }
 
     const missileWP = this.weakPoints.find((wp) => wp.type === "missile");
     if (missileWP && missileWP.isActive && this.missileTimer <= 0) {
       this.fireMissileFromLauncher(missileWP);
-      this.missileTimer = this.missileInterval + Math.random() * 1000;
+      const variance = Math.random() * 1000 - 500;
+      const nextInterval = this.missileInterval + variance;
+      // --- FIX: Ensure timer is reset to a positive value ---
+      this.missileTimer = Math.max(1, nextInterval);
     }
 
-    // --- Hit Flash Update for main boss body ---
-    if (this.isHit) {
-      this.hitTimer -= safeDeltaTime;
-      if (this.hitTimer <= 0) {
-        this.isHit = false;
-      }
-    }
+    // --- Hit Flash Update for main boss body (Not used as body has health=1) ---
+    // if (this.isHit) {
+    //   this.hitTimer -= safeDeltaTime;
+    //   if (this.hitTimer <= 0) {
+    //     this.isHit = false;
+    //   }
+    // }
   } // End Boss1 update
+
   // --- Attack Pattern Methods ---
+  // These methods just perform the action; frequency is controlled by timers in update()
   fireArtillery(turret) {
     // Aimed shot towards player
     playSound("explosion"); // Heavier sound
@@ -194,16 +215,12 @@ export class Boss1 extends Enemy {
     const shellX = turret.x + turret.width / 2 - 6; // Center of turret X, adjust for shell width
     const shellY = turret.y - 8; // Slightly above turret Y, adjust for shell height
 
-    // Calculate angle towards player center
     const player = this.game.player;
     if (!player || player.markedForDeletion) {
-      // Don't fire if player doesn't exist (e.g., game over transition)
-      console.log("Boss1 fireArtillery: Player not found or invalid.");
-      return;
+      return; // Don't fire if player doesn't exist
     }
     const angle = Math.atan2(player.y + player.height / 2 - shellY, player.x + player.width / 2 - shellX);
 
-    // Calculate velocity components
     const speedX = Math.cos(angle) * bulletSpeed;
     const speedY = Math.sin(angle) * bulletSpeed;
 
@@ -215,132 +232,78 @@ export class Boss1 extends Enemy {
       shell.width = 14;
       shell.height = 14;
       shell.color = "#FFA500"; // Orange/Yellow shell?
-      // shell.damage = 5; // Maybe make it more damaging? Requires adding damage to EnemyBullet
-    } else if (shell) {
-      console.warn("fireArtillery: Could not modify last projectile, was not an EnemyBullet?");
+      // shell.damage = 5; // Maybe make it more damaging?
     }
   }
 
-  // --- NEW Spread Gun Attack ---
   fireSpreadGun(gun) {
-    // console.log("Boss1 firing spread gun");
-    playSound("enemyShoot"); // Use standard shoot sound or maybe something distinct?
-    const bulletSpeedX = -4.5; // Slightly faster than artillery base X speed
+    playSound("enemyShoot");
+    const bulletSpeedX = -4.5; // Base horizontal speed component
     const bulletX = gun.x; // Fire from front of spread gun weak point
     const bulletYCenter = gun.y + gun.height / 2 - 4; // Center Y
 
-    // Fire 5 bullets in a 'W' or fan shape upwards/forwards
+    // Fire 5 bullets in a fan shape upwards/forwards
     const angles = [-0.4, -0.2, 0, 0.2, 0.4]; // Spread angles in radians
     angles.forEach((angle) => {
-      const speedX = Math.cos(angle) * bulletSpeedX; // Adjust X slightly based on angle too
+      const speedX = Math.cos(angle) * bulletSpeedX; // Adjust X slightly based on angle
       const speedY = Math.sin(angle) * bulletSpeedX * -1; // Y speed based on X speed and angle
       this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletYCenter, speedX, speedY));
     });
   }
 
   fireMissileFromLauncher(launcher) {
-    const missileX = launcher.x + launcher.width / 2 - 6;
-    const missileY = launcher.y - 10;
+    const missileX = launcher.x + launcher.width / 2 - 6; // Center of launcher
+    const missileY = launcher.y - 10; // Above launcher
     this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX, missileY));
     // Sound played by missile constructor
   }
 
-  // --- Attack Pattern Methods ---
-  fireMainGun(turret) {
-    // Fire from the turret's position
-    // console.log("Boss1 firing main gun");
-    playSound("explosion"); // Use heavy explosion sound?
-    const shellSpeedX = -2.5; // Slower shell
-    const shellSpeedY = -3; // Angled upwards
-    const shellX = turret.x - 10; // Start left of turret
-    const shellY = turret.y + turret.height / 2 - 8; // Adjust for shell size (needs new projectile type)
-
-    // --- TODO: Create a new 'Shell' projectile class ---
-    // For now, use a larger, slower EnemyBullet
-    this.game.addEnemyProjectile(new EnemyBullet(this.game, shellX, shellY, shellSpeedX, shellSpeedY)); // Placeholder bullet
-    // Modify bullet appearance if possible or create Shell class
-    const bullet = this.game.enemyProjectiles[this.game.enemyProjectiles.length - 1];
-    if (bullet) {
-      bullet.width = 16;
-      bullet.height = 16;
-      bullet.color = "darkgrey";
-    }
-  }
-
-  fireAAGun(activeGuns) {
-    // Fire bursts from active AA gun positions
-    // console.log("Boss1 firing AA guns");
-    playSound("enemyShoot"); // Rapid sound?
-    const bulletSpeedX = -6;
-    activeGuns.forEach((gun) => {
-      // Fire a small spread from each gun
-      const gunYCenter = gun.y + gun.height / 2 - 4;
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, gun.x, gunYCenter, bulletSpeedX, 0)); // Straight
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, gun.x, gunYCenter - 5, bulletSpeedX * 0.9, -0.8)); // Angled up slightly
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, gun.x, gunYCenter + 5, bulletSpeedX * 0.9, 0.8)); // Angled down slightly
-    });
-  }
-
-  fireMissileFromLauncher(launcher) {
-    // console.log("Boss1 firing missile");
-    const missileX = launcher.x + launcher.width / 2 - 6; // Center of launcher
-    const missileY = launcher.y - 10; // Above launcher
-    this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX, missileY));
-  }
-
   // --- Hit Method (Handles Weak Points) ---
   hit(projectile) {
-    if (this.markedForDeletion || !projectile || projectile.markedForDeletion) return;
+    // Check projectile validity first (added from previous fix)
+    if (typeof projectile !== "object" || projectile === null || projectile.markedForDeletion) {
+      console.warn(`Boss1.hit received invalid or marked projectile:`, projectile);
+      return; // Exit early, do not process invalid input
+    }
+    if (this.markedForDeletion) return; // Don't process hits if boss is already defeated
 
-    const projectileType = projectile instanceof Bomb ? "bomb" : "bullet";
-    const damage = projectile.damage || 1;
-
-    let weakPointHitRegistered;
-    let weakPointDestroyedThisHit;
+    const damage = projectile.damage || 1; // Get damage, default to 1
 
     // Check Weak Points
     for (const wp of this.weakPoints) {
+      // Only check active weak points against the projectile
       if (wp.isActive && checkCollision(projectile, wp)) {
-        weakPointHitRegistered = true; // Mark that collision occurred with a weak point area
-
-        // Apply damage based on type
-        if (projectileType === "bomb") {
-          // console.log(`   -> Bomb hit WeakPoint ${wp.type} (Health: ${wp.health}/${wp.maxHealth})`);
-          wp.hit(damage); // Damage weak point, destruction handled internally
-        } else {
-          // Bullet
-          // wp.isHit = true; wp.hitTimer = wp.hitDuration; // Flash happens inside wp.hit now
-          weakPointDestroyedThisHit = wp.hit(damage); // <<< APPLY bullet damage to weak point
-          projectile.markedForDeletion = true; // Bullet consumed
-        }
+        // console.log(`   -> Projectile hit WeakPoint ${wp.type} (Health: ${wp.health}/${wp.maxHealth})`);
+        wp.hit(damage); // Damage weak point, destruction check/notification happens inside wp.hit/wp.destroy
         projectile.markedForDeletion = true; // Projectile is consumed by hitting weak point
         break; // Stop checking other weak points for this projectile
       }
     }
+    // Note: The main boss body doesn't take direct damage in this design.
   } // End hit method
 
   draw(context) {
     if (this.markedForDeletion || !context) return;
     context.save();
 
-    // --- Draw Base Hull --- (Adjust shape for 3 weapons)
-    // Main Lower Hull
+    // --- Draw Base Hull ---
     context.fillStyle = this.color;
-    context.fillRect(this.x, this.y + 20, this.width, this.height - 20);
-    // Main Deck
+    context.fillRect(this.x, this.y + 20, this.width, this.height - 20); // Main Lower Hull
     context.fillStyle = this.deckColor;
-    context.fillRect(this.x + 10, this.y, this.width - 20, this.height - 10);
-    // Bridge Structure (Mid-Aft)
+    context.fillRect(this.x + 10, this.y, this.width - 20, this.height - 10); // Main Deck
     context.fillStyle = this.color;
-    context.fillRect(this.x + this.width * 0.5, this.y - 15, 80, 30);
-    // Details
+    context.fillRect(this.x + this.width * 0.5, this.y - 15, 80, 30); // Bridge Structure
     context.fillStyle = this.detailColor;
-    context.fillRect(this.x + 20, this.y + 5, 30, 10);
-    context.fillRect(this.x + this.width - 50, this.y + 5, 30, 10);
+    context.fillRect(this.x + 20, this.y + 5, 30, 10); // Detail 1
+    context.fillRect(this.x + this.width - 50, this.y + 5, 30, 10); // Detail 2
 
     context.restore();
 
-    // --- Draw Weak Points --- (They draw themselves relative to boss pos)
+    // --- Draw Weak Points --- (They draw themselves relative to boss pos, including health bars)
     this.weakPoints.forEach((wp) => wp.draw(context));
+
+    // --- No Health Bar for main body ---
+    // Since health = 1 and damage goes to weak points, the main body doesn't need a bar.
+    // super.draw(context); // Calling this would draw a tiny full health bar if Enemy.draw does that.
   }
 } // End Boss1 class

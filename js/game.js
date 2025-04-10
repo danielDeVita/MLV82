@@ -65,7 +65,7 @@ export class Game {
     this.boss1Defeated = false;
     this.boss2Defeated = false;
     this.boss3Defeated = false;
-    this.BOSS1_SCORE_THRESHOLD = 800;
+    this.BOSS1_SCORE_THRESHOLD = 80;
     this.BOSS2_SCORE_THRESHOLD = 2500;
     this.BOSS3_SCORE_THRESHOLD = 4000;
 
@@ -394,22 +394,32 @@ export class Game {
     // --- Player vs Enemies ---
     if (!this.player.shieldActive && !this.player.invincible) {
       this.enemies.forEach((e) => {
-        if (e.markedForDeletion) return;
-        // Special check: Don't die instantly from touching boss unless intended
+        if (e.markedForDeletion) return; // Skip already dead enemies
+
+        // Check collision between player and the current enemy 'e'
         if (checkCollision(this.player, e)) {
-          if (e instanceof Boss1) {
-            // Player touched boss - apply damage to player, maybe small damage to boss?
-            console.log("Player collided with Boss!");
-            this.player.hit(); // Player takes damage
-            // e.hit(null, 'collision'); // Optional: Boss takes minor collision damage? Needs hit method adjustment.
+          // --- Use a flag to determine if it's a boss ---
+          let isBossCollision = e instanceof Boss1 || e instanceof Boss2; // Add Boss3 later
+
+          if (isBossCollision) {
+            // --- Player Collided with BOSS ---
+            console.log(`Player collided with Boss: ${e.constructor.name}`); // Log which boss
+            this.player.hit(); // Player takes damage/loses life (standard hit)
+
+            // --- IMPORTANT: DO NOT CALL e.hit(100) on the boss here! ---
+            // Boss health is typically reduced by projectiles, not direct collision damage (unless designed otherwise).
+            // If you WANT collision to damage the boss, you'd need a specific method like:
+            // e.takeCollisionDamage(PLAYER_COLLISION_DAMAGE);
+            // OR modify e.hit() to accept a special type, but the current Boss2.hit expects a projectile.
           } else {
-            // Player collided with regular enemy
-            e.hit(100); // Destroy enemy instantly
+            // --- Player Collided with REGULAR ENEMY ---
+            // console.log(`Player collided with Regular Enemy: ${e.constructor.name}`); // Optional log
+            e.hit(100); // Destroy regular enemy instantly (This call is correct for Enemy base class)
             this.player.hit(); // Player takes damage/loses life
           }
         }
       });
-    }
+    } // End Player vs Enemies
 
     // --- Player vs PowerUps ---
     this.powerUps.forEach((pu) => {
