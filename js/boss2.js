@@ -27,13 +27,13 @@ export class Boss2 extends Enemy {
     // --- Movement: Combined Sine Waves & Boundaries ---
     // Horizontal Sine Wave
     this.amplitudeX = (game.width - this.width - 40) / 2; // Max horizontal travel range
-    this.frequencyX = 0.005; // Slow horizontal sweep
+    this.frequencyX = 0.007; // Slow horizontal sweep
     this.angleX = Math.PI / 2; // Start near center horizontally
     this.baseX = game.width / 2 - this.width / 2; // Center point for horizontal wave
 
     // Vertical Sine Wave
     this.amplitudeY = 80; // Vertical movement range
-    this.frequencyY = 0.008; // Slightly faster vertical bob
+    this.frequencyY = 0.011; // Slightly faster vertical bob
     this.angleY = 0;
     this.baseY = game.height * 0.25 - this.height / 2; // Center point for vertical wave (upper part of screen)
 
@@ -50,19 +50,19 @@ export class Boss2 extends Enemy {
     // --- Attack Patterns & Timers ---
     // Bullet Cannons
     this.bulletTimer = 2000 + Math.random() * 1000; // Initial delay
-    this.bulletInterval = 1800; // Time between bullet bursts
+    this.bulletInterval = 1500; // Time between bullet bursts
 
     // Missile Launchers
     this.missileTimer = 6000 + Math.random() * 2000;
-    this.missileInterval = 7000; // Less frequent than bullets
+    this.missileInterval = 5500; // Less frequent than bullets
 
     // Bombing Run
     this.bombRunTimer = 10000 + Math.random() * 3000;
-    this.bombRunInterval = 12000; // Long cooldown
+    this.bombRunInterval = 10000; // Long cooldown
     this.isBombing = false;
     this.bombDropCount = 0;
-    this.maxBombsInRun = 8; // How many bombs per run
-    this.bombDropDelay = 150; // ms between each bomb in a run
+    this.maxBombsInRun = 10; // How many bombs per run
+    this.bombDropDelay = 110; // ms between each bomb in a run
     this.bombDropTimer = 0; // Timer for within a run
 
     // --- Power-up Spawning --- (Similar to Game.js logic during boss)
@@ -104,7 +104,7 @@ export class Boss2 extends Enemy {
     if (!this.isBombing) {
       if (this.bulletTimer <= 0) {
         this.fireBullets();
-        this.bulletTimer = this.bulletInterval + Math.random() * 500 - 250; // Reset timer with variance
+        this.bulletTimer = this.bulletInterval + Math.random() * 300 - 150; // Smaller random range
       }
       if (this.missileTimer <= 0) {
         this.fireMissile();
@@ -204,14 +204,20 @@ export class Boss2 extends Enemy {
     // console.log("Boss2 firing bullets");
     playSound("enemyShoot"); // Use a generic or specific sound
     const bulletSpeedY = 4; // Firing downwards
-    const numShots = 4; // Fire from multiple points under wings
-    const spread = this.width * 0.35; // How far out the shots originate
+    const numShots = 5; // Fire from multiple points under wings, was 4 previously
+    const spread = this.width * 0.38; // How far out the shots originate, was .35 previously
 
     for (let i = 0; i < numShots; i++) {
       const offsetX = (i / (numShots - 1) - 0.5) * 2 * spread; // -spread to +spread
       const bulletX = this.x + this.width / 2 + offsetX - 4; // Center X adjusted by offset, minus bullet width/2
       const bulletY = this.y + this.height * 0.8; // Position under the wings
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletY, 0, bulletSpeedY)); // Straight down
+
+      // --- ADD VARIANCE ---
+      const spreadSpeedX = (Math.random() - 0.5) * 1.0; // Small random horizontal speed (-0.5 to +0.5)
+      const speedY = bulletSpeedY + Math.random() * 0.5; // Slightly variable downward speed
+      // --- END VARIANCE ---
+
+      this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletY, spreadSpeedX, speedY)); // Use new speeds
     }
   }
 
@@ -221,6 +227,22 @@ export class Boss2 extends Enemy {
     const missileX = this.x + this.width / 2 - 6; // Center X, adjust for missile width
     const missileY = this.y + this.height * 0.5; // Mid-height
     this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX, missileY));
+
+    // --- ADD CHANCE FOR SECOND MISSILE ---
+    // Only fire a second one if health is below, say, 75%? Or just random chance?
+    if (this.health < this.maxHealth * 0.75 && Math.random() < 0.4) {
+      // 40% chance below 75% health
+      // Fire second missile slightly delayed and offset?
+      setTimeout(() => {
+        // Check if boss/game still valid when timeout fires
+        if (!this.markedForDeletion && !this.game.isGameOver) {
+          console.log("Boss2 firing second missile!");
+          const missileX2 = this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -20 : 20); // Slight H offset
+          const missileY2 = this.y + this.height * 0.5;
+          this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX2, missileY2));
+        }
+      }, 300); // 300ms delay
+    }
     // Sound played by missile constructor
   }
 
