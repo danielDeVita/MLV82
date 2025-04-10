@@ -101,6 +101,9 @@ export class Boss1 extends Enemy {
     } else if (this.activeWeakPoints === 1) {
       boostMultiplier = 0.55;
       this.attackPhase = 4;
+      // --- >>> CALL Game to reset helper timer <<< ---
+      this.game.resetBoss1HelperSpawnTimer();
+      // --- >>> END CALL <<< ---
     } else if (this.activeWeakPoints <= 0) {
       boostMultiplier = 1.0;
       this.attackPhase = 5;
@@ -110,9 +113,9 @@ export class Boss1 extends Enemy {
       console.log(`Boss1 Phase ${this.attackPhase} active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
     }
 
-    // Apply boost to ALL intervals based on ORIGINAL values
-    this.forwardSpreadInterval = this.originalForwardSpreadInterval * boostMultiplier; // <<< Renamed
-    this.aimedArtilleryInterval = this.originalAimedArtilleryInterval * boostMultiplier; // <<< Renamed
+    // Apply boost to intervals
+    this.forwardSpreadInterval = this.originalForwardSpreadInterval * boostMultiplier;
+    this.aimedArtilleryInterval = this.originalAimedArtilleryInterval * boostMultiplier;
     this.rearSpreadInterval = this.originalRearSpreadInterval * boostMultiplier;
     this.missileInterval = this.originalMissileInterval * boostMultiplier;
 
@@ -122,7 +125,6 @@ export class Boss1 extends Enemy {
         0
       )}, RearSpread: ${this.rearSpreadInterval.toFixed(0)}, Mis: ${this.missileInterval.toFixed(0)}`
     );
-
     // --- WIN CONDITION ---
     if (this.activeWeakPoints <= 0) {
       console.log("Boss1 All Weak Points Destroyed! BOSS DEFEATED!");

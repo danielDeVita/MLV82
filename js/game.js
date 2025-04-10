@@ -46,20 +46,33 @@ export class Game {
 
     // --- Initialize properties AFTER context is verified ---
     this.lastTime = 0;
+
     this.isGameOver = false;
+
     this.projectiles = [];
     this.enemyProjectiles = [];
     this.enemies = [];
     this.explosions = [];
     this.powerUps = [];
+
     this.score = 0;
+
     this.difficultyLevel = 0;
+
     this.scoreForNextLevel = 300;
+
     this.baseEnemyPlaneInterval = 2000;
     this.baseEnemyShipInterval = 6000;
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
+
+    // --- NEW: Timer/Interval for Boss 1 Helper Planes ---
+    this.boss1HelperPlaneTimer = 0;
+    this.boss1HelperPlaneBaseInterval = 1800; // How often helpers spawn (adjust as needed)
+    this.boss1HelperPlaneRandomInterval = 600; // Random variance
+
     this.powerUpDropChance = 0.1;
+
     this.bossActive = false;
     this.currentBoss = null;
     this.boss1Defeated = false;
@@ -291,18 +304,43 @@ export class Game {
   }
 
   handleSpawning(deltaTime) {
-    if (this.bossActive) return; // No regular spawns during boss
+    // --- REVISED LOGIC ---
+
+    // 1. Check for Boss 1 Final Phase Helper Spawns
+    if (this.bossActive && this.currentBoss instanceof Boss1 && this.currentBoss.activeWeakPoints === 1) {
+      this.boss1HelperPlaneTimer += deltaTime;
+      const currentHelperInterval = this.boss1HelperPlaneBaseInterval + Math.random() * this.boss1HelperPlaneRandomInterval;
+
+      if (this.boss1HelperPlaneTimer >= currentHelperInterval) {
+        this.boss1HelperPlaneTimer = 0; // Reset with simple zeroing for now
+        console.log("Spawning Boss 1 helper plane...");
+        // Spawn a basic EnemyPlane. Adjust type or speedBoost if desired.
+        this.enemies.push(new EnemyPlane(this, 0)); // No extra speed boost for helpers?
+      }
+      // --- IMPORTANT: Return here to prevent other spawning logic during boss fight ---
+      return;
+    }
+
+    // 2. Check if any other boss phase is active (or different boss)
+    if (this.bossActive) {
+      // A boss is active, but it's not Boss 1 in its final phase.
+      // Do nothing (no regular spawns).
+      return;
+    }
+
+    // 3. If no boss is active, proceed with regular enemy spawning
+    const speedBoost = this.difficultyLevel * 0.3; // Use current difficulty
     const minPlaneInt = 500,
       minShipInt = 2000,
       planeReduct = this.difficultyLevel * 150,
       shipReduct = this.difficultyLevel * 300;
     const currentPlaneInt = Math.max(minPlaneInt, this.baseEnemyPlaneInterval - planeReduct);
     const currentShipInt = Math.max(minShipInt, this.baseEnemyShipInterval - shipReduct);
-    const speedBoost = this.difficultyLevel * 0.3;
-    // Spawn Planes
+
+    // Spawn Regular Planes
     this.enemyPlaneTimer += deltaTime;
     if (this.enemyPlaneTimer >= currentPlaneInt) {
-      this.enemyPlaneTimer -= currentPlaneInt;
+      this.enemyPlaneTimer -= currentPlaneInt; // Use subtraction reset is slightly more accurate
       let p;
       const r = Math.random(),
         dC = this.difficultyLevel > 1 ? 0.15 + this.difficultyLevel * 0.05 : 0,
@@ -312,7 +350,8 @@ export class Game {
       else p = new EnemyPlane(this, speedBoost);
       this.enemies.push(p);
     }
-    // Spawn Ships
+
+    // Spawn Regular Ships
     this.enemyShipTimer += deltaTime;
     if (this.enemyShipTimer >= currentShipInt) {
       this.enemyShipTimer -= currentShipInt;
@@ -325,7 +364,7 @@ export class Game {
       else s = new EnemyShip(this, speedBoost);
       this.enemies.push(s);
     }
-  }
+  } // End handleSpawning
 
   handleCollisions() {
     // --- Player Projectiles vs Enemies ---
@@ -519,10 +558,18 @@ export class Game {
     }
   }
 
+  // --- NEW Method to be called by Boss1 ---
+  /** Resets the spawn timer for Boss 1's helper planes. */
+  resetBoss1HelperSpawnTimer() {
+    this.boss1HelperPlaneTimer = -(this.boss1HelperPlaneBaseInterval * 0.5); // Start with a half-interval delay? Or just 0?
+    console.log("Game: Resetting Boss 1 helper plane spawn timer.");
+  }
+
   restart() {
     console.log("--- Restarting Game ---");
 
     this.bossPowerUpTimer = 0;
+    this.boss1HelperPlaneTimer = 0; // Ensure helper timer is reset
 
     try {
       // 1. Reset Player
@@ -612,6 +659,7 @@ export class Game {
     console.log("Game Starting...");
 
     this.bossPowerUpTimer = 0;
+    this.boss1HelperPlaneTimer = 0; // Ensure helper timer is reset
 
     // --- Reset Core Game State ---
     this.isGameOver = false; // Ensure game is not over
