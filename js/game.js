@@ -208,18 +208,21 @@ export class Game {
     }
   }
   bossDefeated() {
-    console.log(`--- Boss Defeated! ---`);
+    console.log(`--- Boss Defeated! (All weak points destroyed) ---`);
     let scoreBonus = 0;
     if (this.currentBoss instanceof Boss1 && !this.boss1Defeated) {
       this.boss1Defeated = true;
       scoreBonus = 2500;
     }
-    this.addScore(scoreBonus);
+    // this.addScore(scoreBonus);
     this.bossActive = false;
     this.currentBoss = null;
+
+    // Drop powerups
     for (let i = 0; i < 3; i++) {
       this.createPowerUp(this.width / 2 + (i - 1) * 60, this.height / 2);
     }
+    // Resume normal spawning timers
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
   }
