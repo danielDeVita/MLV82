@@ -65,7 +65,7 @@ export class Game {
     this.boss1Defeated = false;
     this.boss2Defeated = false;
     this.boss3Defeated = false;
-    this.BOSS1_SCORE_THRESHOLD = 80;
+    this.BOSS1_SCORE_THRESHOLD = 0;
     this.BOSS2_SCORE_THRESHOLD = 2500;
     this.BOSS3_SCORE_THRESHOLD = 4000;
 
