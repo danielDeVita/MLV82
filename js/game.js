@@ -64,7 +64,7 @@ export class Game {
     this.boss1Defeated = false;
     this.boss2Defeated = false;
     this.boss3Defeated = false;
-    this.BOSS1_SCORE_THRESHOLD = 800;
+    this.BOSS1_SCORE_THRESHOLD = 10;
     this.BOSS2_SCORE_THRESHOLD = 2500;
     this.BOSS3_SCORE_THRESHOLD = 4000;
 
@@ -198,8 +198,6 @@ export class Game {
     let bossInstance = null;
     if (bossNumber === 1) {
       bossInstance = new Boss1(this);
-      bossInstance.x = this.width;
-      bossInstance.y = 80;
     }
     if (bossInstance) {
       this.enemies.push(bossInstance);
@@ -274,49 +272,83 @@ export class Game {
   }
 
   handleCollisions() {
-    // Player Proj vs Enemies
+    // --- Player Projectiles vs Enemies ---
     this.projectiles.forEach((p) => {
-      if (p.markedForDeletion) return;
+      if (p.markedForDeletion) return; // Skip projectiles already marked
+
       this.enemies.forEach((e) => {
+        // Skip checks if enemy is dead OR if projectile was marked by a previous enemy collision in this same frame
         if (e.markedForDeletion || p.markedForDeletion) return;
+
+        // Check for collision between projectile and enemy bounding boxes
         if (checkCollision(p, e)) {
-          const pT = p instanceof Bomb ? "bomb" : "bullet";
-          e.hit(p.damage, pT);
-          if (!(p instanceof Bomb && (e instanceof EnemyPlane || e instanceof EnemyDodgingPlane || e instanceof EnemyShooterPlane))) {
-            p.markedForDeletion = true;
+          // --- SPECIAL HANDLING FOR BOSS ---
+          if (e instanceof Boss1) {
+            console.log(`Collision detected between Projectile (${p.constructor.name}) and Boss1.`);
+            e.hit(p); // <<< Pass the ENTIRE projectile object to the Boss's hit method
+            // Projectile deletion is now handled INSIDE Boss1.hit or based on its return value if needed
+          }
+          // --- REGULAR ENEMY HANDLING ---
+          else {
+            const pType = p instanceof Bomb ? "bomb" : "bullet";
+            e.hit(p.damage, pType); // Call regular enemy hit
+
+            // Projectile deletion for regular enemies
+            if (pType === "bomb") {
+              // Delete bomb if it hits a SHIP (excluding Boss, handled above)
+              if (e instanceof EnemyShip || e instanceof EnemyShooterShip || e instanceof EnemyTrackingShip) {
+                p.markedForDeletion = true;
+              }
+            } else {
+              // It's a bullet
+              p.markedForDeletion = true; // Regular bullets disappear on hit
+            }
           }
         }
       });
-    });
-    // Player vs Enemy Proj
+    }); // End Player Projectiles vs Enemies
+
+    // --- Player vs Enemy Projectiles ---
     this.enemyProjectiles.forEach((ep) => {
       if (ep.markedForDeletion) return;
       if (checkCollision(this.player, ep)) {
         if (!this.player.shieldActive && this.player.invincible) {
-        } else {
+        } // Hit invincible player
+        else {
           ep.markedForDeletion = true;
           this.player.hit();
-        }
+        } // Hit vulnerable player or shield
       }
     });
-    // Player vs Enemies
+
+    // --- Player vs Enemies ---
     if (!this.player.shieldActive && !this.player.invincible) {
       this.enemies.forEach((e) => {
         if (e.markedForDeletion) return;
+        // Special check: Don't die instantly from touching boss unless intended
         if (checkCollision(this.player, e)) {
-          e.hit(100);
-          this.player.hit();
+          if (e instanceof Boss1) {
+            // Player touched boss - apply damage to player, maybe small damage to boss?
+            console.log("Player collided with Boss!");
+            this.player.hit(); // Player takes damage
+            // e.hit(null, 'collision'); // Optional: Boss takes minor collision damage? Needs hit method adjustment.
+          } else {
+            // Player collided with regular enemy
+            e.hit(100); // Destroy enemy instantly
+            this.player.hit(); // Player takes damage/loses life
+          }
         }
       });
     }
-    // Player vs PowerUps
+
+    // --- Player vs PowerUps ---
     this.powerUps.forEach((pu) => {
       if (pu.markedForDeletion) return;
       if (checkCollision(this.player, pu)) {
-        pu.activate(this.player);
+        pu.activate(this.player); // PowerUp handles its own deletion
       }
     });
-  }
+  } // End of handleCollisions
 
   cleanupObjects() {
     this.projectiles = this.projectiles.filter((o) => !o.markedForDeletion);
