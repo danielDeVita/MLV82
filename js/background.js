@@ -9,10 +9,7 @@ function lerp(start, end, amount) {
 }
 function lerpColor(hexColor1, hexColor2, amount) {
   try {
-    if (
-      !/^#[0-9A-F]{6}$/i.test(hexColor1) ||
-      !/^#[0-9A-F]{6}$/i.test(hexColor2)
-    ) {
+    if (!/^#[0-9A-F]{6}$/i.test(hexColor1) || !/^#[0-9A-F]{6}$/i.test(hexColor2)) {
       throw new Error(`Invalid hex: ${hexColor1}, ${hexColor2}`);
     }
     const r1 = parseInt(hexColor1.slice(1, 3), 16),
@@ -119,27 +116,9 @@ export class Background {
     this.NIGHT_START_SCORE = 1500;
     this.CYCLE_END_SCORE = 2500;
     // Layers
-    const layer1 = new BackgroundLayer(
-      "images/far-clouds.png",
-      0.2,
-      gameWidth,
-      gameHeight,
-      50
-    );
-    const layer2 = new BackgroundLayer(
-      "images/near-clouds.png",
-      0.4,
-      gameWidth,
-      gameHeight,
-      100
-    ); // Changed from mid-clouds
-    const layer3 = new BackgroundLayer(
-      "images/sea.png",
-      0.8,
-      gameWidth,
-      gameHeight,
-      gameHeight - 100
-    );
+    const layer1 = new BackgroundLayer("images/far-clouds.png", 0.2, gameWidth, gameHeight, 50);
+    const layer2 = new BackgroundLayer("images/near-clouds.png", 0.4, gameWidth, gameHeight, 100); // Changed from mid-clouds
+    const layer3 = new BackgroundLayer("images/sea.png", 0.8, gameWidth, gameHeight, gameHeight - 100);
     this.layers = [layer1, layer2, layer3];
     this.seaLevelY = gameHeight - 100;
     this.drawFallback = !layer3.image.src.endsWith(".png"); // Check sea layer
@@ -176,16 +155,7 @@ export class Background {
     this.layers.forEach((layer) => layer.update(this.baseGameSpeed, deltaTime));
 
     // --- Calculate Transition Progress ---
-    let skyC1,
-      skyC2,
-      seaC1,
-      seaC2,
-      sunC1,
-      sunC2,
-      cloudA1,
-      cloudA2,
-      waveC1,
-      waveC2; // Declare all needed vars
+    let skyC1, skyC2, seaC1, seaC2, sunC1, sunC2, cloudA1, cloudA2, waveC1, waveC2; // Declare all needed vars
     let transitionAmount = 0;
     this.showSun = false;
     this.showMoon = false;
@@ -200,18 +170,11 @@ export class Background {
       cloudA1 = cloudA2 = this.dayColors.cloudAlpha;
       waveC1 = waveC2 = this.dayColors.waveColor;
       this.showSun = true;
-      this.sunY = lerp(
-        this.gameHeight * 0.15,
-        this.gameHeight * 0.5,
-        score / this.AFTERNOON_START_SCORE
-      );
+      this.sunY = lerp(this.gameHeight * 0.15, this.gameHeight * 0.5, score / this.AFTERNOON_START_SCORE);
     } else if (score < this.NIGHT_START_SCORE) {
       // Day -> Afternoon Transition
       const phaseDuration = this.NIGHT_START_SCORE - this.AFTERNOON_START_SCORE;
-      transitionAmount =
-        phaseDuration <= 0
-          ? 1.0
-          : (score - this.AFTERNOON_START_SCORE) / phaseDuration;
+      transitionAmount = phaseDuration <= 0 ? 1.0 : (score - this.AFTERNOON_START_SCORE) / phaseDuration;
       skyC1 = this.dayColors.sky;
       skyC2 = this.afternoonColors.sky;
       seaC1 = this.dayColors.sea;
@@ -223,18 +186,11 @@ export class Background {
       waveC1 = this.dayColors.waveColor;
       waveC2 = this.afternoonColors.waveColor;
       this.showSun = true;
-      this.sunY = lerp(
-        this.gameHeight * 0.5,
-        this.gameHeight - 50,
-        transitionAmount
-      ); // Sun sets
+      this.sunY = lerp(this.gameHeight * 0.5, this.gameHeight - 50, transitionAmount); // Sun sets
     } else {
       // Afternoon -> Night Transition (or stay Night)
       const phaseDuration = this.CYCLE_END_SCORE - this.NIGHT_START_SCORE;
-      transitionAmount =
-        phaseDuration <= 0
-          ? 1.0
-          : Math.min(1.0, (score - this.NIGHT_START_SCORE) / phaseDuration);
+      transitionAmount = phaseDuration <= 0 ? 1.0 : Math.min(1.0, (score - this.NIGHT_START_SCORE) / phaseDuration);
       skyC1 = this.afternoonColors.sky;
       skyC2 = this.nightColors.sky;
       seaC1 = this.afternoonColors.sea;
@@ -246,11 +202,7 @@ export class Background {
       waveC1 = this.afternoonColors.waveColor;
       waveC2 = this.nightColors.waveColor;
       this.showMoon = true;
-      this.moonY = lerp(
-        this.gameHeight * 0.6,
-        this.gameHeight * 0.15,
-        transitionAmount
-      ); // Moon rises
+      this.moonY = lerp(this.gameHeight * 0.6, this.gameHeight * 0.15, transitionAmount); // Moon rises
       this.nightProgress = transitionAmount;
     }
 
@@ -267,10 +219,7 @@ export class Background {
 
     // Update CSS var
     if (this.gameContainerElement) {
-      this.gameContainerElement.style.setProperty(
-        "--sky-color",
-        this.currentSkyColor
-      );
+      this.gameContainerElement.style.setProperty("--sky-color", this.currentSkyColor);
     }
 
     // Update stars (position/twinkle)
@@ -312,8 +261,7 @@ export class Background {
           context.save();
           // Fade stars in based on night progress, combine with individual opacity
           // Make fade-in slightly faster
-          context.globalAlpha =
-            Math.min(1.0, this.nightProgress * 2.0) * star.opacity;
+          context.globalAlpha = Math.min(1.0, this.nightProgress * 2.0) * star.opacity;
           context.fillStyle = "white"; // Simple white stars
           context.beginPath();
           // Draw small circle for star
@@ -347,27 +295,16 @@ export class Background {
 
       // --- Fallback Sea/Wave Drawing --- (If using fallback)
       const seaLayer = this.layers[2]; // Index 2 is sea image in this version
-      const seaImageLoaded =
-        seaLayer && seaLayer.image.complete && seaLayer.image.naturalWidth > 0;
+      const seaImageLoaded = seaLayer && seaLayer.image.complete && seaLayer.image.naturalWidth > 0;
       if (this.drawFallback || !seaImageLoaded) {
         context.fillStyle = this.currentSeaColor;
-        context.fillRect(
-          0,
-          this.seaLevelY,
-          this.gameWidth,
-          this.gameHeight - this.seaLevelY
-        );
+        context.fillRect(0, this.seaLevelY, this.gameWidth, this.gameHeight - this.seaLevelY);
         context.fillStyle = this.currentWaveColor;
         const seaLayerX = seaLayer ? seaLayer.x : 0;
         for (let i = 0; i < this.gameWidth; i += 25) {
           let waveX = (i - (seaLayerX % 50)) % this.gameWidth;
           if (waveX < 0) waveX += this.gameWidth;
-          context.fillRect(
-            waveX,
-            this.seaLevelY + 5 + Math.sin(i * 0.4 + Date.now() * 0.0015) * 2,
-            15,
-            3
-          );
+          context.fillRect(waveX, this.seaLevelY + 5 + Math.sin(i * 0.4 + Date.now() * 0.0015) * 2, 15, 3);
         }
       } // else: CSS handles drawing the actual sea image layer
     } catch (e) {
