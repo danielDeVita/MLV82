@@ -60,13 +60,22 @@ export class BossWeakPoint {
   destroy() {
     if (!this.isActive) return; // Prevent multiple destructions
 
-    console.log(`WeakPoint ${this.type} DESTROYED!`);
     this.isActive = false;
     this.health = 0;
+    console.log(`WeakPoint ${this.type} DESTROYED!`);
     // Create a smaller explosion at the weak point's location
     this.game.createExplosion(this.x + this.width / 2, this.y + this.height / 2, "air"); // Use 'air' type for turret explosion? Or specific 'turret' type?
     // Optional: Notify the boss that this weak point is down
-    this.boss.weakPointDestroyed(this.type);
+    this.boss.weakPointDestroyed(this.type); // Notify boss
+
+    // --- Spawn Power-up on Destruction ---
+    // Add a slight chance? Or always spawn? Let's make it likely.
+    if (Math.random() < 0.75) {
+      // 75% chance to drop on destruction
+      console.log(`Spawning power-up from destroyed weak point ${this.type}`);
+      // Use createPowerUp which handles random type selection
+      this.game.createPowerUp(this.x + this.width / 2, this.y + this.height / 2);
+    }
   }
 
   draw(context) {

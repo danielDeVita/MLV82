@@ -68,6 +68,11 @@ export class Game {
     this.BOSS2_SCORE_THRESHOLD = 2500;
     this.BOSS3_SCORE_THRESHOLD = 4000;
 
+    this.bossPowerUpTimer = 0;
+    this.bossPowerUpBaseInterval = 15000; // Base 15 seconds
+    this.bossPowerUpRandomInterval = 5000; // Add up to 5s random
+    this.bossPowerUpInterval = this.bossPowerUpBaseInterval + Math.random() * this.bossPowerUpRandomInterval; // Initial interval
+
     // Initialize core components AFTER context verification
     try {
       this.input = new InputHandler(this);
@@ -140,6 +145,19 @@ export class Game {
       this.background.update(deltaTime, this.score);
       this.player.update(this.input, deltaTime);
       [...this.projectiles, ...this.enemyProjectiles, ...this.enemies, ...this.explosions, ...this.powerUps].forEach((obj) => obj.update(deltaTime));
+
+      if (this.bossActive) {
+        this.bossPowerUpTimer += deltaTime;
+        if (this.bossPowerUpTimer >= this.bossPowerUpInterval) {
+          this.bossPowerUpTimer = 0; // Use subtraction reset for accuracy: this.bossPowerUpTimer -= this.bossPowerUpInterval;
+          this.bossPowerUpInterval = this.bossPowerUpBaseInterval + Math.random() * this.bossPowerUpRandomInterval; // Reset next interval
+
+          const spawnX = Math.random() * (this.width * 0.7) + this.width * 0.1; // Random X, avoid edges
+          const spawnY = 50 + Math.random() * 50; // Spawn near top/mid screen
+          console.log("Spawning timed boss power-up");
+          this.createPowerUp(spawnX, spawnY);
+        }
+      }
 
       // 3. Spawn / Difficulty / Boss Checks
       this.updateDifficulty();
@@ -444,6 +462,9 @@ export class Game {
 
   restart() {
     console.log("--- Restarting Game ---");
+
+    this.bossPowerUpTimer = 0;
+
     try {
       // 1. Reset Player
       if (this.player) {
@@ -530,6 +551,8 @@ export class Game {
   }
   start() {
     console.log("Game Starting...");
+
+    this.bossPowerUpTimer = 0;
 
     // --- Reset Core Game State ---
     this.isGameOver = false; // Ensure game is not over
