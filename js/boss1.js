@@ -296,6 +296,7 @@ export class Boss1 extends Enemy {
     const damage = projectile.damage || 1;
 
     let weakPointHitRegistered;
+    let weakPointDestroyedThisHit;
 
     // Check Weak Points
     for (const wp of this.weakPoints) {
@@ -308,9 +309,9 @@ export class Boss1 extends Enemy {
           wp.hit(damage); // Damage weak point, destruction handled internally
         } else {
           // Bullet
-          // console.log(`   -> Bullet hit WeakPoint ${wp.type}. Flashing only.`);
-          wp.isHit = true;
-          wp.hitTimer = wp.hitDuration; // Flash
+          // wp.isHit = true; wp.hitTimer = wp.hitDuration; // Flash happens inside wp.hit now
+          weakPointDestroyedThisHit = wp.hit(damage); // <<< APPLY bullet damage to weak point
+          projectile.markedForDeletion = true; // Bullet consumed
         }
         projectile.markedForDeletion = true; // Projectile is consumed by hitting weak point
         break; // Stop checking other weak points for this projectile
