@@ -112,6 +112,12 @@ export class Player {
     } // End of Player update
 
     draw(context) {
+
+        // --- ADD SAFETY CHECK ---
+        if (!context) {
+            console.error("Player.draw received undefined context!");
+            return; // Don't try to draw
+        }
         context.save();
 
         // Draw Shield Visual

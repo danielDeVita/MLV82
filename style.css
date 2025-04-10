@@ -1,5 +1,3 @@
-/* style.css */
-
 body {
     margin: 0;
     display: flex;
@@ -11,14 +9,190 @@ body {
     font-family: 'Arial', sans-serif;
 }
 
+/* --- USE CSS VARIABLES FOR GAME DIMENSIONS --- */
+:root {
+    --game-width: 1280px;
+    /* Match JS gameWidth */
+    --game-height: 720px;
+    /* Match JS gameHeight */
+}
+
+
 #game-container {
     position: relative;
+    width: var(--game-width);
+    height: var(--game-height);
     border: 2px solid white;
+    overflow: hidden;
+    /* Prevent layers from spilling out */
+    /* Base sky color set via JS variable */
+    background-color: var(--sky-color, #87CEEB);
+    /* Default to day sky */
 }
 
 #gameCanvas {
+    position: absolute;
+    /* Position canvas on top of background layers */
+    top: 0;
+    left: 0;
     display: block;
-    background-color: #0077cc;
+    background-color: transparent;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    /* Above all CSS background layers */
+}
+
+/* Base styles for parallax layers */
+.background-layer.parallax {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    /* Fill container width */
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    /* Start at left edge */
+    will-change: background-position;
+    /* Performance hint */
+}
+
+/* Base styles for all background layers */
+.background-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-repeat: repeat-x;
+    /* Allow horizontal tiling/scrolling */
+    background-position: 0 0;
+    /* Initial position */
+    z-index: 1;
+    /* Base layer z-index (behind canvas) */
+    will-change: background-position;
+    /* Hint for browser optimization */
+}
+
+/* Individual Layer Styling & Parallax Animation */
+
+/* Sky Color - Handled by #game-container background */
+#sky-color-layer {
+    display: none;
+}
+
+/* Z-Index 1: Distant Mountains (Placeholder) */
+#distant-mountains-layer {
+    background-image: url('../images/distant-mountains.png');
+    /* Will show nothing until image exists */
+    /* Position just above the sea */
+    bottom: 120px;
+    /* Adjust based on total sea height */
+    height: 150px;
+    /* Example height */
+    z-index: 1;
+    animation: parallax-scroll 120s linear infinite;
+    /* Very slow */
+    opacity: 0.8;
+    /* Optional: Fade distant elements */
+}
+
+/* Z-Index 2: Far Clouds */
+#far-clouds-layer {
+    background-image: url('../images/far-clouds.png');
+    top: 50px;
+    /* Vertical position */
+    height: 100%;
+    /* Cover full height */
+    z-index: 2;
+    animation: parallax-scroll 80s linear infinite;
+    /* Slow */
+    /* CSS Filter can be used for tinting later via JS */
+    /* filter: brightness(0.8); */
+}
+
+/* Z-Index 3: Near Mountains (Placeholder) */
+#near-mountains-layer {
+    background-image: url('../images/near-mountains.png');
+    bottom: 100px;
+    /* Adjust based on total sea height & far mountains */
+    height: 180px;
+    /* Example height */
+    z-index: 3;
+    animation: parallax-scroll 60s linear infinite;
+    /* Medium-Slow */
+    opacity: 0.9;
+}
+
+/* Z-Index 4: Mid Clouds */
+#mid-clouds-layer {
+    background-image: url('../images/mid-clouds.png');
+    top: 100px;
+    /* Adjust vertical position */
+    height: 100%;
+    z-index: 4;
+    animation: parallax-scroll 45s linear infinite;
+    /* Medium */
+}
+
+/* Z-Index 5: Near Clouds */
+#near-clouds-layer {
+    background-image: url('../images/near-clouds.png');
+    top: 150px;
+    /* Adjust vertical position */
+    height: 100%;
+    z-index: 5;
+    animation: parallax-scroll 30s linear infinite;
+    /* Medium-Fast */
+}
+
+/* Z-Index 6: Far Sea */
+#far-sea-layer {
+    background-image: url('../images/far-sea.png');
+    bottom: 60px;
+    /* Adjust based on mid/close sea height */
+    height: 100px;
+    /* Example height */
+    z-index: 6;
+    animation: parallax-scroll 20s linear infinite;
+    /* Fast */
+}
+
+/* Z-Index 7: Mid Sea */
+#mid-sea-layer {
+    background-image: url('../images/mid-sea.png');
+    bottom: 20px;
+    /* Adjust based on close sea height */
+    height: 80px;
+    /* Example height */
+    z-index: 7;
+    animation: parallax-scroll 14s linear infinite;
+    /* Faster */
+}
+
+/* Z-Index 8: Close Sea */
+#close-sea-layer {
+    /* Use close-sea.png OR close-sea2.png */
+    background-image: url('../images/close-sea.png');
+    bottom: 0;
+    height: 60px;
+    /* Example height */
+    z-index: 8;
+    animation: parallax-scroll 9s linear infinite;
+    /* Fastest */
+}
+
+/* Parallax Scrolling Animation */
+@keyframes parallax-scroll {
+    from {
+        background-position-x: 0;
+    }
+
+    /* Scroll by a large amount - ideally width of image if tiling, or larger */
+    to {
+        background-position-x: -2048px;
+    }
+
+    /* Example large value */
 }
 
 #ui {
@@ -28,7 +202,8 @@ body {
     color: white;
     font-size: 20px;
     text-shadow: 1px 1px 2px black;
-    z-index: 10;
+    z-index: 20;
+    /* Above canvas */
     pointer-events: none;
 }
 
@@ -74,7 +249,7 @@ body {
     padding: 30px 40px;
     border-radius: 10px;
     text-align: center;
-    z-index: 20;
+    z-index: 30;
     font-family: 'Arial', sans-serif;
 }
 

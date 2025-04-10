@@ -10,6 +10,20 @@
 
 <body>
     <div id="game-container">
+
+        <!-- Background Layers (Order doesn't strictly matter, z-index does) -->
+        <div id="sky-color-layer" class="background-layer"></div> <!-- Handled by container bg -->
+        <!-- Stars/Sun/Moon drawn on Canvas -->
+        <div id="distant-mountains-layer" class="background-layer parallax"></div> <!-- Placeholder -->
+        <div id="far-clouds-layer" class="background-layer parallax"></div>
+        <div id="near-mountains-layer" class="background-layer parallax"></div> <!-- Placeholder -->
+        <div id="mid-clouds-layer" class="background-layer parallax"></div>
+        <div id="near-clouds-layer" class="background-layer parallax"></div>
+        <div id="far-sea-layer" class.background-layer parallax"></div>
+        <div id="mid-sea-layer" class="background-layer parallax"></div>
+        <div id="close-sea-layer" class="background-layer parallax"></div>
+        <!-- End Background Layers -->
+
         <canvas id="gameCanvas"></canvas>
 
         <!-- UI Overlay (Score, Lives, etc.) -->
@@ -31,4 +45,5 @@
     <script type="module" src="js/main.js"></script>
 
 </body>
+
 </html>
