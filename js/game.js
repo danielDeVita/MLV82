@@ -20,6 +20,7 @@ import { PowerUpExtraLife } from "./powerUpExtraLife.js";
 import { PowerUpBullet } from "./powerUpBullet.js";
 import { PowerUpBomb } from "./powerUpBomb.js";
 import { Boss1 } from "./boss1.js"; // <<< BOSS IMPORT
+import { Boss2 } from "./boss2.js";
 import { checkCollision } from "./utils.js";
 import { loadSounds, playSound } from "./audio.js";
 import { Bomb } from "./bomb.js";
@@ -64,7 +65,7 @@ export class Game {
     this.boss1Defeated = false;
     this.boss2Defeated = false;
     this.boss3Defeated = false;
-    this.BOSS1_SCORE_THRESHOLD = 10;
+    this.BOSS1_SCORE_THRESHOLD = 800;
     this.BOSS2_SCORE_THRESHOLD = 2500;
     this.BOSS3_SCORE_THRESHOLD = 4000;
 
@@ -198,49 +199,83 @@ export class Game {
   // --- Boss State Management ---
   handleBossState() {
     if (!this.bossActive) {
-      // Check spawn
+      // Check Boss 1 spawn FIRST
       if (!this.boss1Defeated && this.score >= this.BOSS1_SCORE_THRESHOLD) {
         this.spawnBoss(1);
       }
-      // Add Boss 2/3 later
+      // Check Boss 2 spawn only AFTER Boss 1 is defeated
+      else if (this.boss1Defeated && !this.boss2Defeated && this.score >= this.BOSS2_SCORE_THRESHOLD) {
+        this.spawnBoss(2);
+      }
+      // Add Boss 3 later...
     } else if (this.bossActive && this.currentBoss && this.currentBoss.markedForDeletion) {
-      // Check defeat
+      // Check defeat (this part remains the same)
       this.bossDefeated();
     }
   }
+
   spawnBoss(bossNumber) {
     console.log(`--- Spawning Boss ${bossNumber} ---`);
     this.bossActive = true;
-    this.enemies = this.enemies.filter((e) => e instanceof EnemyShip || e instanceof EnemyShooterShip || e instanceof EnemyTrackingShip); // Keep ships?
-    this.enemyProjectiles = [];
+    // Clear out most regular enemies? Keep ships maybe? Or clear all?
+    this.enemies = this.enemies.filter((e) => e instanceof EnemyShip || e instanceof EnemyShooterShip || e instanceof EnemyTrackingShip); // Optional: Keep ships?
+    this.enemyProjectiles = []; // Clear projectiles
+
     let bossInstance = null;
     if (bossNumber === 1) {
       bossInstance = new Boss1(this);
+    } else if (bossNumber === 2) {
+      // <<< ADD THIS CASE
+      bossInstance = new Boss2(this);
     }
+    // Add Boss 3 later...
+
     if (bossInstance) {
       this.enemies.push(bossInstance);
       this.currentBoss = bossInstance;
+      // Reset power-up timer when boss spawns
+      this.bossPowerUpTimer = 0;
+      this.bossPowerUpInterval = this.bossPowerUpBaseInterval + Math.random() * this.bossPowerUpRandomInterval;
     } else {
-      console.error(`Unknown boss: ${bossNumber}`);
-      this.bossActive = false;
+      console.error(`Unknown boss number requested: ${bossNumber}`);
+      this.bossActive = false; // Failed to spawn, reset state
     }
   }
+
   bossDefeated() {
-    console.log(`--- Boss Defeated! (All weak points destroyed) ---`);
-    let scoreBonus = 0;
+    // Check if a boss was actually active and marked
+    if (!this.currentBoss) {
+      console.warn("bossDefeated called but no currentBoss was set.");
+      this.bossActive = false; // Ensure state is reset
+      return;
+    }
+
+    console.log(`--- Boss Defeated! (${this.currentBoss.id}) ---`);
+    let scoreBonus = 0; // Score bonus handled by boss itself now via scoreValue
+
+    // Set the defeated flag for the specific boss
     if (this.currentBoss instanceof Boss1 && !this.boss1Defeated) {
       this.boss1Defeated = true;
-      scoreBonus = 2500;
+      console.log("Boss 1 defeated flag set.");
+    } else if (this.currentBoss instanceof Boss2 && !this.boss2Defeated) {
+      // <<< ADD THIS CHECK
+      this.boss2Defeated = true;
+      console.log("Boss 2 defeated flag set.");
     }
-    // this.addScore(scoreBonus);
-    this.bossActive = false;
-    this.currentBoss = null;
+    // Add Boss 3 check later...
 
-    // Drop powerups
-    for (let i = 0; i < 3; i++) {
-      this.createPowerUp(this.width / 2 + (i - 1) * 60, this.height / 2);
+    // Reset general boss state
+    this.bossActive = false;
+    this.currentBoss = null; // Clear the reference
+
+    // Drop powerups (maybe more for later bosses?)
+    const numPowerups = this.boss1Defeated && !this.boss2Defeated ? 3 : 4; // Example: 3 for B1, 4 for B2
+    for (let i = 0; i < numPowerups; i++) {
+      // Spread them out a bit
+      this.createPowerUp(this.width / 2 + (i - (numPowerups - 1) / 2) * 80, this.height * 0.6);
     }
-    // Resume normal spawning timers
+
+    // Resume normal spawning timers immediately
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
   }
@@ -295,19 +330,33 @@ export class Game {
   handleCollisions() {
     // --- Player Projectiles vs Enemies ---
     this.projectiles.forEach((p) => {
-      if (p.markedForDeletion) return; // Skip projectiles already marked
+      // --- ADD PRE-CHECK LOGGING ---
+      if (typeof p !== "object" || p === null) {
+        console.error("!!! ERROR in projectiles loop: Found non-object item:", p);
+        // Optionally, mark it for deletion here to prevent further errors
+        // if (p && typeof p === 'object') { p.markedForDeletion = true; } // Only if it has the property
+        return; // Skip this iteration
+      }
+      // --- END PRE-CHECK ---
 
+      if (p.markedForDeletion) return; // Skip projectiles already marked
       this.enemies.forEach((e) => {
-        // Skip checks if enemy is dead OR if projectile was marked by a previous enemy collision in this same frame
         if (e.markedForDeletion || p.markedForDeletion) return;
 
-        // Check for collision between projectile and enemy bounding boxes
         if (checkCollision(p, e)) {
           // --- SPECIAL HANDLING FOR BOSS ---
-          if (e instanceof Boss1) {
-            console.log(`Collision detected between Projectile (${p.constructor.name}) and Boss1.`);
-            e.hit(p); // <<< Pass the ENTIRE projectile object to the Boss's hit method
-            // Projectile deletion is now handled INSIDE Boss1.hit or based on its return value if needed
+          if (e instanceof Boss1 || e instanceof Boss2) {
+            // Combined check
+            // --- ADD DEBUG LOG BEFORE BOSS HIT ---
+            console.log(`DEBUG: Calling ${e.constructor.name}.hit() with projectile:`, p);
+            if (typeof p !== "object" || p === null) {
+              // Redundant check if pre-check is added
+              console.error(`CRITICAL: About to call ${e.constructor.name}.hit() with NON-OBJECT:`, p);
+            }
+            // --- END DEBUG LOG ---
+
+            e.hit(p); // <<< Pass the ENTIRE projectile object 'p'
+            // Projectile deletion is handled inside Boss hit methods
           }
           // --- REGULAR ENEMY HANDLING ---
           else {
