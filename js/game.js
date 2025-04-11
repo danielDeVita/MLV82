@@ -79,7 +79,7 @@ export class Game {
     this.boss3Defeated = false;
     this.BOSS1_SCORE_THRESHOLD = 800;
     this.BOSS2_SCORE_THRESHOLD = 5000;
-    this.BOSS3_SCORE_THRESHOLD = 8000;
+    this.BOSS3_SCORE_THRESHOLD = 9500;
 
     this.bossPowerUpTimer = 0;
     this.bossPowerUpBaseInterval = 15000; // Base 15 seconds
@@ -312,9 +312,7 @@ export class Game {
     }
 
     console.log(`--- Boss Defeated! (${this.currentBoss.id}) ---`);
-    let scoreBonus = 0; // Score bonus handled by boss itself now via scoreValue
 
-    // Set the defeated flag for the specific boss
     // Set the defeated flag for the specific boss
     if (this.currentBoss instanceof Boss1 && !this.boss1Defeated) {
       this.boss1Defeated = true;
@@ -354,22 +352,41 @@ export class Game {
     // --- REVISED LOGIC ---
 
     // 1. Check for Boss 1 Phase 3+ Helper Spawns
-    // --- >>> CHANGE CONDITION FROM === 1 to <= 2 <<< ---
     if (
       this.bossActive &&
       this.currentBoss instanceof Boss1 &&
       this.currentBoss.activeWeakPoints <= 2 && // Trigger when 2 OR 1 points remain
-      this.currentBoss.activeWeakPoints > 0 // But not when 0 points remain (boss defeated)
+      this.currentBoss.activeWeakPoints > 0 // But not when 0 points remain
     ) {
       this.boss1HelperPlaneTimer += deltaTime;
-      const currentHelperInterval = this.boss1HelperPlaneBaseInterval + Math.random() * this.boss1HelperPlaneRandomInterval;
+
+      // --- >>> Adjust Interval Based on Phase? (Optional) <<< ---
+      let currentBaseInterval = this.boss1HelperPlaneBaseInterval;
+
+      if (this.currentBoss.activeWeakPoints === 1) {
+        // Halve the base interval when only 1 WP left?
+        // currentBaseInterval = this.boss1HelperPlaneBaseInterval * 0.6; // Example: 40% faster spawns
+      }
+      const currentHelperInterval = currentBaseInterval + Math.random() * this.boss1HelperPlaneRandomInterval;
+      // --- >>> End Optional Interval Adjustment <<< ---
 
       if (this.boss1HelperPlaneTimer >= currentHelperInterval) {
         this.boss1HelperPlaneTimer = 0; // Reset
+
+        // --- >>> Spawn MORE planes in final phase <<< ---
+        const planesToSpawn = this.currentBoss.activeWeakPoints === 1 ? 2 : 1; // Spawn 2 if 1 WP left, else 1
+        // --- >>> END Spawn MORE planes <<< ---
+
         console.log(`Spawning Boss 1 helper plane (Dodger) - ${this.currentBoss.activeWeakPoints} WP left`);
-        this.enemies.push(new EnemyDodgingPlane(this, 0));
+
+        for (let i = 0; i < planesToSpawn; i++) {
+          // Add slight delay/offset for multiple spawns? Optional.
+          // setTimeout(() => { // Might cause issues if boss dies during timeout
+          this.enemies.push(new EnemyDodgingPlane(this, 0));
+          // }, i * 100); // Example: 100ms delay for second plane
+        }
       }
-      // Return here to prevent other spawning logic during boss fight
+      // Return here to prevent other spawning logic
       return;
     }
 

@@ -90,30 +90,31 @@ export class Boss1 extends Enemy {
     this.activeWeakPoints--;
     console.log(`Boss weak point ${type} destroyed! ${this.activeWeakPoints} remaining.`);
 
-    // Difficulty Scaling Logic
+    // --- >>> ADJUSTED Difficulty Scaling Logic <<< ---
     let boostMultiplier = 1.0;
+
     if (this.activeWeakPoints === 3) {
-      // Started with 4, now 3 left
-      boostMultiplier = 0.85;
+      // Phase 2 (3 WP left)
+      boostMultiplier = 0.85; // ~15% faster (same as before)
       this.attackPhase = 2;
       console.log(`Boss1 Phase 2 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
     } else if (this.activeWeakPoints === 2) {
-      // Started with 4, now 2 left
-      boostMultiplier = 0.7;
+      // Phase 3 (2 WP left)
+      boostMultiplier = 0.6; // <<< FASTER (was 0.70) - ~40% faster than base
       this.attackPhase = 3;
       console.log(`Boss1 Phase 3 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
-      // --- >>> CALL Game to START helper spawns WHEN 2 ARE LEFT <<< ---
+      // Start helper spawns (triggered here)
       this.game.resetBoss1HelperSpawnTimer();
-      // --- >>> END CALL <<< ---
     } else if (this.activeWeakPoints === 1) {
-      // Started with 4, now 1 left
-      boostMultiplier = 0.55;
+      // Phase 4 (1 WP left)
+      boostMultiplier = 0.4; // <<< MUCH FASTER (was 0.55) - ~60% faster than base
       this.attackPhase = 4;
       console.log(`Boss1 Phase 4 active (${this.activeWeakPoints} point left). Applying boost: ${boostMultiplier}`);
-      // --- Helper timer was already started in previous phase ---
+      // Helper spawns should already be active, but will intensify via Game.js logic
     } else if (this.activeWeakPoints <= 0) {
+      // Phase 5 (Defeated)
       boostMultiplier = 1.0;
-      this.attackPhase = 5; // Defeated phase
+      this.attackPhase = 5;
     }
 
     // Apply boost to intervals
