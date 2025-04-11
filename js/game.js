@@ -12,6 +12,7 @@ import { EnemyDodgingPlane } from "./enemyDodgingPlane.js";
 import { EnemyTrackingShip } from "./enemyTrackingShip.js";
 import { EnemyMineLayerPlane } from "./enemyMineLayerPlane.js"; // <<< IMPORT
 import { Mine } from "./mine.js"; // <<< IMPORT
+import { EnemyBeamShip } from "./enemyBeamShip.js";
 
 import { Explosion } from "./explosion.js";
 
@@ -495,16 +496,35 @@ export class Game {
     if (this.enemyShipTimer >= currentShipInt) {
       this.enemyShipTimer -= currentShipInt;
       let s;
-      const r = Math.random(),
-        tC = this.difficultyLevel > 2 ? 0.15 + this.difficultyLevel * 0.05 : 0,
-        sC = this.difficultyLevel > 1 ? 0.35 + this.difficultyLevel * 0.1 : 0;
-      if (r < tC) s = new EnemyTrackingShip(this, speedBoost);
-      else if (r < tC + sC) s = new EnemyShooterShip(this, speedBoost);
-      else s = new EnemyShip(this, speedBoost);
+      const r = Math.random();
+      // --- >>> Add Chance for Beam Ship <<< ---
+      // Example: Starts appearing at level 4+ ? Adjust percentages.
+      const bSChance =
+        this.difficultyLevel > 3 ? 0.15 + this.difficultyLevel * 0.04 : 0;
+      const tC =
+        this.difficultyLevel > 2 ? 0.15 + this.difficultyLevel * 0.05 : 0;
+      const sC =
+        this.difficultyLevel > 1 ? 0.35 + this.difficultyLevel * 0.1 : 0;
+
+      if (r < bSChance) {
+        // Check Beam Ship FIRST
+        s = new EnemyBeamShip(this, speedBoost);
+      } else if (r < bSChance + tC) {
+        // Adjust subsequent checks
+        s = new EnemyTrackingShip(this, speedBoost);
+      } else if (r < bSChance + tC + sC) {
+        s = new EnemyShooterShip(this, speedBoost);
+      } else {
+        s = new EnemyShip(this, speedBoost);
+      }
+      // --- >>> END Beam Ship Chance <<< ---
       this.enemies.push(s);
     }
   } // End handleSpawning
 
+  // --- Collision Handling ---
+  // NOTE: Beam collision is handled INSIDE EnemyBeamShip.update()
+  // No changes specifically needed here for beam collision itself.
   handleCollisions() {
     // --- Player Projectiles vs Enemies ---
     this.projectiles.forEach((p) => {
