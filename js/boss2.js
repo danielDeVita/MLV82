@@ -12,7 +12,7 @@ import { randomInt, lerp } from "./utils.js"; // Make sure randomInt is imported
 export class Boss2 extends Enemy {
   constructor(game) {
     super(game); // Call base Enemy constructor
-    this.id = "boss_2_vulcan_phase_summon"; // New ID reflecting combined features
+    this.id = "boss_2_vulcan_persistent_support"; // New ID
     this.enemyType = "air";
     // --- Boss Stats, Appearance, Movement (Keep lerp/dip version) ---
     this.width = 280;
@@ -69,11 +69,16 @@ export class Boss2 extends Enemy {
     // --- Phase State ---
     this.currentPhase = 1;
 
-    // --- Helper Ship Summoning Flags & Thresholds ---
-    this.summonThreshold1 = 0.7; // Health % for first wave
-    this.summonThreshold2 = 0.4; // Health % for second wave
-    this.hasSummonedShipWave1 = false;
-    this.hasSummonedShipWave2 = false;
+    // --- >>> NEW: Helper Ship Spawn Timers & Thresholds <<< ---
+    this.summonThreshold1 = 0.7; // Health percentage for first wave tier
+    this.summonThreshold2 = 0.4; // Health percentage for second wave tier
+
+    this.shipWave1Timer = randomInt(5000, 8000); // Initial delay for first tier spawns
+    this.shipWave1Interval = 12000; // How often wave 1 ships spawn (adjust)
+
+    this.shipWave2Timer = randomInt(6000, 9000); // Initial delay for second tier spawns
+    this.shipWave2Interval = 10000; // How often wave 2 ships spawn (faster?)
+    // --- >>> END Ship Spawn Timers <<< ---
 
     // Power-up Spawning
     this.powerUpTimer = 0;
@@ -82,9 +87,7 @@ export class Boss2 extends Enemy {
     this.powerUpInterval =
       this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval;
 
-    console.log(
-      `Boss2 Created (${this.id}) - Phase Logic & Ship Support Added.`
-    );
+    console.log(`Boss2 Created (${this.id}) - Persistent Ship Support Added.`);
   } // End Constructor
 
   update(deltaTime) {
@@ -148,7 +151,7 @@ export class Boss2 extends Enemy {
 
     // --- ATTACKS & OTHER UPDATES (Only run AFTER entering) ---
     if (!this.isEntering) {
-      // --- Phase Transition Logic ---
+      // Phase Transition Logic (Keep this for boss attack intensity)
       const healthPercent = this.health / this.maxHealth;
       let newPhase = 1;
       if (healthPercent <= 0.33) {
@@ -159,31 +162,9 @@ export class Boss2 extends Enemy {
       if (newPhase > this.currentPhase) {
         console.warn(`!!! Boss 2 Entering Phase ${newPhase} !!!`);
         this.currentPhase = newPhase;
-        // playSound('bossPhaseChange');
       }
-      // --- End Phase Transition ---
 
-      // --- Ship Summoning Logic (Based on Health) ---
-      if (
-        !this.hasSummonedShipWave1 &&
-        healthPercent <= this.summonThreshold1
-      ) {
-        console.warn(`Boss 2 summoning Ship Wave 1!`);
-        this.game.spawnBoss2HelperShips(2, "shooter"); // Example: 2 Shooters
-        this.hasSummonedShipWave1 = true;
-      }
-      if (
-        !this.hasSummonedShipWave2 &&
-        healthPercent <= this.summonThreshold2
-      ) {
-        console.warn(`Boss 2 summoning Ship Wave 2!`);
-        this.game.spawnBoss2HelperShips(1, "tracking"); // Example: 1 Tracker, 1 Shooter
-        this.game.spawnBoss2HelperShips(1, "shooter");
-        this.hasSummonedShipWave2 = true;
-      }
-      // --- End Ship Summoning ---
-
-      // --- Calculate Current Attack Intervals based on Phase ---
+      // Calculate Current Attack Intervals based on Phase
       let currentBulletInterval = this.bulletIntervalBase;
       let currentMissileInterval = this.missileIntervalBase;
       let currentBombRunInterval = this.bombRunIntervalBase;
@@ -195,9 +176,8 @@ export class Boss2 extends Enemy {
         currentMissileInterval *= 0.7;
         currentBombRunInterval *= 0.8;
       }
-      // --- End Interval Calculation ---
 
-      // --- Attack Timer Updates & Firing ---
+      // Main Attack Timers & Firing
       this.bulletTimer -= safeDeltaTime;
       this.missileTimer -= safeDeltaTime;
       this.bombRunTimer -= safeDeltaTime;
@@ -241,6 +221,38 @@ export class Boss2 extends Enemy {
           console.log("Boss2: Bombing run complete.");
         }
       }
+
+      // --- >>> Persistent Ship Summoning Logic <<< ---
+      // Tier 1 Ships (Spawn if health <= threshold 1)
+      if (healthPercent <= this.summonThreshold1) {
+        this.shipWave1Timer -= safeDeltaTime;
+        if (this.shipWave1Timer <= 0) {
+          console.log(
+            `Boss 2 spawning persistent Ship Wave 1 (Health: ${healthPercent.toFixed(
+              2
+            )})`
+          );
+          this.game.spawnBoss2HelperShips(1, "shooter"); // Example: 1 Shooter
+          this.shipWave1Timer =
+            this.shipWave1Interval + Math.random() * 4000 - 2000; // Reset timer
+        }
+      }
+
+      // Tier 2 Ships (Spawn if health <= threshold 2 - can overlap with tier 1)
+      if (healthPercent <= this.summonThreshold2) {
+        this.shipWave2Timer -= safeDeltaTime;
+        if (this.shipWave2Timer <= 0) {
+          console.log(
+            `Boss 2 spawning persistent Ship Wave 2 (Health: ${healthPercent.toFixed(
+              2
+            )})`
+          );
+          this.game.spawnBoss2HelperShips(1, "tracking"); // Example: 1 Tracking
+          this.shipWave2Timer =
+            this.shipWave2Interval + Math.random() * 3000 - 1500; // Reset timer
+        }
+      }
+      // --- >>> END Persistent Ship Summoning <<< ---
 
       // --- Power-up Spawning Timer ---
       this.powerUpTimer += safeDeltaTime;
