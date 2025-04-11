@@ -90,27 +90,30 @@ export class Boss1 extends Enemy {
     this.activeWeakPoints--;
     console.log(`Boss weak point ${type} destroyed! ${this.activeWeakPoints} remaining.`);
 
-    // --- Difficulty Scaling Logic ---
+    // Difficulty Scaling Logic
     let boostMultiplier = 1.0;
     if (this.activeWeakPoints === 3) {
+      // Started with 4, now 3 left
       boostMultiplier = 0.85;
       this.attackPhase = 2;
+      console.log(`Boss1 Phase 2 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
     } else if (this.activeWeakPoints === 2) {
+      // Started with 4, now 2 left
       boostMultiplier = 0.7;
       this.attackPhase = 3;
-    } else if (this.activeWeakPoints === 1) {
-      boostMultiplier = 0.55;
-      this.attackPhase = 4;
-      // --- >>> CALL Game to reset helper timer <<< ---
+      console.log(`Boss1 Phase 3 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
+      // --- >>> CALL Game to START helper spawns WHEN 2 ARE LEFT <<< ---
       this.game.resetBoss1HelperSpawnTimer();
       // --- >>> END CALL <<< ---
+    } else if (this.activeWeakPoints === 1) {
+      // Started with 4, now 1 left
+      boostMultiplier = 0.55;
+      this.attackPhase = 4;
+      console.log(`Boss1 Phase 4 active (${this.activeWeakPoints} point left). Applying boost: ${boostMultiplier}`);
+      // --- Helper timer was already started in previous phase ---
     } else if (this.activeWeakPoints <= 0) {
       boostMultiplier = 1.0;
-      this.attackPhase = 5;
-    }
-
-    if (this.attackPhase > 1 && this.attackPhase < 5) {
-      console.log(`Boss1 Phase ${this.attackPhase} active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
+      this.attackPhase = 5; // Defeated phase
     }
 
     // Apply boost to intervals
@@ -125,7 +128,8 @@ export class Boss1 extends Enemy {
         0
       )}, RearSpread: ${this.rearSpreadInterval.toFixed(0)}, Mis: ${this.missileInterval.toFixed(0)}`
     );
-    // --- WIN CONDITION ---
+
+    // WIN CONDITION
     if (this.activeWeakPoints <= 0) {
       console.log("Boss1 All Weak Points Destroyed! BOSS DEFEATED!");
       this.markedForDeletion = true;

@@ -78,7 +78,7 @@ export class Game {
     this.boss2Defeated = false;
     this.boss3Defeated = false;
     this.BOSS1_SCORE_THRESHOLD = 800;
-    this.BOSS2_SCORE_THRESHOLD = 3000;
+    this.BOSS2_SCORE_THRESHOLD = 5000;
     this.BOSS3_SCORE_THRESHOLD = 8000;
 
     this.bossPowerUpTimer = 0;
@@ -353,30 +353,29 @@ export class Game {
   handleSpawning(deltaTime) {
     // --- REVISED LOGIC ---
 
-    // 1. Check for Boss 1 Final Phase Helper Spawns
-    if (this.bossActive && this.currentBoss instanceof Boss1 && this.currentBoss.activeWeakPoints === 1) {
+    // 1. Check for Boss 1 Phase 3+ Helper Spawns
+    // --- >>> CHANGE CONDITION FROM === 1 to <= 2 <<< ---
+    if (
+      this.bossActive &&
+      this.currentBoss instanceof Boss1 &&
+      this.currentBoss.activeWeakPoints <= 2 && // Trigger when 2 OR 1 points remain
+      this.currentBoss.activeWeakPoints > 0 // But not when 0 points remain (boss defeated)
+    ) {
       this.boss1HelperPlaneTimer += deltaTime;
       const currentHelperInterval = this.boss1HelperPlaneBaseInterval + Math.random() * this.boss1HelperPlaneRandomInterval;
 
       if (this.boss1HelperPlaneTimer >= currentHelperInterval) {
-        this.boss1HelperPlaneTimer = 0;
-        console.log("Spawning Boss 1 helper plane (Dodger)..."); // Updated log message
-
-        // --- >>> CHANGE THIS LINE <<< ---
-        // Was: this.enemies.push(new EnemyPlane(this, 0));
-        // Now: Spawn an EnemyDodgingPlane instead
-        this.enemies.push(new EnemyDodgingPlane(this, 0)); // Speed boost 0, or add a small one?
-        // --- >>> END CHANGE <<< ---
+        this.boss1HelperPlaneTimer = 0; // Reset
+        console.log(`Spawning Boss 1 helper plane (Dodger) - ${this.currentBoss.activeWeakPoints} WP left`);
+        this.enemies.push(new EnemyDodgingPlane(this, 0));
       }
-      // --- IMPORTANT: Return here to prevent other spawning logic during boss fight ---
+      // Return here to prevent other spawning logic during boss fight
       return;
     }
 
     // 2. Check if any other boss phase is active (or different boss)
     if (this.bossActive) {
-      // A boss is active, but it's not Boss 1 in its final phase.
-      // Do nothing (no regular spawns).
-      return;
+      return; // No regular spawns
     }
 
     // 3. If no boss is active, proceed with regular enemy spawning
