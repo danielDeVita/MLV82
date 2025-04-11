@@ -23,6 +23,10 @@ import { PowerUpBullet } from "./powerUpBullet.js";
 import { PowerUpBomb } from "./powerUpBomb.js";
 import { PowerUpRapidFire } from "./powerUpRapidFire.js";
 import { PowerUpInvincibility } from "./powerUpInvincibility.js";
+
+import { SuperBomb } from "./superBomb.js"; // <<< IMPORT SuperBomb
+import { PowerUpSuperBomb } from "./powerUpSuperBomb.js";
+
 import { Boss1 } from "./boss1.js"; // <<< BOSS IMPORT
 import { Boss2 } from "./boss2.js";
 import { Boss3 } from "./boss3.js";
@@ -528,42 +532,53 @@ export class Game {
   handleCollisions() {
     // --- Player Projectiles vs Enemies ---
     this.projectiles.forEach((p) => {
-      if (p.markedForDeletion) return; // Skip already hit projectiles
+      if (p.markedForDeletion) return;
 
       for (let i = 0; i < this.enemies.length; i++) {
         const e = this.enemies[i];
-        if (p.markedForDeletion || e.markedForDeletion) continue; // Skip if either is marked
+        if (p.markedForDeletion || e.markedForDeletion) continue;
 
         if (checkCollision(p, e)) {
-          // --- Projectile hit enemy 'e' ---
-          if (e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3) {
-            e.hit(p); // Boss hit logic
-          } else {
-            // Regular Enemy Hit Logic
-            const pType = p instanceof Bomb ? "bomb" : "bullet";
-            // >>> Prevent bullets/bombs hitting Mine Layer Plane easily? Optional <<<
-            // if (e instanceof EnemyMineLayerPlane && pType === 'bullet') {
-            //    // Make bullets less effective vs mine layer?
-            //    // e.hit(p.damage * 0.5, pType); // Example: half damage
-            //    p.markedForDeletion = true;
-            // } else {
-            e.hit(p.damage, pType); // Normal hit
-            // }
+          // --- >>> Check for SuperBomb hitting AIR target <<< ---
+          if (
+            p instanceof SuperBomb &&
+            (e instanceof EnemyPlane ||
+              e instanceof EnemyShooterPlane ||
+              e instanceof EnemyDodgingPlane ||
+              e instanceof EnemyMineLayerPlane) /* Add other AIR types */
+          ) {
+            console.log(`SuperBomb direct hit on AIR target: ${e.id}`);
+            e.hit(p.damage, "bomb"); // Deal massive damage to the specific plane
+            p.markedForDeletion = true; // Consume the superbomb
+            this.createExplosion(p.x + p.width / 2, p.y + p.height / 2, "air"); // Regular air explosion
+          }
+          // --- >>> END SuperBomb vs AIR <<<---
 
-            // Projectile Deletion Logic for Regular Hits
+          // --- Handling for Bosses (SuperBomb acts like regular bomb here) ---
+          else if (
+            e instanceof Boss1 ||
+            e instanceof Boss2 ||
+            e instanceof Boss3
+          ) {
+            e.hit(p); // Let boss handle hit (SuperBomb damage is high)
+            // Projectile deletion is handled within boss hit logic
+          }
+          // --- Handling for Regular Enemies (Non-SuperBomb) ---
+          else if (!(p instanceof SuperBomb)) {
+            // Make sure it's not the superbomb hitting something else
+            const pType = p instanceof Bomb ? "bomb" : "bullet";
+            e.hit(p.damage, pType); // Regular enemy hit
+            // Regular projectile deletion logic
             if (pType !== "bomb") {
               p.markedForDeletion = true;
             } else {
-              if (
-                e instanceof EnemyShip ||
-                e instanceof EnemyShooterShip ||
-                e instanceof EnemyTrackingShip
-              ) {
+              if (e instanceof EnemyShip /* || etc */) {
                 p.markedForDeletion = true;
               }
             }
           }
-          // If projectile was marked (hit boss or regular), break inner loop
+
+          // Break inner loop if projectile was consumed
           if (p.markedForDeletion) break;
         } // end if(checkCollision)
       } // end for (enemies)
@@ -688,9 +703,37 @@ export class Game {
     });
   } // End of handleCollisions
 
+  // --- Modified cleanupObjects to trigger effect ---
   cleanupObjects() {
-    this.projectiles = this.projectiles.filter((o) => !o.markedForDeletion);
-    // --- Mines will be cleaned up here as they are in enemyProjectiles ---
+    let superBombsHitWater = []; // Track superbombs hitting water this frame
+
+    // Filter projectiles, identify superbombs hitting water
+    this.projectiles = this.projectiles.filter((p) => {
+      if (p.markedForDeletion) {
+        // Check if it's a superbomb that specifically hit the water
+        if (p instanceof SuperBomb && p.hitWater) {
+          superBombsHitWater.push(p); // Add to list for effect trigger
+          this.createExplosion(
+            p.x + p.width / 2,
+            p.y + p.height / 2 - 10,
+            "waterSplash"
+          ); // <<< Need a 'waterSplash' effect type
+          playSound("splash"); // <<< Need a splash sound
+        }
+        return false; // Remove marked projectiles
+      }
+      return true; // Keep non-marked projectiles
+    });
+
+    // Trigger effect AFTER filtering if any superbombs hit water
+    if (superBombsHitWater.length > 0) {
+      console.log(
+        `${superBombsHitWater.length} SuperBomb(s) hit water, triggering effect!`
+      );
+      this.triggerSuperBombEffect(); // Call the ship-damaging effect
+    }
+
+    // Cleanup other arrays (unchanged)
     this.enemyProjectiles = this.enemyProjectiles.filter(
       (o) => !o.markedForDeletion
     );
@@ -698,6 +741,7 @@ export class Game {
     this.explosions = this.explosions.filter((o) => !o.markedForDeletion);
     this.powerUps = this.powerUps.filter((o) => !o.markedForDeletion);
   }
+
   addProjectile(p) {
     this.projectiles.push(p);
   }
@@ -807,21 +851,71 @@ export class Game {
     }
   }
 
+  // --- Modified triggerSuperBombEffect (Now ONLY hits ships) ---
+  triggerSuperBombEffect() {
+    console.log("GAME: Triggering Super Bomb SHIP Effect!");
+    const shipDamage = 25; // Enough to kill most ships
+    const planeDamage = 1;
+
+    this.enemies.forEach((enemy) => {
+      if (
+        enemy.markedForDeletion ||
+        enemy instanceof Boss1 ||
+        enemy instanceof Boss2 ||
+        enemy instanceof Boss3
+      ) {
+        return; // Skip bosses and dying enemies
+      }
+      // Check if it's a ship type
+      if (
+        enemy instanceof EnemyShip ||
+        enemy instanceof EnemyShooterShip ||
+        enemy instanceof EnemyTrackingShip ||
+        enemy instanceof EnemyBeamShip
+      ) {
+        console.log(
+          ` -> Super Bomb water effect hitting SHIP: ${enemy.id} (${enemy.constructor.name})`
+        );
+        enemy.hit(shipDamage, "bomb"); // Apply the reduced damage
+        // Still create an explosion near the ship for visual feedback
+        this.createExplosion(
+          enemy.x + enemy.width / 2,
+          enemy.y + enemy.height / 2,
+          "ship"
+        );
+      }
+      // Optionally damage planes too
+      else if (
+        enemy instanceof EnemyPlane ||
+        enemy instanceof EnemyShooterPlane ||
+        enemy instanceof EnemyDodgingPlane ||
+        enemy instanceof EnemyMineLayerPlane
+      ) {
+        // console.log(` -> Super Bomb water effect hitting PLANE: ${enemy.id} (${enemy.constructor.name})`); // Optional log
+        enemy.hit(planeDamage, "bomb");
+        // Maybe no explosion for planes hit by water effect? Or keep tiny?
+        // this.createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'tiny');
+      }
+    });
+
+    // Add screen flash or large water visual effect here?
+    // this.triggerScreenFlash('rgba(255, 255, 100, 0.6)', 200);
+  }
+
   // --- Powerup Creation Method ---
   createPowerUp(x, y) {
     const rand = Math.random();
     let PowerUpClass = null; // Use null initially
 
-    // Adjust chances to make space
-    const shieldChance = 0.15; // Was 0.2
-    const spreadChance = 0.15; // Was 0.2
-    const lifeChance = 0.08; // Was 0.1
-    const bulletChance = 0.18; // Was 0.25
-    const bombChance = 0.18; // Was 0.25
-    // >>> NEW Chances <<<
-    const rapidFireChance = 0.13; // Example chance
-    const invincibilityChance = 0.13; // Example chance
-    // --- Make sure sum is <= 1 (0.15+0.15+0.08+0.18+0.18+0.13+0.13 = 1.0) ---
+    // --- Adjust chances if needed ---
+    const shieldChance = 0.15;
+    const spreadChance = 0.15;
+    const lifeChance = 0.07;
+    const bulletChance = 0.15;
+    const bombChance = 0.15;
+    const rapidFireChance = 0.12;
+    const invincibilityChance = 0.11;
+    const superBombChance = 0.1; // Adjusted back slightly? Or keep high for testing?
 
     if (rand < shieldChance) {
       PowerUpClass = PowerUpShield;
@@ -863,7 +957,21 @@ export class Game {
         invincibilityChance
     ) {
       PowerUpClass = PowerUpInvincibility;
+    } // >>> NEW Check <<<
+    else if (
+      rand <
+      shieldChance +
+        spreadChance +
+        lifeChance +
+        bulletChance +
+        bombChance +
+        rapidFireChance +
+        invincibilityChance +
+        superBombChance
+    ) {
+      PowerUpClass = PowerUpSuperBomb; // Spawn the super bomb pickup
     }
+    // Else: No powerup
     // Else: No powerup drops for the remaining probability range
 
     if (PowerUpClass) {

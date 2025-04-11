@@ -1,6 +1,7 @@
 // js/player.js
 import { Bullet } from "./bullet.js";
 import { Bomb } from "./bomb.js";
+import { SuperBomb } from "./superBomb.js";
 import { playSound } from "./audio.js";
 
 export class Player {
@@ -56,6 +57,10 @@ export class Player {
     this.invincibilityDuration = 1500; // Post-hit duration (1.5s)
     this.powerUpInvincibilityDuration = 6000; // Power-up duration (6s)
     this.invincibilityTimer = 0; // Time remaining for current invincibility
+
+    // >>> NEW: Super Bomb State <<<
+    this.superBombArmed = false; // Is the special bomb ready to use?
+    // >>> END NEW <<<
   } // End Constructor
 
   // ========================
@@ -95,10 +100,10 @@ export class Player {
 
     // --- Bombing Logic ---
     this.lastBombTime += safeDeltaTime; // Increment time since last bomb
-    // Check if player wants to bomb AND cooldown is ready
-    if (input.shouldDropBomb() && this.lastBombTime >= this.bombCooldown) {
-      this.dropBomb(); // Call the dropBomb method
-      this.lastBombTime = 0; // Reset the timer
+    // --- Bombing Logic (Handles both regular and super bomb) ---
+    // We only need to check the *input* here. The dropBomb method handles cooldown/state.
+    if (input.shouldDropBomb()) {
+      this.dropBomb(); // Attempt to drop a bomb (regular or super)
     }
 
     // --- Power-up Timers & Status Display ---
@@ -160,6 +165,17 @@ export class Player {
         }
       }
     }
+
+    // Display if Super Bomb is ready (if no other timed powerup is active)
+    if (
+      this.superBombArmed &&
+      !powerUpStatusText &&
+      !this.shieldActive &&
+      !this.invincible
+    ) {
+      powerUpStatusText = "Super Bomb Ready (B)";
+    }
+
     // Update the UI element with the determined status text
     this.game.updatePowerUpStatus(powerUpStatusText);
   } // End of Player update
@@ -234,13 +250,55 @@ export class Player {
     playSound("shoot");
   }
 
+  // --- Modified dropBomb method ---
   dropBomb() {
-    const bombX = this.x + this.width / 2 - (this.bombPowerUpActive ? 6 : 4);
-    const bombY = this.y + this.height;
-    this.game.addProjectile(
-      new Bomb(this.game, bombX, bombY, this.bombPowerUpActive)
-    );
-    playSound("bomb");
+    // --- Check for SUPER BOMB first ---
+    if (this.superBombArmed) {
+      console.log("Dropping SUPER BOMB!");
+      this.superBombArmed = false; // Consume the charge
+      playSound("bomb"); // Use regular bomb drop sound or a special one?
+
+      // --- >>> Create and add SuperBomb projectile <<< ---
+      const bombX = this.x + this.width / 2 - 7; // Adjust for larger size
+      const bombY = this.y + this.height;
+      this.game.addProjectile(new SuperBomb(this.game, bombX, bombY));
+      // --- >>> END SuperBomb creation <<< ---
+
+      // Clear the UI status
+      this.game.updatePowerUpStatus("");
+
+      // IMPORTANT: Do *not* check regular bomb cooldown or use timestamp here
+      return; // Exit the method after dropping super bomb
+    }
+
+    // --- If not super bomb, try REGULAR BOMB ---
+    const currentTime = performance.now ? performance.now() : Date.now();
+    const timeSinceLastBomb = currentTime - (this._lastBombTimestamp || 0);
+
+    if (timeSinceLastBomb >= this.bombCooldown) {
+      // console.log("Dropping regular bomb."); // Optional log
+      const bombX = this.x + this.width / 2 - (this.bombPowerUpActive ? 6 : 4);
+      const bombY = this.y + this.height;
+      this.game.addProjectile(
+        new Bomb(this.game, bombX, bombY, this.bombPowerUpActive)
+      );
+      playSound("bomb");
+      this._lastBombTimestamp = currentTime; // Update timestamp for REGULAR bomb cooldown
+    }
+  } // End dropBomb
+
+  // --- NEW Power-up Activation Method ---
+  activateSuperBombPickup() {
+    console.log("Super Bomb Armed!");
+    this.superBombArmed = true;
+    // Update UI immediately if possible
+    if (
+      this.game.powerupStatusElement &&
+      !this.game.powerupStatusElement.textContent
+    ) {
+      this.game.updatePowerUpStatus("Super Bomb Ready (B)");
+    }
+    // playSound('superBombArmed');
   }
 
   // --- Power-up Activation/Deactivation ---
@@ -360,6 +418,9 @@ export class Player {
     this.invincibilityTimer = 0;
     this.lastBombTime = 0;
     this.lastShotTime = 0;
+
+    this.superBombArmed = false; // <<< Reset Super Bomb state
+    this._lastBombTimestamp = 0; // Reset timestamp used for cooldown checkg
     console.log(`Player state reset. Lives set to: ${this.lives}`);
     this.game.updateLivesUI();
     this.game.updatePowerUpStatus("");
