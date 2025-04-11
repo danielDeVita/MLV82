@@ -15,9 +15,9 @@ export class Player {
     this.y = game.height / 2 - this.height / 2;
     this.speed = 5;
     this.color = "red";
-    this.initialLives = 99; // Starting lives for testing (change back to 3 for release)
+    this.initialLives = 3; // Starting lives for testing (change back to 3 for release)
     this.lives = this.initialLives;
-    this.maxLives = 99; // Max lives (adjust if needed)
+    this.maxLives = 5; // Max lives (adjust if needed)
 
     // --- Shooting Cooldown ---
     this.shootCooldown = 200; // Base cooldown in milliseconds

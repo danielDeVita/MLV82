@@ -10,6 +10,8 @@ import { EnemyShooterPlane } from "./enemyShooterPlane.js";
 import { EnemyShooterShip } from "./enemyShooterShip.js";
 import { EnemyDodgingPlane } from "./enemyDodgingPlane.js";
 import { EnemyTrackingShip } from "./enemyTrackingShip.js";
+import { EnemyMineLayerPlane } from "./enemyMineLayerPlane.js"; // <<< IMPORT
+import { Mine } from "./mine.js"; // <<< IMPORT
 
 import { Explosion } from "./explosion.js";
 
@@ -462,14 +464,29 @@ export class Game {
     // Spawn Regular Planes
     this.enemyPlaneTimer += deltaTime;
     if (this.enemyPlaneTimer >= currentPlaneInt) {
-      this.enemyPlaneTimer -= currentPlaneInt; // Use subtraction reset is slightly more accurate
+      this.enemyPlaneTimer -= currentPlaneInt;
       let p;
-      const r = Math.random(),
-        dC = this.difficultyLevel > 1 ? 0.15 + this.difficultyLevel * 0.05 : 0,
-        sC = this.difficultyLevel > 0 ? 0.35 + this.difficultyLevel * 0.1 : 0;
-      if (r < dC) p = new EnemyDodgingPlane(this, speedBoost);
-      else if (r < dC + sC) p = new EnemyShooterPlane(this, speedBoost);
-      else p = new EnemyPlane(this, speedBoost);
+      const r = Math.random();
+      // --- >>> Add Chance for Mine Layer <<< ---
+      const mLChance =
+        this.difficultyLevel > 2 ? 0.15 + this.difficultyLevel * 0.03 : 0; // Chance starts at level 3+
+      const dC =
+        this.difficultyLevel > 1 ? 0.15 + this.difficultyLevel * 0.05 : 0;
+      const sC =
+        this.difficultyLevel > 0 ? 0.35 + this.difficultyLevel * 0.1 : 0;
+
+      if (r < mLChance) {
+        // Check Mine Layer FIRST
+        p = new EnemyMineLayerPlane(this, speedBoost);
+      } else if (r < mLChance + dC) {
+        // Adjust subsequent checks
+        p = new EnemyDodgingPlane(this, speedBoost);
+      } else if (r < mLChance + dC + sC) {
+        p = new EnemyShooterPlane(this, speedBoost);
+      } else {
+        p = new EnemyPlane(this, speedBoost);
+      }
+      // --- >>> END Mine Layer Chance <<< ---
       this.enemies.push(p);
     }
 
@@ -491,53 +508,32 @@ export class Game {
   handleCollisions() {
     // --- Player Projectiles vs Enemies ---
     this.projectiles.forEach((p) => {
-      // --- ADD PRE-CHECK LOGGING ---
-      if (typeof p !== "object" || p === null) {
-        console.error(
-          "!!! ERROR in projectiles loop: Found non-object item:",
-          p
-        );
-        // Optionally, mark it for deletion here to prevent further errors
-        // if (p && typeof p === 'object') { p.markedForDeletion = true; } // Only if it has the property
-        return; // Skip this iteration
-      }
-      // --- END PRE-CHECK ---
+      if (p.markedForDeletion) return; // Skip already hit projectiles
 
-      if (p.markedForDeletion) return; // Skip projectiles already marked
-
-      this.enemies.forEach((e) => {
-        if (e.markedForDeletion || p.markedForDeletion) return;
+      for (let i = 0; i < this.enemies.length; i++) {
+        const e = this.enemies[i];
+        if (p.markedForDeletion || e.markedForDeletion) continue; // Skip if either is marked
 
         if (checkCollision(p, e)) {
-          // --- SPECIAL HANDLING FOR BOSS ---
-          // <<< --- ADD Boss3 HERE --- >>>
+          // --- Projectile hit enemy 'e' ---
           if (e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3) {
-            // Combined check
-            // --- ADD DEBUG LOG BEFORE BOSS HIT ---
-            console.log(
-              `DEBUG: Calling ${e.constructor.name}.hit() with projectile:`,
-              p
-            );
-            if (typeof p !== "object" || p === null) {
-              // Redundant check if pre-check is added
-              console.error(
-                `CRITICAL: About to call ${e.constructor.name}.hit() with NON-OBJECT:`,
-                p
-              );
-            }
-            // --- END DEBUG LOG ---
-
-            e.hit(p); // <<< Pass the ENTIRE projectile object 'p'
-            // Projectile deletion is handled inside Boss hit methods
-          }
-          // --- REGULAR ENEMY HANDLING ---
-          else {
+            e.hit(p); // Boss hit logic
+          } else {
+            // Regular Enemy Hit Logic
             const pType = p instanceof Bomb ? "bomb" : "bullet";
-            e.hit(p.damage, pType); // Call regular enemy hit
+            // >>> Prevent bullets/bombs hitting Mine Layer Plane easily? Optional <<<
+            // if (e instanceof EnemyMineLayerPlane && pType === 'bullet') {
+            //    // Make bullets less effective vs mine layer?
+            //    // e.hit(p.damage * 0.5, pType); // Example: half damage
+            //    p.markedForDeletion = true;
+            // } else {
+            e.hit(p.damage, pType); // Normal hit
+            // }
 
-            // Projectile deletion for regular enemies
-            if (pType === "bomb") {
-              // Delete bomb if it hits a SHIP (excluding Boss, handled above)
+            // Projectile Deletion Logic for Regular Hits
+            if (pType !== "bomb") {
+              p.markedForDeletion = true;
+            } else {
               if (
                 e instanceof EnemyShip ||
                 e instanceof EnemyShooterShip ||
@@ -545,27 +541,59 @@ export class Game {
               ) {
                 p.markedForDeletion = true;
               }
-            } else {
-              // It's a bullet
-              p.markedForDeletion = true; // Regular bullets disappear on hit
             }
           }
-        }
-      });
-    }); // End Player Projectiles vs Enemies
+          // If projectile was marked (hit boss or regular), break inner loop
+          if (p.markedForDeletion) break;
+        } // end if(checkCollision)
+      } // end for (enemies)
+    }); // End forEach (projectiles)
 
-    // --- Player vs Enemy Projectiles ---
+    // --- Player vs Enemy Projectiles (AND MINES) ---
     this.enemyProjectiles.forEach((ep) => {
+      // 'ep' can be Bullet, Missile, OR Mine now
       if (ep.markedForDeletion) return;
+
       if (checkCollision(this.player, ep)) {
-        if (!this.player.shieldActive && this.player.invincible) {
-        } // Hit invincible player
-        else {
+        if (this.player.shieldActive) {
+          // Shield active - Block everything, destroy projectile/mine
           ep.markedForDeletion = true;
-          this.player.hit();
-        } // Hit vulnerable player or shield
+          this.player.deactivateShield(true); // Break shield
+          this.createExplosion(
+            ep.x + ep.width / 2,
+            ep.y + ep.height / 2,
+            "tiny"
+          ); // Small effect
+          playSound("shieldDown");
+          return; // Exit early for this projectile
+        }
+
+        if (this.player.invincible) {
+          // Invincible - Ignore collision, don't destroy projectile/mine
+          return; // Exit early for this projectile
+        }
+
+        // --- Player hit by something (Vulnerable Player) ---
+        ep.markedForDeletion = true; // Projectile/Mine is consumed
+
+        // --- >>> Check if it was a Mine <<< ---
+        if (ep instanceof Mine) {
+          console.log("Player hit a Mine!");
+          this.player.hit(); // Player takes damage
+          // Create a larger explosion for mine impact
+          this.createExplosion(
+            ep.x + ep.width / 2,
+            ep.y + ep.height / 2,
+            "ground"
+          ); // Use 'ground' or 'air' type?
+          playSound("explosion"); // Mine explosion sound
+        } else {
+          // Hit by regular bullet or missile
+          this.player.hit(); // Player takes damage
+        }
+        // --- >>> END Mine Check <<< ---
       }
-    });
+    }); // End Player vs Enemy Projectiles
 
     // --- Player vs Enemies ---
     if (!this.player.shieldActive && !this.player.invincible) {
@@ -642,6 +670,7 @@ export class Game {
 
   cleanupObjects() {
     this.projectiles = this.projectiles.filter((o) => !o.markedForDeletion);
+    // --- Mines will be cleaned up here as they are in enemyProjectiles ---
     this.enemyProjectiles = this.enemyProjectiles.filter(
       (o) => !o.markedForDeletion
     );
@@ -901,9 +930,18 @@ export class Game {
     // --- Reset Core Game State ---
     this.isGameOver = false; // Ensure game is not over
     this.lastTime = 0; // Reset time for delta calculation on first frame
-    this.score = this.BOSS2_SCORE_THRESHOLD - 1; // Set score to meet threshold
+    this.score = 0; // Set score to meet threshold
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
+
+    // --- >>> SET INITIAL STATE FOR LATER GAME <<< ---
+    this.score = 6000; // Example: Start with score 1500
+    this.difficultyLevel = 3; // Example: Start at difficulty level 3
+    this.scoreForNextLevel = 1900; // Threshold for level 4 (calculated from level 3 base)
+    console.warn(
+      `!!! STARTING AT HIGH SCORE/DIFFICULTY (Score: ${this.score}, Level: ${this.difficultyLevel}) !!!`
+    );
+    // --- >>> END INITIAL STATE <<< ---
 
     // --- Reset Player State ---
     // Ensure player exists before trying to reset
@@ -931,8 +969,8 @@ export class Game {
     // --- Reset Boss State ---
     this.bossActive = false;
     this.currentBoss = null;
-    this.boss1Defeated = true; //PASAR A FALSE
-    this.boss2Defeated = false;
+    this.boss1Defeated = true
+    this.boss2Defeated = true;
     this.boss3Defeated = false;
 
     // --- Update UI to Initial Values ---
