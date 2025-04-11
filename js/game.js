@@ -21,6 +21,7 @@ import { PowerUpBullet } from "./powerUpBullet.js";
 import { PowerUpBomb } from "./powerUpBomb.js";
 import { Boss1 } from "./boss1.js"; // <<< BOSS IMPORT
 import { Boss2 } from "./boss2.js";
+import { Boss3 } from "./boss3.js";
 import { checkCollision } from "./utils.js";
 import { loadSounds, playSound } from "./audio.js";
 import { Bomb } from "./bomb.js";
@@ -80,7 +81,7 @@ export class Game {
     this.boss3Defeated = false;
     this.BOSS1_SCORE_THRESHOLD = 0;
     this.BOSS2_SCORE_THRESHOLD = 2500;
-    this.BOSS3_SCORE_THRESHOLD = 4000;
+    this.BOSS3_SCORE_THRESHOLD = 8000;
 
     this.bossPowerUpTimer = 0;
     this.bossPowerUpBaseInterval = 15000; // Base 15 seconds
@@ -181,11 +182,34 @@ export class Game {
       // 4. Collisions
       this.handleCollisions();
 
-      // --- Check context BEFORE drawing ---
-      if (!this.context) {
-        throw new Error("Context lost before drawing phase!");
-      }
+      // --->>> CHECK LOGGING BEFORE ENEMY DRAW <<<---
+      console.log(`--- Drawing Frame ---`);
+      this.enemies.forEach((e, index) => {
+        // Make sure this log is active and check its output!
+        console.log(
+          `Drawing enemy index ${index}: ID=${e.id}, Type=${e.constructor.name}, X=${e.x?.toFixed(0)}, Y=${e.y?.toFixed(0)}, Health=${
+            e.health
+          }, MaxHealth=${e.maxHealth}`
+        );
 
+        if (e && typeof e.draw === "function") {
+          // Check if draw exists
+          e.draw(this.context); // <<<< This should be the ONLY call that leads to weak point drawing
+        } else {
+          console.warn(`Enemy at index ${index} is invalid or has no draw method:`, e);
+        }
+
+        if (e instanceof Boss3) {
+          const towerWP = e.weakPoints.find((wp) => wp.type === "controlTower");
+          // Also log the tower weak point health for comparison
+          console.log(
+            `   Boss3 Tower WP: X=${towerWP?.x?.toFixed(0)}, Y=${towerWP?.y?.toFixed(0)}, Health=${towerWP?.health}, MaxHealth=${towerWP?.maxHealth}`
+          );
+        }
+        // --- Now actually draw ---
+        e.draw(this.context);
+      });
+      // --->>> END LOGGING <<<---
       // --- 5. Draw Everything ---
       this.background.draw(this.context); // Draw canvas background elements
       // CSS layers are behind
@@ -214,15 +238,23 @@ export class Game {
     if (!this.bossActive) {
       // Check Boss 1 spawn FIRST
       if (!this.boss1Defeated && this.score >= this.BOSS1_SCORE_THRESHOLD) {
+        // console.log("handleBossState: Conditions met for Boss 1");
         this.spawnBoss(1);
       }
       // Check Boss 2 spawn only AFTER Boss 1 is defeated
       else if (this.boss1Defeated && !this.boss2Defeated && this.score >= this.BOSS2_SCORE_THRESHOLD) {
+        // console.log("handleBossState: Conditions met for Boss 2");
         this.spawnBoss(2);
       }
-      // Add Boss 3 later...
+      // Check Boss 3 spawn AFTER Boss 2 is defeated <<< THIS IS THE ONE
+      else if (this.boss1Defeated && this.boss2Defeated && !this.boss3Defeated && this.score >= this.BOSS3_SCORE_THRESHOLD) {
+        console.log("handleBossState: Conditions met for Boss 3, calling spawnBoss(3)..."); // <<< Make sure this log appears
+        this.spawnBoss(3);
+      }
+      // --- No other conditions met for spawning ---
+      // else { console.log("handleBossState: No boss spawn conditions met."); }
     } else if (this.bossActive && this.currentBoss && this.currentBoss.markedForDeletion) {
-      // Check defeat (this part remains the same)
+      // console.log("handleBossState: Boss active and marked for deletion, calling bossDefeated...");
       this.bossDefeated();
     }
   }
@@ -231,19 +263,37 @@ export class Game {
     console.log(`--- Spawning Boss ${bossNumber} ---`);
     this.bossActive = true;
     // Clear out most regular enemies? Keep ships maybe? Or clear all?
-    this.enemies = this.enemies.filter((e) => e instanceof EnemyShip || e instanceof EnemyShooterShip || e instanceof EnemyTrackingShip); // Optional: Keep ships?
+    this.enemies = this.enemies.filter(
+      (e) =>
+        !(
+          e instanceof EnemyPlane ||
+          e instanceof EnemyShip ||
+          e instanceof EnemyShooterPlane ||
+          e instanceof EnemyShooterShip ||
+          e instanceof EnemyDodgingPlane ||
+          e instanceof EnemyTrackingShip
+        )
+    );
     this.enemyProjectiles = []; // Clear projectiles
 
     let bossInstance = null;
-    if (bossNumber === 1) {
-      bossInstance = new Boss1(this);
-    } else if (bossNumber === 2) {
-      // <<< ADD THIS CASE
-      bossInstance = new Boss2(this);
+    try {
+      // Add try-catch around instantiation
+      if (bossNumber === 1) {
+        bossInstance = new Boss1(this);
+      } else if (bossNumber === 2) {
+        bossInstance = new Boss2(this);
+      } else if (bossNumber === 3) {
+        bossInstance = new Boss3(this);
+      } // <<< CHECK THIS LINE
+    } catch (error) {
+      console.error(`ERROR Instantiating Boss ${bossNumber}:`, error);
+      this.bossActive = false; // Reset if instantiation fails
+      return; // Stop processing
     }
-    // Add Boss 3 later...
 
     if (bossInstance) {
+      console.log(`Successfully instantiated ${bossInstance.id}`); // <<< Add log
       this.enemies.push(bossInstance);
       this.currentBoss = bossInstance;
       // Reset power-up timer when boss spawns
@@ -267,15 +317,14 @@ export class Game {
     let scoreBonus = 0; // Score bonus handled by boss itself now via scoreValue
 
     // Set the defeated flag for the specific boss
+    // Set the defeated flag for the specific boss
     if (this.currentBoss instanceof Boss1 && !this.boss1Defeated) {
       this.boss1Defeated = true;
-      console.log("Boss 1 defeated flag set.");
     } else if (this.currentBoss instanceof Boss2 && !this.boss2Defeated) {
-      // <<< ADD THIS CHECK
       this.boss2Defeated = true;
-      console.log("Boss 2 defeated flag set.");
-    }
-    // Add Boss 3 check later...
+    } else if (this.currentBoss instanceof Boss3 && !this.boss3Defeated) {
+      this.boss3Defeated = true;
+    } // <<< CHECK THIS LINE
 
     // Reset general boss state
     this.bossActive = false;
@@ -383,12 +432,14 @@ export class Game {
       // --- END PRE-CHECK ---
 
       if (p.markedForDeletion) return; // Skip projectiles already marked
+
       this.enemies.forEach((e) => {
         if (e.markedForDeletion || p.markedForDeletion) return;
 
         if (checkCollision(p, e)) {
           // --- SPECIAL HANDLING FOR BOSS ---
-          if (e instanceof Boss1 || e instanceof Boss2) {
+          // <<< --- ADD Boss3 HERE --- >>>
+          if (e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3) {
             // Combined check
             // --- ADD DEBUG LOG BEFORE BOSS HIT ---
             console.log(`DEBUG: Calling ${e.constructor.name}.hit() with projectile:`, p);
@@ -437,32 +488,59 @@ export class Game {
     // --- Player vs Enemies ---
     if (!this.player.shieldActive && !this.player.invincible) {
       this.enemies.forEach((e) => {
-        if (e.markedForDeletion) return; // Skip already dead enemies
+        if (e.markedForDeletion) return; // Skip dead enemies
 
         // Check collision between player and the current enemy 'e'
         if (checkCollision(this.player, e)) {
-          // --- Use a flag to determine if it's a boss ---
-          let isBossCollision = e instanceof Boss1 || e instanceof Boss2; // Add Boss3 later
+          let isBossCollision = e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3;
+          let playerDamaged = false; // Flag to track if player should take damage this collision
 
           if (isBossCollision) {
-            // --- Player Collided with BOSS ---
-            console.log(`Player collided with Boss: ${e.constructor.name}`); // Log which boss
-            this.player.hit(); // Player takes damage/loses life (standard hit)
+            // --- Player Collided with a BOSS ---
+            console.log(`Player collided with Boss object: ${e.constructor.name}`);
 
-            // --- IMPORTANT: DO NOT CALL e.hit(100) on the boss here! ---
-            // Boss health is typically reduced by projectiles, not direct collision damage (unless designed otherwise).
-            // If you WANT collision to damage the boss, you'd need a specific method like:
-            // e.takeCollisionDamage(PLAYER_COLLISION_DAMAGE);
-            // OR modify e.hit() to accept a special type, but the current Boss2.hit expects a projectile.
+            // --- SPECIAL CASE for Boss 3 (Airfield) ---
+            if (e instanceof Boss3) {
+              // For Boss 3, collision with the main base area ITSELF doesn't hurt the player.
+              // Damage only occurs if the player hits an ACTIVE WEAK POINT of Boss 3.
+              let hitActiveWeakPoint = false;
+              for (const wp of e.weakPoints) {
+                // Check collision ONLY against ACTIVE weak points
+                if (wp.isActive && checkCollision(this.player, wp)) {
+                  hitActiveWeakPoint = true;
+                  console.log(` -> Player specifically hit ACTIVE Boss 3 weak point: ${wp.type}`);
+                  break; // Found a collision with an active part, no need to check others
+                }
+              }
+              // Only damage the player if they hit an *active* part of the base
+              if (hitActiveWeakPoint) {
+                playerDamaged = true;
+                // Optional: Damage the weak point slightly from player collision?
+                // wp.hit(PLAYER_COLLISION_DAMAGE_TO_WP);
+              } else {
+                // Player hit the inactive base area or a destroyed weak point - NO DAMAGE.
+                console.log(" -> Player hit inactive/base area of Boss 3. No damage.");
+              }
+            } else {
+              // Collision with Boss 1 or Boss 2 - these are moving ships/planes,
+              // collision should damage the player.
+              playerDamaged = true;
+            }
+            // --- End Boss 3 Specific Logic ---
           } else {
             // --- Player Collided with REGULAR ENEMY ---
-            // console.log(`Player collided with Regular Enemy: ${e.constructor.name}`); // Optional log
-            e.hit(100); // Destroy regular enemy instantly (This call is correct for Enemy base class)
-            this.player.hit(); // Player takes damage/loses life
+            // console.log(`Player collided with Regular Enemy: ${e.constructor.name}`);
+            e.hit(100); // Destroy regular enemy instantly
+            playerDamaged = true; // Player takes damage from hitting regular enemy
           }
-        }
-      });
-    } // End Player vs Enemies
+
+          // --- Apply Damage to Player if flagged ---
+          if (playerDamaged) {
+            this.player.hit();
+          }
+        } // End if(checkCollision)
+      }); // End forEach enemy
+    } // End Player vs Enemies invincibility check
 
     // --- Player vs PowerUps ---
     this.powerUps.forEach((pu) => {
@@ -672,6 +750,13 @@ export class Game {
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
 
+    // --- >>> TEMPORARY BOSS 3 TEST CODE <<< ---
+    this.score = this.BOSS3_SCORE_THRESHOLD; // Set score to meet threshold
+    this.boss1Defeated = true; // Pretend Boss 1 is defeated
+    this.boss2Defeated = true; // Pretend Boss 2 is defeated
+    console.warn("!!! BOSS 3 TEST MODE ACTIVE in game.start() !!!");
+    // --- >>> END TEMPORARY CODE <<< ---
+
     // --- Reset Player State ---
     // Ensure player exists before trying to reset
     if (this.player) {
@@ -698,8 +783,8 @@ export class Game {
     // --- Reset Boss State ---
     this.bossActive = false;
     this.currentBoss = null;
-    this.boss1Defeated = false;
-    this.boss2Defeated = false;
+    //   this.boss1Defeated = false;
+    //  this.boss2Defeated = false;
     this.boss3Defeated = false;
 
     // --- Update UI to Initial Values ---

@@ -1,37 +1,62 @@
-// js/bossWeakPoint.js
-import { Explosion } from "./explosion.js"; // For destruction effect
-
 export class BossWeakPoint {
-  constructor(boss, offsetX, offsetY, width, height, maxHealth, type = "turret") {
-    this.boss = boss; // Reference to the main boss object
-    this.game = boss.game; // Reference to the game object
-    this.offsetX = offsetX; // X position relative to boss's top-left corner
-    this.offsetY = offsetY; // Y position relative to boss's top-left corner
+  constructor(boss, offsetX, offsetY, width, height, maxHealth, type = "turret", index = -1) {
+    // Added index default
+    this.boss = boss;
+    this.game = boss.game;
+    this.offsetX = offsetX;
+    this.offsetY = offsetY;
     this.width = width;
     this.height = height;
     this.maxHealth = maxHealth;
     this.health = this.maxHealth;
-    this.type = type; // e.g., 'mainGun', 'aaGun', 'missileLauncher', 'bridge'
-    this.isActive = true; // Becomes false when destroyed
-    this.isHit = false; // For hit flash
+    this.type = type;
+    this.index = index; // Store index if passed
+    this.isActive = true;
+    this.isHit = false;
     this.hitTimer = 0;
     this.hitDuration = 100;
-
-    // --- Calculate absolute position (relative to game area) ---
-    // These need to be updated if the boss moves
+    // Initial position calculation
     this.x = this.boss.x + this.offsetX;
     this.y = this.boss.y + this.offsetY;
   }
 
   // Update absolute position based on boss's current position
   updatePosition() {
+    const oldX = this.x;
+    const oldY = this.y;
+    // Calculate new absolute position
     this.x = this.boss.x + this.offsetX;
     this.y = this.boss.y + this.offsetY;
+
+    // --- >>> ADD DETAILED LOGGING FOR SPECIFIC WEAK POINTS <<< ---
+    try {
+      // Wrap logging in try-catch just in case boss/offset properties are weird
+      if (this.type === "controlTower") {
+        // Log Tower's position calculation
+        console.log(
+          `UPDATE_POS Tower: bossXY=(${this.boss.x?.toFixed(0)},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
+            0
+          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(0)},${this.y?.toFixed(0)})`
+        );
+      }
+      // Identify Center AA gun by its unique RELATIVE Y offset (baseOffsetY - 15 => 30 - 15 = 15)
+      else if (this.type === "aaGun" && Math.abs(this.offsetY - 15) < 1) {
+        // Log Center AA Gun's position calculation
+        console.log(
+          `UPDATE_POS CenterAA: bossXY=(${this.boss.x?.toFixed(0)},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
+            0
+          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(0)},${this.y?.toFixed(0)})`
+        );
+      }
+    } catch (e) {
+      console.error("Error during position logging:", e, this);
+    }
+    // --- >>> END LOGGING <<< ---
   }
 
   update(deltaTime) {
     const safeDeltaTime = Math.max(0.1, deltaTime);
-    this.updatePosition(); // Ensure position is current
+    this.updatePosition(); // Ensure position is current based on boss movement
 
     // Update hit flash timer
     if (this.isHit) {
@@ -42,82 +67,73 @@ export class BossWeakPoint {
     }
   }
 
+  // Inside js/bossWeakPoint.js -> hit() method
   hit(damage) {
-    if (!this.isActive) return false; // Cannot hit destroyed weak point
+    // Damage value received from Boss3.hit
+    if (!this.isActive) {
+      // console.log(`WP ${this.type} hit attempt ignored (inactive).`);
+      return false;
+    }
 
+    // --- Log Damage Received ---
+    console.log(`   -> WP ${this.type} hit() received damage: ${damage.toFixed(1)}. Current health: ${this.health.toFixed(1)}`);
     this.health -= damage;
+    console.log(`   -> WP ${this.type} new health: ${this.health.toFixed(1)}`);
+
     this.isHit = true;
     this.hitTimer = this.hitDuration;
-    // console.log(`WeakPoint ${this.type} hit! Health: ${this.health}/${this.maxHealth}`);
 
     if (this.health <= 0) {
+      console.log(`   -> WP ${this.type} health <= 0, calling destroy.`);
       this.destroy();
-      return true; // Return true indicating destruction
+      return true;
     }
-    return false; // Return false, still active
+    return false;
   }
 
   destroy() {
-    if (!this.isActive) return; // Prevent multiple destructions
-
+    if (!this.isActive) return;
     this.isActive = false;
     this.health = 0;
-    console.log(`WeakPoint ${this.type} DESTROYED!`);
-    // Create a smaller explosion at the weak point's location
-    this.game.createExplosion(this.x + this.width / 2, this.y + this.height / 2, "air"); // Use 'air' type for turret explosion? Or specific 'turret' type?
-    // Optional: Notify the boss that this weak point is down
-    this.boss.weakPointDestroyed(this.type); // Notify boss
+    console.log(`WeakPoint ${this.type} (Index: ${this.index}) DESTROYED!`);
+    this.game.createExplosion(this.x + this.width / 2, this.y + this.height / 2, "air");
+    // Notify the boss, passing type and index
+    this.boss.weakPointDestroyed(this.type, this.index); // Pass index too
 
-    // --- Spawn Power-up on Destruction ---
-    // Add a slight chance? Or always spawn? Let's make it likely.
     if (Math.random() < 0.75) {
-      // 75% chance to drop on destruction
-      console.log(`Spawning power-up from destroyed weak point ${this.type}`);
-      // Use createPowerUp which handles random type selection
       this.game.createPowerUp(this.x + this.width / 2, this.y + this.height / 2);
     }
   }
 
+  // Inside js/bossWeakPoint.js -> draw() method
+
+  // Inside js/bossWeakPoint.js
   draw(context) {
-    if (!this.isActive) {
-      // Optional: Draw destroyed state (e.g., dark grey rubble)
-      context.fillStyle = "rgba(50, 50, 50, 0.8)";
-      context.fillRect(this.x, this.y, this.width, this.height);
-      return;
-    }
+    if (!context || !this.isActive) return;
 
-    context.save();
-    // Basic shape based on type (replace with sprites later)
-    if (this.type === "mainGun") context.fillStyle = "#AAAAAA";
-    else if (this.type === "aaGun") context.fillStyle = "#CCCCCC";
-    else if (this.type === "missile") context.fillStyle = "#DDDDDD";
-    else context.fillStyle = "#BBBBBB"; // Default weak point color
-
-    // Apply hit flash (simple overlay)
-    if (this.isHit) {
-      context.fillStyle = "rgba(255, 255, 255, 0.7)"; // White flash
-    }
-
+    // --- BLOCK 1: Debug Shape ---
+    context.save(); // << SAVE 1
+    context.fillStyle = "fuchsia";
+    context.strokeStyle = "black";
+    context.lineWidth = 1;
     context.fillRect(this.x, this.y, this.width, this.height);
+    context.strokeRect(this.x, this.y, this.width, this.height);
+    context.restore(); // << RESTORE 1
 
-    // Optional: Draw simple details
-    if (this.type === "mainGun") {
-      context.fillStyle = "#555";
-      context.fillRect(this.x - 15, this.y + this.height / 2 - 3, 15, 6); // Barrel
-    } else if (this.type === "aaGun") {
-      context.fillStyle = "#555";
-      context.fillRect(this.x - 8, this.y + this.height / 2 - 1, 8, 2); // Small barrel
+    // --- BLOCK 2: Health Bar ---
+    if (this.maxHealth && this.maxHealth > 1) {
+      context.save(); // << SAVE 2
+      const barY = this.y - 8;
+      const barHeight = 4;
+      console.log(
+        `  -> HEALTH BAR DRAW for Type: ${this.type}, X: ${this.x?.toFixed(0)}, Y: ${this.y?.toFixed(0)}, Health: ${this.health?.toFixed(1)}`
+      );
+      context.fillStyle = "red";
+      context.fillRect(this.x, barY, this.width, barHeight);
+      context.fillStyle = "lime";
+      const currentHealthWidth = Math.max(0, this.width * (this.health / this.maxHealth));
+      context.fillRect(this.x, barY, currentHealthWidth, barHeight);
+      context.restore(); // << RESTORE 2
     }
-
-    context.restore();
-
-    // Optional: Draw individual health bar for weak point
-    const barY = this.y - 5;
-    const barHeight = 3;
-    context.fillStyle = "red";
-    context.fillRect(this.x, barY, this.width, barHeight);
-    context.fillStyle = "lime"; // Use lime green for weak points?
-    const currentHealthWidth = Math.max(0, this.width * (this.health / this.maxHealth));
-    context.fillRect(this.x, barY, currentHealthWidth, barHeight);
-  }
+  } // End draw
 }
