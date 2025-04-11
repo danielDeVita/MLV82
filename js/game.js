@@ -953,7 +953,6 @@ export class Game {
     this.score = 0; // Set score to meet threshold
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
-
     // --- >>> END INITIAL STATE <<< ---
 
     // --- Reset Player State ---
@@ -982,8 +981,8 @@ export class Game {
     // --- Reset Boss State ---
     this.bossActive = false;
     this.currentBoss = null;
-    this.boss1Defeated = true;
-    this.boss2Defeated = true;
+    this.boss1Defeated = false;
+    this.boss2Defeated = false;
     this.boss3Defeated = false;
 
     // --- Update UI to Initial Values ---
