@@ -10,10 +10,9 @@ import { EnemyShooterPlane } from "./enemyShooterPlane.js";
 import { EnemyShooterShip } from "./enemyShooterShip.js";
 import { EnemyDodgingPlane } from "./enemyDodgingPlane.js";
 import { EnemyTrackingShip } from "./enemyTrackingShip.js";
-import { EnemyBullet } from "./enemyBullet.js";
-import { TrackingMissile } from "./trackingMissile.js";
+
 import { Explosion } from "./explosion.js";
-import { PowerUp } from "./powerUp.js";
+
 import { PowerUpShield } from "./powerUpShield.js";
 import { PowerUpSpreadShot } from "./powerUpSpreadShot.js";
 import { PowerUpExtraLife } from "./powerUpExtraLife.js";
@@ -23,9 +22,8 @@ import { Boss1 } from "./boss1.js"; // <<< BOSS IMPORT
 import { Boss2 } from "./boss2.js";
 import { Boss3 } from "./boss3.js";
 import { checkCollision } from "./utils.js";
-import { loadSounds, playSound } from "./audio.js";
+import { playSound } from "./audio.js";
 import { Bomb } from "./bomb.js";
-import { Bullet } from "./bullet.js";
 
 export class Game {
   constructor(canvasId, width, height) {
@@ -79,8 +77,8 @@ export class Game {
     this.boss1Defeated = false;
     this.boss2Defeated = false;
     this.boss3Defeated = false;
-    this.BOSS1_SCORE_THRESHOLD = 0;
-    this.BOSS2_SCORE_THRESHOLD = 2500;
+    this.BOSS1_SCORE_THRESHOLD = 800;
+    this.BOSS2_SCORE_THRESHOLD = 3000;
     this.BOSS3_SCORE_THRESHOLD = 8000;
 
     this.bossPowerUpTimer = 0;
@@ -750,13 +748,6 @@ export class Game {
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
 
-    // --- >>> TEMPORARY BOSS 3 TEST CODE <<< ---
-    this.score = this.BOSS3_SCORE_THRESHOLD; // Set score to meet threshold
-    this.boss1Defeated = true; // Pretend Boss 1 is defeated
-    this.boss2Defeated = true; // Pretend Boss 2 is defeated
-    console.warn("!!! BOSS 3 TEST MODE ACTIVE in game.start() !!!");
-    // --- >>> END TEMPORARY CODE <<< ---
-
     // --- Reset Player State ---
     // Ensure player exists before trying to reset
     if (this.player) {
@@ -783,8 +774,8 @@ export class Game {
     // --- Reset Boss State ---
     this.bossActive = false;
     this.currentBoss = null;
-    //   this.boss1Defeated = false;
-    //  this.boss2Defeated = false;
+    this.boss1Defeated = false;
+    this.boss2Defeated = false;
     this.boss3Defeated = false;
 
     // --- Update UI to Initial Values ---
