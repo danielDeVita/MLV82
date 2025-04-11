@@ -12,7 +12,7 @@ import { randomInt, lerp } from "./utils.js"; // Make sure randomInt is imported
 export class Boss2 extends Enemy {
   constructor(game) {
     super(game); // Call base Enemy constructor
-    this.id = "boss_2_vulcan_lerp_enter"; // Update version ID
+    this.id = "boss_2_vulcan_phases"; // Update version ID
     this.enemyType = "air";
 
     // --- Boss Stats ---
@@ -71,18 +71,22 @@ export class Boss2 extends Enemy {
     this.y = this.baseY + Math.sin(this.angleY) * this.amplitudeY; // Initial Y based on normal position
     this.y = Math.max(this.minY, Math.min(this.maxY, this.y)); // Clamp initial Y
 
-    // --- Attack Timers & Logic ---
+    // --- Attack Timers & Base Intervals ---
     this.bulletTimer = 2000 + Math.random() * 1000;
-    this.bulletInterval = 1500;
+    this.bulletIntervalBase = 1500; // Store base interval
     this.missileTimer = 5000 + Math.random() * 1500;
-    this.missileInterval = 5500;
+    this.missileIntervalBase = 5500; // Store base interval
     this.bombRunTimer = 8000 + Math.random() * 2000;
-    this.bombRunInterval = 10000;
+    this.bombRunIntervalBase = 10000; // Store base interval
     this.isBombing = false;
     this.bombDropCount = 0;
     this.maxBombsInRun = 10;
     this.bombDropDelay = 110;
     this.bombDropTimer = 0;
+
+    // --- >>> NEW: Phase State <<< ---
+    this.currentPhase = 1;
+    // --- >>> END Phase State <<< ---
 
     // Power-up Spawning
     this.powerUpTimer = 0;
@@ -91,26 +95,17 @@ export class Boss2 extends Enemy {
     this.powerUpInterval =
       this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval;
 
-    console.log(
-      `Boss2 Created (${
-        this.id
-      }) - Awaiting Entrance. TargetX: ${this.entryTargetX.toFixed(0)}`
-    );
+    console.log(`Boss2 Created (${this.id}) - Phase Logic Added.`);
   } // End Constructor
 
   update(deltaTime) {
-    // --- Basic Checks ---
     if (this.markedForDeletion) return;
-
     const safeDeltaTime = Math.max(0.1, deltaTime);
     const deltaScale = safeDeltaTime / 16.67;
 
-    // --- >>> MOVEMENT LOGIC <<< ---
+    // --- Movement Logic (Entrance, Dip, Lerp - Should be the same as your last working version) ---
     if (this.isEntering) {
-      // --- STATE: ENTERING ---
       this.x -= this.entrySpeedX * deltaScale;
-
-      // Optional: Slightly adjust Y based on sine wave during entry
       this.angleY += this.frequencyY * deltaScale;
       let entryTargetY =
         this.normalBaseY + Math.sin(this.angleY) * this.amplitudeY;
@@ -118,18 +113,14 @@ export class Boss2 extends Enemy {
         this.minY,
         Math.min(this.maxY, entryTargetY)
       );
-      this.y = lerp(this.y, clampedEntryTargetY, this.positionLerpSpeed * 0.5); // Slower Y lerp
-
-      // Check if entry is complete
+      this.y = lerp(this.y, clampedEntryTargetY, this.positionLerpSpeed * 0.5);
       if (this.x <= this.entryTargetX) {
         this.x = this.entryTargetX;
         this.isEntering = false;
         console.log("Boss 2 Entrance Complete!");
       }
     } else {
-      // --- STATE: NORMAL MOVEMENT (After Entering) ---
-
-      // Update Dipping State & Calculate Target Base Y
+      // Dipping State Update
       if (this.isDipping) {
         this.dipTimer -= safeDeltaTime;
         if (this.dipTimer <= 0) {
@@ -146,18 +137,14 @@ export class Boss2 extends Enemy {
           this.dipTimer = this.dipDuration;
         }
       }
-      // Lerp current baseY towards targetBaseY
       this.baseY = lerp(this.baseY, this.targetBaseY, this.baseYLerpSpeed);
-
-      // Calculate Target Position based on Sine Waves & Current Base Coords
+      // Sine Wave + Lerp Update
       this.angleX += this.frequencyX * deltaScale;
       this.angleY += this.frequencyY * deltaScale;
       let targetX_calculated =
         this.baseX + Math.sin(this.angleX) * this.amplitudeX;
       let targetY_calculated =
         this.baseY + Math.sin(this.angleY) * this.amplitudeY;
-
-      // Apply Boundaries to Target
       let targetX_clamped = Math.max(
         this.minX,
         Math.min(this.maxX, targetX_calculated)
@@ -166,42 +153,68 @@ export class Boss2 extends Enemy {
         this.minY,
         Math.min(this.maxY, targetY_calculated)
       );
-
-      // Lerp Actual Position towards clamped target
       this.x = lerp(this.x, targetX_clamped, this.positionLerpSpeed);
       this.y = lerp(this.y, targetY_clamped, this.positionLerpSpeed);
-    } // --- >>> END MOVEMENT LOGIC <<< ---
+    } // --- End Movement Logic ---
 
-    // --- >>> ATTACKS & OTHER UPDATES (Only run AFTER entering) <<< ---
+    // --- ATTACKS & OTHER UPDATES (Only run AFTER entering) ---
     if (!this.isEntering) {
+      // --- Phase Transition Logic ---
+      const healthPercent = this.health / this.maxHealth;
+      let newPhase = 1;
+      if (healthPercent <= 0.33) {
+        newPhase = 3;
+      } else if (healthPercent <= 0.66) {
+        newPhase = 2;
+      }
+      if (newPhase > this.currentPhase) {
+        console.warn(
+          `!!! Boss 2 Entering Phase ${newPhase} !!! (Health: ${this.health.toFixed(
+            0
+          )} / ${this.maxHealth})`
+        );
+        this.currentPhase = newPhase;
+      }
+      // --- End Phase Transition Logic ---
+
+      // --- Calculate Current Attack Intervals based on Phase ---
+      let currentBulletInterval = this.bulletIntervalBase;
+      let currentMissileInterval = this.missileIntervalBase;
+      let currentBombRunInterval = this.bombRunIntervalBase;
+      if (this.currentPhase === 2) {
+        currentBulletInterval *= 0.8;
+        currentMissileInterval *= 0.85;
+      } else if (this.currentPhase === 3) {
+        currentBulletInterval *= 0.6;
+        currentMissileInterval *= 0.7;
+        currentBombRunInterval *= 0.8;
+      }
+      // --- End Interval Calculation ---
+
       // --- Attack Timer Updates ---
-      let currentBulletInterval = this.bulletInterval;
-      let currentMissileInterval = this.missileInterval;
-      let currentBombRunInterval = this.bombRunInterval;
-      // Add phase check here if needed: if (this.health <= this.maxHealth * 0.5) { ... }
       this.bulletTimer -= safeDeltaTime;
       this.missileTimer -= safeDeltaTime;
       this.bombRunTimer -= safeDeltaTime;
 
       // --- Firing Checks (Only if NOT currently bombing) ---
       if (!this.isBombing) {
-        // Fire Bullets
+        // Fire Bullets (Uses calculated currentBulletInterval for reset)
         if (this.bulletTimer <= 0) {
-          this.fireBullets();
+          this.fireBullets(); // fireBullets method checks phase internally now
           this.bulletTimer = Math.max(
             1,
             currentBulletInterval + Math.random() * 300 - 150
           );
         }
-        // Fire Missile(s)
+        // Fire Missile(s) (Uses calculated currentMissileInterval for reset)
         if (this.missileTimer <= 0) {
-          this.fireMissile();
+          this.fireMissile(); // fireMissile method checks phase internally now
           this.missileTimer = Math.max(
             1,
             currentMissileInterval + Math.random() * 800 - 400
           );
         }
-        // Start Bombing Run
+        // Start Bombing Run (Cooldown reset happens when run finishes)
         if (this.bombRunTimer <= 0) {
           this.startBombingRun();
         }
@@ -210,16 +223,16 @@ export class Boss2 extends Enemy {
       // --- Bombing Run State Machine ---
       if (this.isBombing) {
         this.bombDropTimer -= safeDeltaTime;
-        if (
-          this.bombDropTimer <= 0 &&
-          this.bombDropCount < this.maxBombsInRun
-        ) {
+        // Adjust max bombs based on phase
+        let maxBombs = this.currentPhase === 3 ? 12 : this.maxBombsInRun; // Use base value (10) unless phase 3
+        if (this.bombDropTimer <= 0 && this.bombDropCount < maxBombs) {
           this.dropSingleBomb();
           this.bombDropCount++;
           this.bombDropTimer = this.bombDropDelay;
         }
-        if (this.bombDropCount >= this.maxBombsInRun) {
+        if (this.bombDropCount >= maxBombs) {
           this.isBombing = false;
+          // Use calculated currentBombRunInterval for reset
           this.bombRunTimer = Math.max(
             1,
             currentBombRunInterval + Math.random() * 2000 - 1000
@@ -231,16 +244,16 @@ export class Boss2 extends Enemy {
       // --- Power-up Spawning Timer ---
       this.powerUpTimer += safeDeltaTime;
       if (this.powerUpTimer >= this.powerUpInterval) {
-        this.powerUpTimer -= this.powerUpInterval; // Use subtraction reset
+        this.powerUpTimer -= this.powerUpInterval;
         this.powerUpInterval =
-          this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval; // Recalculate next interval
+          this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval;
         const spawnX =
           this.x + this.width / 2 + (Math.random() - 0.5) * this.width * 0.5;
         const spawnY = this.y + this.height + 30;
-        console.log("Boss2 Spawning timed power-up (more frequent)");
+        console.log("Boss2 Spawning timed power-up");
         this.game.createPowerUp(spawnX, spawnY);
       } // End Power-up spawning
-    } // --- >>> END ATTACKS & OTHER UPDATES (if !isEntering) <<< ---
+    } // --- END ATTACKS & OTHER UPDATES (if !isEntering) ---
 
     // --- Hit Flash Update (Always run) ---
     if (this.isHit) {
@@ -280,16 +293,22 @@ export class Boss2 extends Enemy {
     }
   } // End hit method
 
+  // --- Modified Attack Methods ---
   fireBullets() {
     playSound("enemyShoot");
-    const bulletSpeedY = 4;
-    const numShots = 5;
-    const spread = this.width * 0.38;
+    const bulletSpeedY = 4.0;
+    // Adjust number of shots based on phase
+    const numShots = this.currentPhase >= 2 ? 6 : 5;
+    // Adjust spread width based on phase
+    const spread = this.width * (this.currentPhase >= 3 ? 0.4 : 0.38);
+    // Adjust horizontal variance based on phase
+    const xVariance = this.currentPhase >= 2 ? 1.5 : 1.0;
+
     for (let i = 0; i < numShots; i++) {
       const offsetX = (i / (numShots - 1) - 0.5) * 2 * spread;
       const bulletX = this.x + this.width / 2 + offsetX - 4;
       const bulletY = this.y + this.height * 0.8;
-      const spreadSpeedX = (Math.random() - 0.5) * 1.0;
+      const spreadSpeedX = (Math.random() - 0.5) * xVariance; // Apply variance
       const speedY = bulletSpeedY + Math.random() * 0.5;
       this.game.addEnemyProjectile(
         new EnemyBullet(this.game, bulletX, bulletY, spreadSpeedX, speedY)
@@ -298,23 +317,38 @@ export class Boss2 extends Enemy {
   }
 
   fireMissile() {
+    // Fire the first missile
     const missileX = this.x + this.width / 2 - 6;
     const missileY = this.y + this.height * 0.5;
     this.game.addEnemyProjectile(
       new TrackingMissile(this.game, missileX, missileY)
     );
-    if (this.health < this.maxHealth * 0.75 && Math.random() < 0.4) {
+
+    // Determine chance for a second missile based on phase
+    let fireSecondChance = 0;
+    if (this.currentPhase === 2) {
+      fireSecondChance = 0.4;
+    } else if (this.currentPhase === 3) {
+      fireSecondChance = 0.75;
+    }
+
+    // Check if the second missile should fire
+    if (Math.random() < fireSecondChance) {
       setTimeout(() => {
+        // Use setTimeout for a slight delay
         if (!this.markedForDeletion && !this.game.isGameOver) {
-          console.log("Boss2 firing second missile!");
+          // Check validity when timeout runs
+          console.log(
+            `Boss2 firing second missile! (Phase ${this.currentPhase})`
+          );
           const missileX2 =
-            this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -20 : 20);
-          const missileY2 = this.y + this.height * 0.5;
+            this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -25 : 25); // Offset X
+          const missileY2 = this.y + this.height * 0.5; // Same Y
           this.game.addEnemyProjectile(
             new TrackingMissile(this.game, missileX2, missileY2)
           );
         }
-      }, 300);
+      }, 250); // Delay in milliseconds
     }
   }
 
