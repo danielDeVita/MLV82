@@ -736,11 +736,36 @@ export class Game {
     console.log("Game: Resetting Boss 1 helper plane spawn timer.");
   }
 
+  spawnBoss2HelperShips(count = 1, type = "shooter") {
+    console.log(
+      `GAME: Spawning ${count} Boss 2 helper ship(s) of type ${type}`
+    );
+    for (let i = 0; i < count; i++) {
+      let ship = null;
+      const speedBoost = this.difficultyLevel * 0.1;
+      if (type === "tracking") {
+        ship = new EnemyTrackingShip(this, speedBoost);
+      } else {
+        ship = new EnemyShooterShip(this, speedBoost);
+      }
+      if (ship) {
+        ship.y -= i * 15;
+        ship.x = this.width + 50 + i * 80;
+        this.enemies.push(ship);
+      }
+    }
+  }
+
   restart() {
     console.log("--- Restarting Game ---");
 
     this.bossPowerUpTimer = 0;
     this.boss1HelperPlaneTimer = 0; // Ensure helper timer is reset
+
+    if (this.currentBoss instanceof Boss2) {
+      this.currentBoss.hasSummonedShipWave1 = false;
+      this.currentBoss.hasSummonedShipWave2 = false;
+    }
 
     try {
       // 1. Reset Player
@@ -844,7 +869,7 @@ export class Game {
     // --- Reset Core Game State ---
     this.isGameOver = false; // Ensure game is not over
     this.lastTime = 0; // Reset time for delta calculation on first frame
-    this.score =this.BOSS2_SCORE_THRESHOLD - 1; // Set score to meet threshold
+    this.score = this.BOSS2_SCORE_THRESHOLD - 1; // Set score to meet threshold
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
 
