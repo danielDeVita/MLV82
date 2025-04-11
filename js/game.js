@@ -29,7 +29,8 @@ export class Game {
   constructor(canvasId, width, height) {
     console.log("DEBUG: Constructor START");
     this.canvas = document.getElementById(canvasId);
-    if (!this.canvas) throw new Error(`FATAL: Canvas element ID="${canvasId}" NOT FOUND.`);
+    if (!this.canvas)
+      throw new Error(`FATAL: Canvas element ID="${canvasId}" NOT FOUND.`);
     this.width = width;
     this.height = height;
     this.canvas.width = this.width;
@@ -84,7 +85,9 @@ export class Game {
     this.bossPowerUpTimer = 0;
     this.bossPowerUpBaseInterval = 15000; // Base 15 seconds
     this.bossPowerUpRandomInterval = 5000; // Add up to 5s random
-    this.bossPowerUpInterval = this.bossPowerUpBaseInterval + Math.random() * this.bossPowerUpRandomInterval; // Initial interval
+    this.bossPowerUpInterval =
+      this.bossPowerUpBaseInterval +
+      Math.random() * this.bossPowerUpRandomInterval; // Initial interval
 
     // Initialize core components AFTER context verification
     try {
@@ -157,13 +160,21 @@ export class Game {
       // 2. Update
       this.background.update(deltaTime, this.score);
       this.player.update(this.input, deltaTime);
-      [...this.projectiles, ...this.enemyProjectiles, ...this.enemies, ...this.explosions, ...this.powerUps].forEach((obj) => obj.update(deltaTime));
+      [
+        ...this.projectiles,
+        ...this.enemyProjectiles,
+        ...this.enemies,
+        ...this.explosions,
+        ...this.powerUps,
+      ].forEach((obj) => obj.update(deltaTime));
 
       if (this.bossActive) {
         this.bossPowerUpTimer += deltaTime;
         if (this.bossPowerUpTimer >= this.bossPowerUpInterval) {
           this.bossPowerUpTimer = 0; // Use subtraction reset for accuracy: this.bossPowerUpTimer -= this.bossPowerUpInterval;
-          this.bossPowerUpInterval = this.bossPowerUpBaseInterval + Math.random() * this.bossPowerUpRandomInterval; // Reset next interval
+          this.bossPowerUpInterval =
+            this.bossPowerUpBaseInterval +
+            Math.random() * this.bossPowerUpRandomInterval; // Reset next interval
 
           const spawnX = Math.random() * (this.width * 0.7) + this.width * 0.1; // Random X, avoid edges
           const spawnY = 50 + Math.random() * 50; // Spawn near top/mid screen
@@ -185,7 +196,9 @@ export class Game {
       this.enemies.forEach((e, index) => {
         // Make sure this log is active and check its output!
         console.log(
-          `Drawing enemy index ${index}: ID=${e.id}, Type=${e.constructor.name}, X=${e.x?.toFixed(0)}, Y=${e.y?.toFixed(0)}, Health=${
+          `Drawing enemy index ${index}: ID=${e.id}, Type=${
+            e.constructor.name
+          }, X=${e.x?.toFixed(0)}, Y=${e.y?.toFixed(0)}, Health=${
             e.health
           }, MaxHealth=${e.maxHealth}`
         );
@@ -194,14 +207,21 @@ export class Game {
           // Check if draw exists
           e.draw(this.context); // <<<< This should be the ONLY call that leads to weak point drawing
         } else {
-          console.warn(`Enemy at index ${index} is invalid or has no draw method:`, e);
+          console.warn(
+            `Enemy at index ${index} is invalid or has no draw method:`,
+            e
+          );
         }
 
         if (e instanceof Boss3) {
           const towerWP = e.weakPoints.find((wp) => wp.type === "controlTower");
           // Also log the tower weak point health for comparison
           console.log(
-            `   Boss3 Tower WP: X=${towerWP?.x?.toFixed(0)}, Y=${towerWP?.y?.toFixed(0)}, Health=${towerWP?.health}, MaxHealth=${towerWP?.maxHealth}`
+            `   Boss3 Tower WP: X=${towerWP?.x?.toFixed(
+              0
+            )}, Y=${towerWP?.y?.toFixed(0)}, Health=${
+              towerWP?.health
+            }, MaxHealth=${towerWP?.maxHealth}`
           );
         }
         // --- Now actually draw ---
@@ -240,18 +260,33 @@ export class Game {
         this.spawnBoss(1);
       }
       // Check Boss 2 spawn only AFTER Boss 1 is defeated
-      else if (this.boss1Defeated && !this.boss2Defeated && this.score >= this.BOSS2_SCORE_THRESHOLD) {
+      else if (
+        this.boss1Defeated &&
+        !this.boss2Defeated &&
+        this.score >= this.BOSS2_SCORE_THRESHOLD
+      ) {
         // console.log("handleBossState: Conditions met for Boss 2");
         this.spawnBoss(2);
       }
       // Check Boss 3 spawn AFTER Boss 2 is defeated <<< THIS IS THE ONE
-      else if (this.boss1Defeated && this.boss2Defeated && !this.boss3Defeated && this.score >= this.BOSS3_SCORE_THRESHOLD) {
-        console.log("handleBossState: Conditions met for Boss 3, calling spawnBoss(3)..."); // <<< Make sure this log appears
+      else if (
+        this.boss1Defeated &&
+        this.boss2Defeated &&
+        !this.boss3Defeated &&
+        this.score >= this.BOSS3_SCORE_THRESHOLD
+      ) {
+        console.log(
+          "handleBossState: Conditions met for Boss 3, calling spawnBoss(3)..."
+        ); // <<< Make sure this log appears
         this.spawnBoss(3);
       }
       // --- No other conditions met for spawning ---
       // else { console.log("handleBossState: No boss spawn conditions met."); }
-    } else if (this.bossActive && this.currentBoss && this.currentBoss.markedForDeletion) {
+    } else if (
+      this.bossActive &&
+      this.currentBoss &&
+      this.currentBoss.markedForDeletion
+    ) {
       // console.log("handleBossState: Boss active and marked for deletion, calling bossDefeated...");
       this.bossDefeated();
     }
@@ -296,7 +331,9 @@ export class Game {
       this.currentBoss = bossInstance;
       // Reset power-up timer when boss spawns
       this.bossPowerUpTimer = 0;
-      this.bossPowerUpInterval = this.bossPowerUpBaseInterval + Math.random() * this.bossPowerUpRandomInterval;
+      this.bossPowerUpInterval =
+        this.bossPowerUpBaseInterval +
+        Math.random() * this.bossPowerUpRandomInterval;
     } else {
       console.error(`Unknown boss number requested: ${bossNumber}`);
       this.bossActive = false; // Failed to spawn, reset state
@@ -330,7 +367,10 @@ export class Game {
     const numPowerups = this.boss1Defeated && !this.boss2Defeated ? 3 : 4; // Example: 3 for B1, 4 for B2
     for (let i = 0; i < numPowerups; i++) {
       // Spread them out a bit
-      this.createPowerUp(this.width / 2 + (i - (numPowerups - 1) / 2) * 80, this.height * 0.6);
+      this.createPowerUp(
+        this.width / 2 + (i - (numPowerups - 1) / 2) * 80,
+        this.height * 0.6
+      );
     }
 
     // Resume normal spawning timers immediately
@@ -344,7 +384,10 @@ export class Game {
       this.difficultyLevel++;
       this.scoreForNextLevel += 300 + this.difficultyLevel ** 2 * 50;
       this.updateDifficultyUI();
-      this.powerUpDropChance = Math.min(0.25, 0.1 + this.difficultyLevel * 0.015);
+      this.powerUpDropChance = Math.min(
+        0.25,
+        0.1 + this.difficultyLevel * 0.015
+      );
     }
   }
 
@@ -367,7 +410,9 @@ export class Game {
         // Halve the base interval when only 1 WP left?
         // currentBaseInterval = this.boss1HelperPlaneBaseInterval * 0.6; // Example: 40% faster spawns
       }
-      const currentHelperInterval = currentBaseInterval + Math.random() * this.boss1HelperPlaneRandomInterval;
+      const currentHelperInterval =
+        currentBaseInterval +
+        Math.random() * this.boss1HelperPlaneRandomInterval;
       // --- >>> End Optional Interval Adjustment <<< ---
 
       if (this.boss1HelperPlaneTimer >= currentHelperInterval) {
@@ -377,7 +422,9 @@ export class Game {
         const planesToSpawn = this.currentBoss.activeWeakPoints === 1 ? 2 : 1; // Spawn 2 if 1 WP left, else 1
         // --- >>> END Spawn MORE planes <<< ---
 
-        console.log(`Spawning Boss 1 helper plane (Dodger) - ${this.currentBoss.activeWeakPoints} WP left`);
+        console.log(
+          `Spawning Boss 1 helper plane (Dodger) - ${this.currentBoss.activeWeakPoints} WP left`
+        );
 
         for (let i = 0; i < planesToSpawn; i++) {
           // Add slight delay/offset for multiple spawns? Optional.
@@ -401,8 +448,14 @@ export class Game {
       minShipInt = 2000,
       planeReduct = this.difficultyLevel * 150,
       shipReduct = this.difficultyLevel * 300;
-    const currentPlaneInt = Math.max(minPlaneInt, this.baseEnemyPlaneInterval - planeReduct);
-    const currentShipInt = Math.max(minShipInt, this.baseEnemyShipInterval - shipReduct);
+    const currentPlaneInt = Math.max(
+      minPlaneInt,
+      this.baseEnemyPlaneInterval - planeReduct
+    );
+    const currentShipInt = Math.max(
+      minShipInt,
+      this.baseEnemyShipInterval - shipReduct
+    );
 
     // Spawn Regular Planes
     this.enemyPlaneTimer += deltaTime;
@@ -438,7 +491,10 @@ export class Game {
     this.projectiles.forEach((p) => {
       // --- ADD PRE-CHECK LOGGING ---
       if (typeof p !== "object" || p === null) {
-        console.error("!!! ERROR in projectiles loop: Found non-object item:", p);
+        console.error(
+          "!!! ERROR in projectiles loop: Found non-object item:",
+          p
+        );
         // Optionally, mark it for deletion here to prevent further errors
         // if (p && typeof p === 'object') { p.markedForDeletion = true; } // Only if it has the property
         return; // Skip this iteration
@@ -456,10 +512,16 @@ export class Game {
           if (e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3) {
             // Combined check
             // --- ADD DEBUG LOG BEFORE BOSS HIT ---
-            console.log(`DEBUG: Calling ${e.constructor.name}.hit() with projectile:`, p);
+            console.log(
+              `DEBUG: Calling ${e.constructor.name}.hit() with projectile:`,
+              p
+            );
             if (typeof p !== "object" || p === null) {
               // Redundant check if pre-check is added
-              console.error(`CRITICAL: About to call ${e.constructor.name}.hit() with NON-OBJECT:`, p);
+              console.error(
+                `CRITICAL: About to call ${e.constructor.name}.hit() with NON-OBJECT:`,
+                p
+              );
             }
             // --- END DEBUG LOG ---
 
@@ -474,7 +536,11 @@ export class Game {
             // Projectile deletion for regular enemies
             if (pType === "bomb") {
               // Delete bomb if it hits a SHIP (excluding Boss, handled above)
-              if (e instanceof EnemyShip || e instanceof EnemyShooterShip || e instanceof EnemyTrackingShip) {
+              if (
+                e instanceof EnemyShip ||
+                e instanceof EnemyShooterShip ||
+                e instanceof EnemyTrackingShip
+              ) {
                 p.markedForDeletion = true;
               }
             } else {
@@ -506,12 +572,15 @@ export class Game {
 
         // Check collision between player and the current enemy 'e'
         if (checkCollision(this.player, e)) {
-          let isBossCollision = e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3;
+          let isBossCollision =
+            e instanceof Boss1 || e instanceof Boss2 || e instanceof Boss3;
           let playerDamaged = false; // Flag to track if player should take damage this collision
 
           if (isBossCollision) {
             // --- Player Collided with a BOSS ---
-            console.log(`Player collided with Boss object: ${e.constructor.name}`);
+            console.log(
+              `Player collided with Boss object: ${e.constructor.name}`
+            );
 
             // --- SPECIAL CASE for Boss 3 (Airfield) ---
             if (e instanceof Boss3) {
@@ -522,7 +591,9 @@ export class Game {
                 // Check collision ONLY against ACTIVE weak points
                 if (wp.isActive && checkCollision(this.player, wp)) {
                   hitActiveWeakPoint = true;
-                  console.log(` -> Player specifically hit ACTIVE Boss 3 weak point: ${wp.type}`);
+                  console.log(
+                    ` -> Player specifically hit ACTIVE Boss 3 weak point: ${wp.type}`
+                  );
                   break; // Found a collision with an active part, no need to check others
                 }
               }
@@ -533,7 +604,9 @@ export class Game {
                 // wp.hit(PLAYER_COLLISION_DAMAGE_TO_WP);
               } else {
                 // Player hit the inactive base area or a destroyed weak point - NO DAMAGE.
-                console.log(" -> Player hit inactive/base area of Boss 3. No damage.");
+                console.log(
+                  " -> Player hit inactive/base area of Boss 3. No damage."
+                );
               }
             } else {
               // Collision with Boss 1 or Boss 2 - these are moving ships/planes,
@@ -567,7 +640,9 @@ export class Game {
 
   cleanupObjects() {
     this.projectiles = this.projectiles.filter((o) => !o.markedForDeletion);
-    this.enemyProjectiles = this.enemyProjectiles.filter((o) => !o.markedForDeletion);
+    this.enemyProjectiles = this.enemyProjectiles.filter(
+      (o) => !o.markedForDeletion
+    );
     this.enemies = this.enemies.filter((o) => !o.markedForDeletion);
     this.explosions = this.explosions.filter((o) => !o.markedForDeletion);
     this.powerUps = this.powerUps.filter((o) => !o.markedForDeletion);
@@ -730,11 +805,17 @@ export class Game {
       bombChance = 0.25; // Sum should be <= 1
 
     if (rand < shieldChance) PowerUpClass = PowerUpShield;
-    else if (rand < shieldChance + spreadChance) PowerUpClass = PowerUpSpreadShot;
+    else if (rand < shieldChance + spreadChance)
+      PowerUpClass = PowerUpSpreadShot;
     // Only drop life if player not at max lives
-    else if (rand < shieldChance + spreadChance + lifeChance && this.player && this.player.lives < this.player.maxLives)
+    else if (
+      rand < shieldChance + spreadChance + lifeChance &&
+      this.player &&
+      this.player.lives < this.player.maxLives
+    )
       PowerUpClass = PowerUpExtraLife;
-    else if (rand < shieldChance + spreadChance + lifeChance + bulletChance) PowerUpClass = PowerUpBullet;
+    else if (rand < shieldChance + spreadChance + lifeChance + bulletChance)
+      PowerUpClass = PowerUpBullet;
     else PowerUpClass = PowerUpBomb; // Assign remaining probability to Bomb
 
     if (PowerUpClass) {
@@ -742,7 +823,10 @@ export class Game {
     } else {
       // This case should ideally not be reached if probabilities sum correctly
       // If it does, maybe default to a base powerup or log a warning
-      console.warn("createPowerUp: No power-up class determined for random value:", rand);
+      console.warn(
+        "createPowerUp: No power-up class determined for random value:",
+        rand
+      );
       // this.powerUps.push(new PowerUp(this, x, y)); // Optionally add base as fallback
     }
   }

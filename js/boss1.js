@@ -63,7 +63,9 @@ export class Boss1 extends Enemy {
     this.createWeakPoints();
     this.activeWeakPoints = this.weakPoints.length;
 
-    console.log(`Boss1 Created (${this.id}) with ${this.weakPoints.length} weak points.`);
+    console.log(
+      `Boss1 Created (${this.id}) with ${this.weakPoints.length} weak points.`
+    );
     console.log(
       `  Initial Intervals -> FwdSpread: ${this.forwardSpreadInterval}, AimedArt: ${this.aimedArtilleryInterval}, RearSpread: ${this.rearSpreadInterval}, Mis: ${this.missileInterval}`
     );
@@ -73,13 +75,21 @@ export class Boss1 extends Enemy {
     this.weakPoints = [];
     // Args: boss, offsetX, offsetY, width, height, health, type
     // 1. Forward Spread Gun (Spread Left) <<< TYPE CHANGED
-    this.weakPoints.push(new BossWeakPoint(this, 50, -5, 50, 25, 45, "forwardSpread"));
+    this.weakPoints.push(
+      new BossWeakPoint(this, 50, -5, 50, 25, 45, "forwardSpread")
+    );
     // 2. Mid Aimed Artillery (Aimed Shell) <<< TYPE CHANGED
-    this.weakPoints.push(new BossWeakPoint(this, 130, -10, 40, 30, 60, "aimedArtillery"));
+    this.weakPoints.push(
+      new BossWeakPoint(this, 130, -10, 40, 30, 60, "aimedArtillery")
+    );
     // 3. Rear Spread Gun (Spread Right)
-    this.weakPoints.push(new BossWeakPoint(this, this.width - 100, 10, 40, 25, 40, "rearSpread"));
+    this.weakPoints.push(
+      new BossWeakPoint(this, this.width - 100, 10, 40, 25, 40, "rearSpread")
+    );
     // 4. Aft Missile Launcher
-    this.weakPoints.push(new BossWeakPoint(this, this.width - 55, 5, 35, 40, 55, "missile"));
+    this.weakPoints.push(
+      new BossWeakPoint(this, this.width - 55, 5, 35, 40, 55, "missile")
+    );
     this.activeWeakPoints = this.weakPoints.length;
   }
 
@@ -88,7 +98,9 @@ export class Boss1 extends Enemy {
     if (this.markedForDeletion) return;
 
     this.activeWeakPoints--;
-    console.log(`Boss weak point ${type} destroyed! ${this.activeWeakPoints} remaining.`);
+    console.log(
+      `Boss weak point ${type} destroyed! ${this.activeWeakPoints} remaining.`
+    );
 
     // --- >>> ADJUSTED Difficulty Scaling Logic <<< ---
     let boostMultiplier = 1.0;
@@ -97,19 +109,25 @@ export class Boss1 extends Enemy {
       // Phase 2 (3 WP left)
       boostMultiplier = 0.85; // ~15% faster (same as before)
       this.attackPhase = 2;
-      console.log(`Boss1 Phase 2 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
+      console.log(
+        `Boss1 Phase 2 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`
+      );
     } else if (this.activeWeakPoints === 2) {
       // Phase 3 (2 WP left)
       boostMultiplier = 0.6; // <<< FASTER (was 0.70) - ~40% faster than base
       this.attackPhase = 3;
-      console.log(`Boss1 Phase 3 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`);
+      console.log(
+        `Boss1 Phase 3 active (${this.activeWeakPoints} points left). Applying boost: ${boostMultiplier}`
+      );
       // Start helper spawns (triggered here)
       this.game.resetBoss1HelperSpawnTimer();
     } else if (this.activeWeakPoints === 1) {
       // Phase 4 (1 WP left)
       boostMultiplier = 0.4; // <<< MUCH FASTER (was 0.55) - ~60% faster than base
       this.attackPhase = 4;
-      console.log(`Boss1 Phase 4 active (${this.activeWeakPoints} point left). Applying boost: ${boostMultiplier}`);
+      console.log(
+        `Boss1 Phase 4 active (${this.activeWeakPoints} point left). Applying boost: ${boostMultiplier}`
+      );
       // Helper spawns should already be active, but will intensify via Game.js logic
     } else if (this.activeWeakPoints <= 0) {
       // Phase 5 (Defeated)
@@ -118,16 +136,22 @@ export class Boss1 extends Enemy {
     }
 
     // Apply boost to intervals
-    this.forwardSpreadInterval = this.originalForwardSpreadInterval * boostMultiplier;
-    this.aimedArtilleryInterval = this.originalAimedArtilleryInterval * boostMultiplier;
+    this.forwardSpreadInterval =
+      this.originalForwardSpreadInterval * boostMultiplier;
+    this.aimedArtilleryInterval =
+      this.originalAimedArtilleryInterval * boostMultiplier;
     this.rearSpreadInterval = this.originalRearSpreadInterval * boostMultiplier;
     this.missileInterval = this.originalMissileInterval * boostMultiplier;
 
     // Log the new intervals
     console.log(
-      `  New Intervals -> FwdSpread: ${this.forwardSpreadInterval.toFixed(0)}, AimedArt: ${this.aimedArtilleryInterval.toFixed(
+      `  New Intervals -> FwdSpread: ${this.forwardSpreadInterval.toFixed(
         0
-      )}, RearSpread: ${this.rearSpreadInterval.toFixed(0)}, Mis: ${this.missileInterval.toFixed(0)}`
+      )}, AimedArt: ${this.aimedArtilleryInterval.toFixed(
+        0
+      )}, RearSpread: ${this.rearSpreadInterval.toFixed(
+        0
+      )}, Mis: ${this.missileInterval.toFixed(0)}`
     );
 
     // WIN CONDITION
@@ -182,19 +206,37 @@ export class Boss1 extends Enemy {
     this.missileTimer -= safeDeltaTime;
 
     // Check Forward Spread <<< UPDATED Check & Call
-    const forwardSpreadWP = this.weakPoints.find((wp) => wp.type === "forwardSpread");
-    if (forwardSpreadWP && forwardSpreadWP.isActive && this.forwardSpreadTimer <= 0) {
+    const forwardSpreadWP = this.weakPoints.find(
+      (wp) => wp.type === "forwardSpread"
+    );
+    if (
+      forwardSpreadWP &&
+      forwardSpreadWP.isActive &&
+      this.forwardSpreadTimer <= 0
+    ) {
       this.fireForwardSpread(forwardSpreadWP); // <<< Call corresponding fire method
       const variance = Math.random() * 400 - 200;
-      this.forwardSpreadTimer = Math.max(1, this.forwardSpreadInterval + variance);
+      this.forwardSpreadTimer = Math.max(
+        1,
+        this.forwardSpreadInterval + variance
+      );
     }
 
     // Check Mid Aimed Artillery <<< UPDATED Check & Call
-    const aimedArtilleryWP = this.weakPoints.find((wp) => wp.type === "aimedArtillery");
-    if (aimedArtilleryWP && aimedArtilleryWP.isActive && this.aimedArtilleryTimer <= 0) {
+    const aimedArtilleryWP = this.weakPoints.find(
+      (wp) => wp.type === "aimedArtillery"
+    );
+    if (
+      aimedArtilleryWP &&
+      aimedArtilleryWP.isActive &&
+      this.aimedArtilleryTimer <= 0
+    ) {
       this.fireAimedArtillery(aimedArtilleryWP); // <<< Call corresponding fire method
       const variance = Math.random() * 500 - 250;
-      this.aimedArtilleryTimer = Math.max(1, this.aimedArtilleryInterval + variance);
+      this.aimedArtilleryTimer = Math.max(
+        1,
+        this.aimedArtilleryInterval + variance
+      );
     }
 
     // Check Rear Spread
@@ -226,7 +268,9 @@ export class Boss1 extends Enemy {
     angles.forEach((angle) => {
       const speedX = Math.cos(angle) * bulletSpeedX;
       const speedY = Math.sin(angle) * bulletSpeedX * -1; // Invert Y effect
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletYCenter, speedX, speedY));
+      this.game.addEnemyProjectile(
+        new EnemyBullet(this.game, bulletX, bulletYCenter, speedX, speedY)
+      );
     });
   }
 
@@ -238,11 +282,17 @@ export class Boss1 extends Enemy {
     const shellY = turret.y - 8; // Slightly above turret
     const player = this.game.player;
     if (!player || player.markedForDeletion) return;
-    const angle = Math.atan2(player.y + player.height / 2 - shellY, player.x + player.width / 2 - shellX);
+    const angle = Math.atan2(
+      player.y + player.height / 2 - shellY,
+      player.x + player.width / 2 - shellX
+    );
     const speedX = Math.cos(angle) * bulletSpeed;
     const speedY = Math.sin(angle) * bulletSpeed;
-    this.game.addEnemyProjectile(new EnemyBullet(this.game, shellX, shellY, speedX, speedY));
-    const shell = this.game.enemyProjectiles[this.game.enemyProjectiles.length - 1];
+    this.game.addEnemyProjectile(
+      new EnemyBullet(this.game, shellX, shellY, speedX, speedY)
+    );
+    const shell =
+      this.game.enemyProjectiles[this.game.enemyProjectiles.length - 1];
     if (shell) {
       shell.width = 14;
       shell.height = 14;
@@ -260,7 +310,9 @@ export class Boss1 extends Enemy {
     angles.forEach((angle) => {
       const speedX = Math.cos(angle) * bulletSpeed;
       const speedY = Math.sin(angle) * bulletSpeed;
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletYCenter, speedX, speedY));
+      this.game.addEnemyProjectile(
+        new EnemyBullet(this.game, bulletX, bulletYCenter, speedX, speedY)
+      );
     });
   }
 
@@ -268,12 +320,18 @@ export class Boss1 extends Enemy {
   fireMissileFromLauncher(launcher) {
     const missileX = launcher.x + launcher.width / 2 - 6;
     const missileY = launcher.y - 10;
-    this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX, missileY));
+    this.game.addEnemyProjectile(
+      new TrackingMissile(this.game, missileX, missileY)
+    );
   }
 
   // --- Hit Method (Handles Weak Points) --- (No Change Needed)
   hit(projectile) {
-    if (typeof projectile !== "object" || projectile === null || projectile.markedForDeletion) {
+    if (
+      typeof projectile !== "object" ||
+      projectile === null ||
+      projectile.markedForDeletion
+    ) {
       return;
     }
     if (this.markedForDeletion) return;
