@@ -969,7 +969,7 @@ export class Game {
     // --- Reset Boss State ---
     this.bossActive = false;
     this.currentBoss = null;
-    this.boss1Defeated = true
+    this.boss1Defeated = true;
     this.boss2Defeated = true;
     this.boss3Defeated = false;
 
