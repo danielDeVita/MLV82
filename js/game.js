@@ -18,6 +18,8 @@ import { PowerUpSpreadShot } from "./powerUpSpreadShot.js";
 import { PowerUpExtraLife } from "./powerUpExtraLife.js";
 import { PowerUpBullet } from "./powerUpBullet.js";
 import { PowerUpBomb } from "./powerUpBomb.js";
+import { PowerUpRapidFire } from "./powerUpRapidFire.js";
+import { PowerUpInvincibility } from "./powerUpInvincibility.js";
 import { Boss1 } from "./boss1.js"; // <<< BOSS IMPORT
 import { Boss2 } from "./boss2.js";
 import { Boss3 } from "./boss3.js";
@@ -823,36 +825,66 @@ export class Game {
   createPowerUp(x, y) {
     const rand = Math.random();
     let PowerUpClass = null; // Use null initially
-    const shieldChance = 0.2,
-      spreadChance = 0.2,
-      lifeChance = 0.1;
-    const bulletChance = 0.25,
-      bombChance = 0.25; // Sum should be <= 1
 
-    if (rand < shieldChance) PowerUpClass = PowerUpShield;
-    else if (rand < shieldChance + spreadChance)
+    // Adjust chances to make space
+    const shieldChance = 0.15; // Was 0.2
+    const spreadChance = 0.15; // Was 0.2
+    const lifeChance = 0.08; // Was 0.1
+    const bulletChance = 0.18; // Was 0.25
+    const bombChance = 0.18; // Was 0.25
+    // >>> NEW Chances <<<
+    const rapidFireChance = 0.13; // Example chance
+    const invincibilityChance = 0.13; // Example chance
+    // --- Make sure sum is <= 1 (0.15+0.15+0.08+0.18+0.18+0.13+0.13 = 1.0) ---
+
+    if (rand < shieldChance) {
+      PowerUpClass = PowerUpShield;
+    } else if (rand < shieldChance + spreadChance) {
       PowerUpClass = PowerUpSpreadShot;
-    // Only drop life if player not at max lives
-    else if (
+    } else if (
       rand < shieldChance + spreadChance + lifeChance &&
       this.player &&
       this.player.lives < this.player.maxLives
-    )
+    ) {
+      // Only drop life if player not at max lives
       PowerUpClass = PowerUpExtraLife;
-    else if (rand < shieldChance + spreadChance + lifeChance + bulletChance)
+    } else if (rand < shieldChance + spreadChance + lifeChance + bulletChance) {
       PowerUpClass = PowerUpBullet;
-    else PowerUpClass = PowerUpBomb; // Assign remaining probability to Bomb
+    } else if (
+      rand <
+      shieldChance + spreadChance + lifeChance + bulletChance + bombChance
+    ) {
+      PowerUpClass = PowerUpBomb;
+      // >>> NEW Checks <<<
+    } else if (
+      rand <
+      shieldChance +
+        spreadChance +
+        lifeChance +
+        bulletChance +
+        bombChance +
+        rapidFireChance
+    ) {
+      PowerUpClass = PowerUpRapidFire;
+    } else if (
+      rand <
+      shieldChance +
+        spreadChance +
+        lifeChance +
+        bulletChance +
+        bombChance +
+        rapidFireChance +
+        invincibilityChance
+    ) {
+      PowerUpClass = PowerUpInvincibility;
+    }
+    // Else: No powerup drops for the remaining probability range
 
     if (PowerUpClass) {
+      console.log(`Spawning PowerUp: ${PowerUpClass.name}`); // Log which type
       this.powerUps.push(new PowerUpClass(this, x, y));
     } else {
-      // This case should ideally not be reached if probabilities sum correctly
-      // If it does, maybe default to a base powerup or log a warning
-      console.warn(
-        "createPowerUp: No power-up class determined for random value:",
-        rand
-      );
-      // this.powerUps.push(new PowerUp(this, x, y)); // Optionally add base as fallback
+      // console.log("No power-up dropped this time."); // Optional log
     }
   }
   drawGameOver() {

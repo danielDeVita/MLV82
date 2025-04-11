@@ -32,6 +32,8 @@ export function loadSounds() {
     sounds.shieldDown = createAudio('shield_down', 0.5);
     sounds.extraLife = createAudio('extra_life', 0.6);
     sounds.powerupExpire = createAudio('powerup_expire', 0.3);
+    sounds.rapidFirePickup = createAudio('powerup', 0.5); // Reuse or use specific sound
+    sounds.invinciblePickup = createAudio('shield_up', 0.5); // Reuse or use specific sound
     console.log("--- Sound Loading Complete ---");
 }
 
