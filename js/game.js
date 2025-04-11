@@ -36,76 +36,74 @@ export class Game {
     this.canvas = document.getElementById(canvasId);
     if (!this.canvas)
       throw new Error(`FATAL: Canvas element ID="${canvasId}" NOT FOUND.`);
+
+    // --- Set fixed dimensions and get context ---
     this.width = width;
     this.height = height;
     this.canvas.width = this.width;
     this.canvas.height = this.height;
+    this.context = this.canvas.getContext("2d");
+    if (!this.context) throw new Error("FATAL: Failed to get 2D context.");
+    console.log("DEBUG: Constructor - Context obtained.");
 
-    console.log("DEBUG: Constructor - Getting context...");
-    this.context = this.canvas.getContext("2d"); // <<< GET CONTEXT
-    if (!this.context) {
-      // <<< VERIFY CONTEXT
-      throw new Error("FATAL: Failed to get 2D context. Browser issue?");
-    }
-    console.log("DEBUG: Constructor - Context obtained:", this.context); // Log it
+    // --- Initialize properties that DON'T change based on level start ---
+    // These are core settings or base values used elsewhere.
+    this.lastTime = 0; // For deltaTime calculation
+    this.isGameOver = false; // Game state flag
+    this.projectiles = []; // Player bullets/bombs
+    this.enemyProjectiles = []; // Enemy bullets/missiles/mines
+    this.enemies = []; // All active enemies (regular + bosses)
+    this.explosions = []; // Visual effects
+    this.powerUps = []; // Collectible power-ups
+    this.baseEnemyPlaneInterval = 2000; // Base time between regular plane spawns
+    this.baseEnemyShipInterval = 6000; // Base time between regular ship spawns
+    this.boss1HelperPlaneBaseInterval = 1800; // Base time between Boss 1 helper spawns
+    this.boss1HelperPlaneRandomInterval = 600; // Random variance for Boss 1 helpers
+    this.powerUpDropChance = 0.1; // Base chance for enemy to drop power-up on death
+    // Default intervals for timed power-ups during boss fights
+    this.defaultBossPowerUpBaseInterval = 15000;
+    this.defaultBossPowerUpRandomInterval = 5000;
+    // Specific intervals for Boss 2 timed power-ups
+    this.boss2PowerUpBaseInterval = 9000;
+    this.boss2PowerUpRandomInterval = 3000;
+    // Score thresholds to trigger bosses
+    this.BOSS1_SCORE_THRESHOLD = 800;
+    this.BOSS2_SCORE_THRESHOLD = 5000;
+    this.BOSS3_SCORE_THRESHOLD = 9500;
 
-    // --- Initialize properties AFTER context is verified ---
-    this.lastTime = 0;
-
-    this.isGameOver = false;
-
-    this.projectiles = [];
-    this.enemyProjectiles = [];
-    this.enemies = [];
-    this.explosions = [];
-    this.powerUps = [];
-
+    // --- Initialize properties that WILL BE OVERWRITTEN by initializeLevel ---
+    // Set safe defaults here, but initializeLevel is the source of truth at game start/restart.
     this.score = 0;
-
     this.difficultyLevel = 0;
-
     this.scoreForNextLevel = 300;
-
-    this.baseEnemyPlaneInterval = 2000;
-    this.baseEnemyShipInterval = 6000;
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
-
-    // --- NEW: Timer/Interval for Boss 1 Helper Planes ---
     this.boss1HelperPlaneTimer = 0;
-    this.boss1HelperPlaneBaseInterval = 1800; // How often helpers spawn (adjust as needed)
-    this.boss1HelperPlaneRandomInterval = 600; // Random variance
-
-    this.powerUpDropChance = 0.1;
-
     this.bossActive = false;
     this.currentBoss = null;
     this.boss1Defeated = false;
     this.boss2Defeated = false;
     this.boss3Defeated = false;
-    this.BOSS1_SCORE_THRESHOLD = 800;
-    this.BOSS2_SCORE_THRESHOLD = 5000;
-    this.BOSS3_SCORE_THRESHOLD = 9500;
-
     this.bossPowerUpTimer = 0;
-    this.bossPowerUpBaseInterval = 15000; // Base 15 seconds
-    this.bossPowerUpRandomInterval = 5000; // Add up to 5s random
+    // Initialize boss powerup interval using defaults (spawnBoss will set correctly later)
     this.bossPowerUpInterval =
-      this.bossPowerUpBaseInterval +
-      Math.random() * this.bossPowerUpRandomInterval; // Initial interval
+      this.defaultBossPowerUpBaseInterval +
+      Math.random() * this.defaultBossPowerUpRandomInterval;
 
-    // Initialize core components AFTER context verification
+    // --- Initialize Core Components ---
+    // These need the 'this' (game instance) reference but their specific state
+    // (like player lives) will be managed by initializeLevel/reset methods.
     try {
       this.input = new InputHandler(this);
       this.background = new Background(this.width, this.height);
-      this.background.game = this; // Give background access
-      this.player = new Player(this);
+      this.background.game = this; // Give background access to game instance
+      this.player = new Player(this); // Player reads its own defaults first
     } catch (error) {
-      console.error("Error initializing components:", error);
-      throw error;
+      console.error("Error initializing core components:", error);
+      throw error; // Stop if core components fail
     }
 
-    // UI Elements
+    // --- Get UI Elements ---
     this.scoreElement = document.getElementById("score");
     this.livesElement = document.getElementById("lives");
     this.difficultyElement = document.getElementById("difficulty-level");
@@ -113,16 +111,18 @@ export class Game {
     this.gameOverElement = document.getElementById("game-over");
     this.restartButton = document.getElementById("restartButton");
 
-    // Event Listeners
+    // --- Setup Event Listeners ---
     if (this.restartButton) {
+      // Use bind to ensure 'this' refers to the Game instance inside the handler
       this.restartButton.addEventListener("click", this.restart.bind(this));
     } else {
       console.error("Restart button not found!");
     }
 
     console.log("Game Constructor: Finished successfully.");
-    this.updateUI(); // Initial UI setup
-  }
+    // NOTE: updateUI() is NOT called here anymore.
+    // It's called by initializeLevel (which is called by start/restart).
+  } // End Constructor
 
   // --- Main Game Loop ---
   loop(timestamp) {
@@ -807,69 +807,6 @@ export class Game {
     }
   }
 
-  restart() {
-    console.log("--- Restarting Game ---");
-
-    this.bossPowerUpTimer = 0;
-    this.boss1HelperPlaneTimer = 0; // Ensure helper timer is reset
-
-    if (this.currentBoss instanceof Boss2) {
-      this.currentBoss.hasSummonedShipWave1 = false;
-      this.currentBoss.hasSummonedShipWave2 = false;
-    }
-
-    try {
-      // 1. Reset Player
-      if (this.player) {
-        this.player.reset();
-      } else {
-        console.error("Restart Error: Player object missing!");
-        return;
-      } // Stop if player missing
-
-      // 2. Clear Game Object Arrays
-      this.projectiles = [];
-      this.enemyProjectiles = [];
-      this.enemies = [];
-      this.explosions = [];
-      this.powerUps = [];
-      // console.log("DEBUG: RESTART - Arrays cleared.");
-
-      // 3. Reset Game State Variables
-      this.score = 0;
-      this.difficultyLevel = 0;
-      this.scoreForNextLevel = 300;
-      this.isGameOver = false; // CRITICAL: Allow loop to run again
-      this.lastTime = 0; // Reset time for accurate delta on first frame
-
-      // 4. Reset Boss State
-      this.bossActive = false;
-      this.currentBoss = null;
-      this.boss1Defeated = false;
-      this.boss2Defeated = false;
-      this.boss3Defeated = false;
-
-      // 5. Reset Timers
-      this.enemyPlaneTimer = 0;
-      this.enemyShipTimer = 0;
-      // console.log("DEBUG: RESTART - Timers and lastTime reset.");
-
-      // 6. Reset UI
-      if (this.gameOverElement) this.gameOverElement.style.display = "none"; // Hide game over screen
-      this.updateUI(); // Update score, lives, level displays to initial values
-      // console.log("DEBUG: RESTART - UI updated.");
-
-      // 7. Start the loop again
-      console.log("DEBUG: RESTART - Requesting animation frame.");
-      requestAnimationFrame(this.loop.bind(this));
-    } catch (error) {
-      console.error("ERROR during restart function:", error);
-      // Attempt to force a game over state if restart fails critically
-      this.isGameOver = true;
-      if (this.gameOverElement) this.gameOverElement.style.display = "block"; // Show game over on failure
-    }
-  }
-
   // --- Powerup Creation Method ---
   createPowerUp(x, y) {
     const rand = Math.random();
@@ -941,30 +878,94 @@ export class Game {
     this.context.fillStyle = "rgba(0,0,0,0.5)";
     this.context.fillRect(0, 0, this.width, this.height);
   }
-  start() {
-    console.log("Game Starting...");
 
-    this.bossPowerUpTimer = 0;
-    this.boss1HelperPlaneTimer = 0; // Ensure helper timer is reset
+  // --- >>> NEW Level Initialization Method <<< ---
+  /**
+   * Initializes or resets the game state based on configuration.
+   * @param {object} [config={}] - Configuration object.
+   * @param {number} [config.startScore=0] - The score to start with.
+   * @param {number} [config.startDifficulty=0] - The difficulty level to start at.
+   * @param {number} [config.playerLives=3] - Starting lives for the player.
+   * @param {number[]} [config.defeatedBosses=[]] - Array of boss numbers already defeated (e.g., [1, 2]).
+   * @param {string[]} [config.startWithPowerups=[]] - Array of powerup names ('shield', 'spread', 'bullet', 'bomb', 'rapid', 'invincibility').
+   */
+  initializeLevel(config = {}) {
+    console.log(`--- Initializing Level --- Config:`, JSON.stringify(config));
 
-    // --- Reset Core Game State ---
-    this.isGameOver = false; // Ensure game is not over
-    this.lastTime = 0; // Reset time for delta calculation on first frame
-    this.score = 0; // Set score to meet threshold
-    this.difficultyLevel = 0; // Reset difficulty level
-    this.scoreForNextLevel = 300; // Reset score threshold for next level
-    // --- >>> END INITIAL STATE <<< ---
+    // Default configuration for a normal start (Level 0)
+    const defaults = {
+      startScore: 0,
+      startDifficulty: 0,
+      playerLives: 3, // Default normal lives from Player constructor
+      defeatedBosses: [],
+      startWithPowerups: [],
+    };
+    // Get player's default starting lives if player exists
+    if (this.player) {
+      defaults.playerLives = this.player.initialLives || 3;
+    }
+
+    // Merge provided config with defaults
+    const effectiveConfig = { ...defaults, ...config };
+
+    // --- Reset Core Game State Based on Config ---
+    this.isGameOver = false;
+    this.lastTime = 0;
+    this.score = effectiveConfig.startScore;
+    this.difficultyLevel = effectiveConfig.startDifficulty;
+
+    // Calculate score needed for the *next* level based on starting level
+    this.scoreForNextLevel = 300; // Start calculation from base
+    for (let i = 0; i < this.difficultyLevel; i++) {
+      // This formula should match updateDifficulty exactly
+      this.scoreForNextLevel += 300 + i ** 2 * 50;
+    }
+    console.log(
+      `   Level initialized to ${this.difficultyLevel}, Score ${this.score}, Next Level @ ${this.scoreForNextLevel}`
+    );
 
     // --- Reset Player State ---
-    // Ensure player exists before trying to reset
     if (this.player) {
-      this.player.reset();
+      this.player.initialLives = effectiveConfig.playerLives; // Set desired starting lives
+      this.player.reset(); // Resets to initialLives, clears powerups etc.
+      console.log(`   Player reset with ${this.player.lives} lives.`);
+
+      // Apply starting powerups if any
+      if (effectiveConfig.startWithPowerups.length > 0)
+        console.log(
+          `   Applying starting powerups: ${effectiveConfig.startWithPowerups.join(
+            ", "
+          )}`
+        );
+      effectiveConfig.startWithPowerups.forEach((powerupName) => {
+        switch (powerupName.toLowerCase()) {
+          case "shield":
+            this.player.activateShield();
+            break;
+          case "spread":
+            this.player.activateSpreadShot();
+            break;
+          case "bullet":
+            this.player.activateBulletPowerUp();
+            break;
+          case "bomb":
+            this.player.activateBombPowerUp();
+            break;
+          case "rapid":
+            this.player.activateRapidFire();
+            break;
+          case "invincibility":
+            this.player.activateInvincibilityPowerUp();
+            break;
+          default:
+            console.warn(
+              `   Unknown starting powerup specified: ${powerupName}`
+            );
+        }
+      });
     } else {
-      // This would be a critical error if player wasn't created in constructor
-      console.error("START Error: Player object does not exist!");
-      // You might want to throw an error here to stop execution
-      // throw new Error("Player failed to initialize.");
-      return; // Stop start process if player is missing
+      console.error("INIT LEVEL Error: Player object does not exist!");
+      return;
     }
 
     // --- Clear Dynamic Object Arrays ---
@@ -977,24 +978,68 @@ export class Game {
     // --- Reset Spawning Timers ---
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
+    this.boss1HelperPlaneTimer = 0;
+    this.bossPowerUpTimer = 0;
+    // Reset boss powerup interval to default (spawnBoss will override if needed)
+    this.bossPowerUpInterval =
+      this.defaultBossPowerUpBaseInterval +
+      Math.random() * this.defaultBossPowerUpRandomInterval;
 
-    // --- Reset Boss State ---
+    // --- Reset Boss State Based on Config ---
     this.bossActive = false;
     this.currentBoss = null;
-    this.boss1Defeated = false;
-    this.boss2Defeated = false;
-    this.boss3Defeated = false;
+    this.boss1Defeated = effectiveConfig.defeatedBosses.includes(1);
+    this.boss2Defeated = effectiveConfig.defeatedBosses.includes(2);
+    this.boss3Defeated = effectiveConfig.defeatedBosses.includes(3);
+    console.log(
+      `   Boss Defeated Flags Set: B1=${this.boss1Defeated}, B2=${this.boss2Defeated}, B3=${this.boss3Defeated}`
+    );
 
-    // --- Update UI to Initial Values ---
-    this.updateUI(); // Calls all individual UI update methods
+    // --- Update UI to reflect initial state ---
+    this.updateUI();
 
-    // --- Hide Game Over Screen (just in case it was somehow visible) ---
+    // --- Hide Game Over Screen ---
     if (this.gameOverElement) {
       this.gameOverElement.style.display = "none";
     }
 
-    // --- Start the Main Game Loop ---
+    console.log("--- Level Initialization Complete ---");
+  }
+  // --- >>> END initializeLevel Method <<< ---
+
+  // --- Start method calls initializeLevel ---
+  /**
+   * Starts the game with a given configuration.
+   * @param {object} [startConfig={}] - Optional configuration object passed to initializeLevel.
+   */
+  start(startConfig = {}) {
+    console.log("Game Starting...");
+    this.initializeLevel(startConfig); // Initialize with config (or defaults if empty)
+    // Start the Main Game Loop
     console.log("DEBUG: START - Requesting first animation frame.");
-    requestAnimationFrame(this.loop.bind(this));
+    if (!this.isGameOver) {
+      // Only request frame if not already ended by init error
+      requestAnimationFrame(this.loop.bind(this));
+    }
   } // End of start method
-} // End of loop
+
+  // --- Restart method calls initializeLevel with defaults ---
+  /**
+   * Restarts the game from the beginning (Level 0, Score 0).
+   */
+  restart() {
+    console.log("--- Restarting Game (using default config) ---");
+    // Always reset to default state on restart button press
+    this.initializeLevel({}); // Pass empty config to use defaults
+    // Start the loop again if it wasn't running
+    if (!this.isGameOver) {
+      // Double check needed? Loop should have stopped.
+      requestAnimationFrame(this.loop.bind(this));
+    } else {
+      console.warn(
+        "Restart called but game loop wasn't stopped? Requesting frame anyway."
+      );
+      requestAnimationFrame(this.loop.bind(this)); // Force start if needed
+    }
+  }
+}
