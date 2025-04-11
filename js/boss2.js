@@ -1,166 +1,214 @@
-// js/boss2.js
 import { Enemy } from "./enemy.js";
 import { EnemyBullet } from "./enemyBullet.js";
 import { TrackingMissile } from "./trackingMissile.js";
 import { playSound } from "./audio.js";
 import { Bomb } from "./bomb.js"; // Needed for hit detection type check
 import { Explosion } from "./explosion.js"; // For defeat effect
+import { randomInt, lerp } from "./utils.js"; // Make sure randomInt is imported
 
 export class Boss2 extends Enemy {
   constructor(game) {
-    super(game); // Call base Enemy constructor
-    this.id = "boss_2_vulcan";
-    this.enemyType = "air"; // Important for explosion type on death
+    super(game);
+    this.id = "boss_2_vulcan_lerp"; // Update version ID
+    this.enemyType = "air";
 
-    // --- Boss Specific Stats ---
-    this.width = 280; // Wider than tall for delta wing
+    // --- Boss Stats ---
+    // ... (width, height, health, score, colors - no change) ...
+    this.width = 280;
     this.height = 100;
-    this.maxHealth = 350; // More health than Boss1? Adjust as needed
+    this.maxHealth = 400;
     this.health = this.maxHealth;
-    this.scoreValue = 3500; // Significant score reward
+    this.scoreValue = 3500;
+    this.color = "#404040";
+    this.detailColor = "#A0A0A0";
+    this.cockpitColor = "#00BFFF";
 
-    // Appearance
-    this.color = "#404040"; // Dark grey main body
-    this.detailColor = "#A0A0A0"; // Lighter grey for details/engines
-    this.cockpitColor = "#00BFFF"; // Deep sky blue
+    // --- Movement Parameters ---
+    this.amplitudeX = (game.width - this.width - 40) / 2;
+    this.frequencyX = 0.009; // Keep faster frequency
+    this.angleX = Math.random() * Math.PI * 2;
+    this.baseX = game.width / 2 - this.width / 2;
 
-    // --- Movement: Combined Sine Waves & Boundaries ---
-    // Horizontal Sine Wave
-    this.amplitudeX = (game.width - this.width - 40) / 2; // Max horizontal travel range
-    this.frequencyX = 0.007; // Slow horizontal sweep
-    this.angleX = Math.PI / 2; // Start near center horizontally
-    this.baseX = game.width / 2 - this.width / 2; // Center point for horizontal wave
+    this.amplitudeY = 90;
+    this.frequencyY = 0.013; // Keep faster frequency
+    this.angleY = Math.random() * Math.PI * 2;
+    this.normalBaseY = game.height * 0.25 - this.height / 2;
+    this.dipTargetBaseY = this.game.height * 0.5;
+    this.baseY = this.normalBaseY; // Current base Y (will be lerped)
+    this.targetBaseY = this.normalBaseY; // <<< NEW: The base Y we are moving towards
 
-    // Vertical Sine Wave
-    this.amplitudeY = 80; // Vertical movement range
-    this.frequencyY = 0.011; // Slightly faster vertical bob
-    this.angleY = 0;
-    this.baseY = game.height * 0.25 - this.height / 2; // Center point for vertical wave (upper part of screen)
+    // --- Dipping State ---
+    this.isDipping = false;
+    this.dipTimer = 0;
+    this.dipDuration = 3500;
+    this.dipCooldownTimer = randomInt(10000, 16000);
+    this.dipCooldownBase = 13000;
+    this.dipCooldownRandom = 5000;
 
-    // Initial Position (calculate based on angles 0)
+    // --- >>> NEW: Lerp Speed <<< ---
+    // How quickly the boss moves towards its target position each frame (0 to 1)
+    // Smaller values = smoother/slower response; Larger values = snappier/jerkier
+    this.positionLerpSpeed = 0.08; // Adjust this value (try 0.05 to 0.15)
+    this.baseYLerpSpeed = 0.05; // How quickly the base Y changes during dips
+    // --- >>> END Lerp Speed <<< ---
+
+    // Absolute Boundaries for the Boss sprite itself
+    this.minX = 10;
+    this.maxX = this.game.width - this.width - 10;
+    this.minY = 10;
+    this.maxY = this.game.height - this.height - 85;
+
+    // Initial position - set directly for the first frame
     this.x = this.baseX + Math.sin(this.angleX) * this.amplitudeX;
     this.y = this.baseY + Math.sin(this.angleY) * this.amplitudeY;
 
-    // Screen Boundaries (redundant check in update is safer)
-    this.minX = 20;
-    this.maxX = this.game.width - this.width - 20;
-    this.minY = 20;
-    this.maxY = this.game.height * 0.6 - this.height; // Keep it in the upper ~60%
-
-    // --- Attack Patterns & Timers ---
-    // Bullet Cannons
-    this.bulletTimer = 2000 + Math.random() * 1000; // Initial delay
-    this.bulletInterval = 1500; // Time between bullet bursts
-
-    // Missile Launchers
-    this.missileTimer = 6000 + Math.random() * 2000;
-    this.missileInterval = 5500; // Less frequent than bullets
-
-    // Bombing Run
-    this.bombRunTimer = 10000 + Math.random() * 3000;
-    this.bombRunInterval = 10000; // Long cooldown
+    // --- Attack Timers & Powerups (No change from previous version) ---
+    this.bulletTimer = 2000 + Math.random() * 1000;
+    this.bulletInterval = 1500;
+    this.missileTimer = 5000 + Math.random() * 1500;
+    this.missileInterval = 5500;
+    this.bombRunTimer = 8000 + Math.random() * 2000;
+    this.bombRunInterval = 10000;
     this.isBombing = false;
     this.bombDropCount = 0;
-    this.maxBombsInRun = 10; // How many bombs per run
-    this.bombDropDelay = 110; // ms between each bomb in a run
-    this.bombDropTimer = 0; // Timer for within a run
-
-    // --- Power-up Spawning --- (Similar to Game.js logic during boss)
+    this.maxBombsInRun = 10;
+    this.bombDropDelay = 110;
+    this.bombDropTimer = 0;
     this.powerUpTimer = 0;
-    this.powerUpBaseInterval = 12000; // Base interval (ms)
-    this.powerUpRandomInterval = 4000; // Random addition (ms)
-    this.powerUpInterval = this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval; // Initial interval
+    this.powerUpBaseInterval = 8000;
+    this.powerUpRandomInterval = 3000;
+    this.powerUpInterval =
+      this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval;
 
-    console.log(`Boss2 Created (Vulcan) at (${this.x.toFixed(0)}, ${this.y.toFixed(0)}). Health: ${this.health}`);
+    console.log(
+      `Boss2 Created (${this.id}) - Lerped Movement. Frequencies X=${this.frequencyX}, Y=${this.frequencyY}`
+    );
   }
 
   update(deltaTime) {
-    // Only update if not marked for deletion
     if (this.markedForDeletion) return;
 
     const safeDeltaTime = Math.max(0.1, deltaTime);
-    const deltaScale = safeDeltaTime / 16.67;
+    // Note: We won't use deltaScale directly for lerp amount here,
+    // as lerp amount is usually independent of frame rate (it's a fraction per frame).
+    // We could make it frame-rate independent, but let's start simple.
 
-    // --- Movement ---
-    // Update angles
-    this.angleX += this.frequencyX * deltaScale;
-    this.angleY += this.frequencyY * deltaScale;
+    // --- Dipping Logic (Sets the TARGET base Y) ---
+    if (this.isDipping) {
+      this.dipTimer -= safeDeltaTime;
+      if (this.dipTimer <= 0) {
+        console.log("Boss 2: Dip finished, returning to normal altitude.");
+        this.isDipping = false;
+        this.targetBaseY = this.normalBaseY; // Set target back to normal
+        this.dipCooldownTimer =
+          this.dipCooldownBase + Math.random() * this.dipCooldownRandom;
+      }
+      // else: targetBaseY remains low
+    } else {
+      this.dipCooldownTimer -= safeDeltaTime;
+      if (this.dipCooldownTimer <= 0 && !this.isBombing) {
+        console.log("Boss 2: Starting dip!");
+        this.isDipping = true;
+        this.targetBaseY = this.dipTargetBaseY; // Set target low
+        this.dipTimer = this.dipDuration;
+      }
+      // else: targetBaseY remains normal
+    }
+    // --- Smoothly move current baseY towards targetBaseY ---
+    this.baseY = lerp(this.baseY, this.targetBaseY, this.baseYLerpSpeed);
+    // --- End Dipping Logic ---
 
-    // Calculate target position based on sine waves
-    let targetX = this.baseX + Math.sin(this.angleX) * this.amplitudeX;
-    let targetY = this.baseY + Math.sin(this.angleY) * this.amplitudeY;
+    // --- Calculate Target Position based on Sine Waves ---
+    this.angleX += this.frequencyX * (safeDeltaTime / 16.67); // Scale angle change by delta
+    this.angleY += this.frequencyY * (safeDeltaTime / 16.67); // Scale angle change by delta
+    let targetX_calculated =
+      this.baseX + Math.sin(this.angleX) * this.amplitudeX;
+    let targetY_calculated =
+      this.baseY + Math.sin(this.angleY) * this.amplitudeY;
 
-    // Apply Screen Boundaries
-    this.x = Math.max(this.minX, Math.min(this.maxX, targetX));
-    this.y = Math.max(this.minY, Math.min(this.maxY, targetY));
+    // --- Apply Absolute Screen Boundaries to the TARGET position ---
+    // Clamp the calculated target before lerping towards it
+    let targetX_clamped = Math.max(
+      this.minX,
+      Math.min(this.maxX, targetX_calculated)
+    );
+    let targetY_clamped = Math.max(
+      this.minY,
+      Math.min(this.maxY, targetY_calculated)
+    );
 
-    // --- Attack Logic ---
-    // Update Attack Timers (Count down)
+    // --- >>> Apply Lerp to Actual Position <<< ---
+    // Move current position (this.x, this.y) towards the clamped target position
+    this.x = lerp(this.x, targetX_clamped, this.positionLerpSpeed);
+    this.y = lerp(this.y, targetY_clamped, this.positionLerpSpeed);
+    // --- >>> END Lerp Application <<< ---
+
+    // --- Attack Logic (No changes needed here, uses existing intervals) ---
+    let currentBulletInterval = this.bulletInterval;
+    let currentMissileInterval = this.missileInterval;
+    let currentBombRunInterval = this.bombRunInterval;
     this.bulletTimer -= safeDeltaTime;
     this.missileTimer -= safeDeltaTime;
     this.bombRunTimer -= safeDeltaTime;
 
-    // Trigger Attacks (only if NOT currently bombing)
     if (!this.isBombing) {
       if (this.bulletTimer <= 0) {
         this.fireBullets();
-        this.bulletTimer = this.bulletInterval + Math.random() * 300 - 150; // Smaller random range
+        this.bulletTimer = currentBulletInterval + Math.random() * 300 - 150;
       }
       if (this.missileTimer <= 0) {
         this.fireMissile();
-        this.missileTimer = this.missileInterval + Math.random() * 1000 - 500;
+        this.missileTimer = currentMissileInterval + Math.random() * 800 - 400;
       }
       if (this.bombRunTimer <= 0) {
         this.startBombingRun();
-        // Reset bomb run timer AFTER the run completes (in bombing logic below)
       }
     }
-
-    // --- Bombing Run State Machine ---
+    // Bombing Run State Machine
     if (this.isBombing) {
       this.bombDropTimer -= safeDeltaTime;
       if (this.bombDropTimer <= 0 && this.bombDropCount < this.maxBombsInRun) {
         this.dropSingleBomb();
         this.bombDropCount++;
-        this.bombDropTimer = this.bombDropDelay; // Reset delay for next bomb
+        this.bombDropTimer = this.bombDropDelay;
       }
-
-      // Check if bombing run finished
       if (this.bombDropCount >= this.maxBombsInRun) {
         this.isBombing = false;
-        this.bombRunTimer = this.bombRunInterval + Math.random() * 2000 - 1000; // Reset main bomb cooldown
+        this.bombRunTimer =
+          currentBombRunInterval + Math.random() * 2000 - 1000;
         console.log("Boss2: Bombing run complete.");
       }
     }
 
-    // --- Power-up Spawning Timer ---
+    // --- Power-up Spawning Timer (Uses updated shorter intervals) ---
     this.powerUpTimer += safeDeltaTime;
     if (this.powerUpTimer >= this.powerUpInterval) {
-      this.powerUpTimer -= this.powerUpInterval; // More accurate reset
-      this.powerUpInterval = this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval; // Reset next interval
-
-      // Spawn power-up slightly below the boss
-      const spawnX = this.x + this.width / 2 + (Math.random() - 0.5) * this.width * 0.5;
-      const spawnY = this.y + this.height + 30; // Below the boss
-      console.log("Boss2 Spawning timed power-up");
+      this.powerUpTimer -= this.powerUpInterval; // Use subtraction reset
+      this.powerUpInterval =
+        this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval; // Recalculate next interval
+      const spawnX =
+        this.x + this.width / 2 + (Math.random() - 0.5) * this.width * 0.5;
+      const spawnY = this.y + this.height + 30;
+      console.log("Boss2 Spawning timed power-up (more frequent)");
       this.game.createPowerUp(spawnX, spawnY);
     }
 
-    // --- Hit Flash Update ---
+    // Hit Flash Update
     if (this.isHit) {
       this.hitTimer -= safeDeltaTime;
-      if (this.hitTimer <= 0) {
-        this.isHit = false;
-      }
+      if (this.hitTimer <= 0) this.isHit = false;
     }
-  } // End Boss2 update
+  }
 
   // Inside js/boss2.js -> Boss2 class
 
   hit(projectile) {
     // --- ADD TYPE CHECK AT THE VERY BEGINNING ---
     if (typeof projectile !== "object" || projectile === null) {
-      console.error(`Boss2.hit received invalid projectile type: ${typeof projectile}`, projectile);
+      console.error(
+        `Boss2.hit received invalid projectile type: ${typeof projectile}`,
+        projectile
+      );
       return; // Exit early, do not process invalid input
     }
     // --- Check if projectile is already marked (might happen in complex collisions) ---
@@ -176,7 +224,8 @@ export class Boss2 extends Enemy {
     // --- Now proceed, assuming projectile is a valid object ---
     const projectileType = projectile instanceof Bomb ? "bomb" : "bullet";
     // Ensure damage exists on the projectile object, default to 1 if not
-    const damage = (projectile.damage || 1) * (projectileType === "bomb" ? 1.5 : 1);
+    const damage =
+      (projectile.damage || 1) * (projectileType === "bomb" ? 1.5 : 1);
 
     // Apply damage
     this.health -= damage;
@@ -217,7 +266,9 @@ export class Boss2 extends Enemy {
       const speedY = bulletSpeedY + Math.random() * 0.5; // Slightly variable downward speed
       // --- END VARIANCE ---
 
-      this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletY, spreadSpeedX, speedY)); // Use new speeds
+      this.game.addEnemyProjectile(
+        new EnemyBullet(this.game, bulletX, bulletY, spreadSpeedX, speedY)
+      ); // Use new speeds
     }
   }
 
@@ -226,7 +277,9 @@ export class Boss2 extends Enemy {
     // Fire from center front?
     const missileX = this.x + this.width / 2 - 6; // Center X, adjust for missile width
     const missileY = this.y + this.height * 0.5; // Mid-height
-    this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX, missileY));
+    this.game.addEnemyProjectile(
+      new TrackingMissile(this.game, missileX, missileY)
+    );
 
     // --- ADD CHANCE FOR SECOND MISSILE ---
     // Only fire a second one if health is below, say, 75%? Or just random chance?
@@ -237,9 +290,12 @@ export class Boss2 extends Enemy {
         // Check if boss/game still valid when timeout fires
         if (!this.markedForDeletion && !this.game.isGameOver) {
           console.log("Boss2 firing second missile!");
-          const missileX2 = this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -20 : 20); // Slight H offset
+          const missileX2 =
+            this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -20 : 20); // Slight H offset
           const missileY2 = this.y + this.height * 0.5;
-          this.game.addEnemyProjectile(new TrackingMissile(this.game, missileX2, missileY2));
+          this.game.addEnemyProjectile(
+            new TrackingMissile(this.game, missileX2, missileY2)
+          );
         }
       }, 300); // 300ms delay
     }
@@ -327,8 +383,18 @@ export class Boss2 extends Enemy {
 
     // Engine Intakes (simplified)
     context.fillStyle = currentDetailColor;
-    context.fillRect(this.x + this.width * 0.3, this.y + this.height * 0.2, this.width * 0.15, this.height * 0.4);
-    context.fillRect(this.x + this.width * 0.55, this.y + this.height * 0.2, this.width * 0.15, this.height * 0.4);
+    context.fillRect(
+      this.x + this.width * 0.3,
+      this.y + this.height * 0.2,
+      this.width * 0.15,
+      this.height * 0.4
+    );
+    context.fillRect(
+      this.x + this.width * 0.55,
+      this.y + this.height * 0.2,
+      this.width * 0.15,
+      this.height * 0.4
+    );
 
     // Tail Fin (vertical stabilizer)
     context.fillStyle = currentBodyColor; // Same as body

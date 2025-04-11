@@ -844,7 +844,7 @@ export class Game {
     // --- Reset Core Game State ---
     this.isGameOver = false; // Ensure game is not over
     this.lastTime = 0; // Reset time for delta calculation on first frame
-    this.score = 0; // Reset score
+    this.score =this.BOSS2_SCORE_THRESHOLD - 1; // Set score to meet threshold
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
 
@@ -874,7 +874,7 @@ export class Game {
     // --- Reset Boss State ---
     this.bossActive = false;
     this.currentBoss = null;
-    this.boss1Defeated = false;
+    this.boss1Defeated = true; //PASAR A FALSE
     this.boss2Defeated = false;
     this.boss3Defeated = false;
 
