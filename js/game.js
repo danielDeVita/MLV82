@@ -954,13 +954,6 @@ export class Game {
     this.difficultyLevel = 0; // Reset difficulty level
     this.scoreForNextLevel = 300; // Reset score threshold for next level
 
-    // --- >>> SET INITIAL STATE FOR LATER GAME <<< ---
-    this.score = 6000; // Example: Start with score 1500
-    this.difficultyLevel = 3; // Example: Start at difficulty level 3
-    this.scoreForNextLevel = 1900; // Threshold for level 4 (calculated from level 3 base)
-    console.warn(
-      `!!! STARTING AT HIGH SCORE/DIFFICULTY (Score: ${this.score}, Level: ${this.difficultyLevel}) !!!`
-    );
     // --- >>> END INITIAL STATE <<< ---
 
     // --- Reset Player State ---
