@@ -17,13 +17,15 @@ export class EnemyBeamShip extends EnemyShip {
     this.deckColor = "#778899";
     this.detailColor = "#FF00FF";
 
+    this.speedX *= 0.85; // Example: 15% slower than default EnemyShip
+
     // Beam Attack State & Timers
     this.beamState = "COOLDOWN";
     this.beamChargeTime = 1500;
     this.beamFireTime = 1800; // Shorter fire time?
-    this.beamCooldownTime = 6000 + Math.random() * 2000;
-    this.beamTimer =
-      this.beamCooldownTime / 2 + Math.random() * (this.beamCooldownTime / 2);
+    this.beamCooldownTime = 4500 + Math.random() * 1500; // Shorter range: 4.5s - 6s (was 5.5s - 7.5s)
+    // Start with maybe 1/3 to 2/3 of cooldown remaining?
+    this.beamTimer = this.beamCooldownTime * (0.33 + Math.random() * 0.33);
 
     // Beam Visual Properties
     this.beamWidth = 12;
