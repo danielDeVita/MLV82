@@ -3,8 +3,9 @@ import { PowerUp } from "./powerUp.js";
 import { playSound } from "./audio.js";
 
 export class PowerUpInvincibility extends PowerUp {
-  constructor(game, x, y) {
-    super(game, x, y); // Call base constructor
+  constructor(game, x, y, originType = "air") {
+    // <<< Pass originType to super() >>>
+    super(game, x, y, originType);
     // Override properties
     this.type = "invincibility";
     this.color = "gold"; // Choose a distinct color

@@ -3,8 +3,9 @@ import { PowerUp } from "./powerUp.js";
 import { playSound } from "./audio.js";
 
 export class PowerUpSuperBomb extends PowerUp {
-  constructor(game, x, y) {
-    super(game, x, y);
+  constructor(game, x, y, originType = "air") {
+    // <<< Pass originType to super() >>>
+    super(game, x, y, originType);
     this.type = "superBomb";
     this.color = "#FFD700"; // Gold color for super bomb
     this.letter = "S"; // 'S' for Super? Or keep 'B' but different color? Let's use S.

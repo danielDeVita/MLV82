@@ -10,6 +10,7 @@ export class Enemy {
     this.height = 30; // Default size
     this.speedX = Math.random() * 2 + 1;
     this.markedForDeletion = false;
+    this.enemyType = "air";
     this.health = 1;
     this.scoreValue = 10;
     this.color = "grey";
@@ -47,7 +48,10 @@ export class Enemy {
       context.fillStyle = "red"; // Background of health bar
       context.fillRect(this.x, barY, this.width, barHeight);
       context.fillStyle = "green"; // Foreground (current health)
-      const currentHealthWidth = Math.max(0, this.width * (this.health / this.maxHealth));
+      const currentHealthWidth = Math.max(
+        0,
+        this.width * (this.health / this.maxHealth)
+      );
 
       // Optional Log for debugging health bar display issues
       // console.log(`DEBUG HealthBar (Base Enemy Draw - ${this.constructor.name} ID=${this.id}): H=${this.health}, Max=${this.maxHealth}, W=${currentHealthWidth.toFixed(1)}`);
@@ -67,6 +71,8 @@ export class Enemy {
   }
 
   hit(damage, projectileType = "bullet") {
+    if (this.markedForDeletion) return; // Prevent multiple hits triggering drops
+
     // console.log(`DEBUG BASE Enemy Hit: Called on ${this.constructor.name}, Damage=${damage}, CurrentHealth=${this.health}, Type='${projectileType}'`);
     this.isHit = true;
     this.hitTimer = this.hitDuration;
@@ -77,9 +83,26 @@ export class Enemy {
       // console.log(`DEBUG BASE Enemy Hit: Health <= 0! Marking for deletion. ID=${this.id}`);
       this.markedForDeletion = true;
       this.game.addScore(this.scoreValue);
-      this.game.createExplosion(this.x + this.width / 2, this.y + this.height / 2, this.enemyType || "air");
+
+      // --- >>> Determine Origin Type <<< ---
+      // Default to 'air' if enemyType is missing or unknown
+      const dropOriginType = this.enemyType === "ship" ? "ship" : "air";
+      // --- >>> END Determine Origin Type <<< ---
+
+      this.game.createExplosion(
+        this.x + this.width / 2,
+        this.y + this.height / 2,
+        this.enemyType || "air"
+      );
       if (Math.random() < this.game.powerUpDropChance) {
-        this.game.createPowerUp(this.x + this.width / 2, this.y + this.height / 2);
+        console.log(
+          `Enemy ${this.id} type ${this.enemyType} dropping powerup.`
+        );
+        this.game.createPowerUp(
+          this.x + this.width / 2,
+          this.y + this.height / 2,
+          dropOriginType
+        );
       }
     } // else if (this.health > 0) { console.log(`DEBUG BASE Enemy Hit: Health > 0. Enemy survives.`); }
     // else if (this.markedForDeletion) { console.log(`DEBUG BASE Enemy Hit: Health <= 0 but already marked.`); }

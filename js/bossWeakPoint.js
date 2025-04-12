@@ -1,5 +1,14 @@
 export class BossWeakPoint {
-  constructor(boss, offsetX, offsetY, width, height, maxHealth, type = "turret", index = -1) {
+  constructor(
+    boss,
+    offsetX,
+    offsetY,
+    width,
+    height,
+    maxHealth,
+    type = "turret",
+    index = -1
+  ) {
     // Added index default
     this.boss = boss;
     this.game = boss.game;
@@ -34,18 +43,26 @@ export class BossWeakPoint {
       if (this.type === "controlTower") {
         // Log Tower's position calculation
         console.log(
-          `UPDATE_POS Tower: bossXY=(${this.boss.x?.toFixed(0)},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
+          `UPDATE_POS Tower: bossXY=(${this.boss.x?.toFixed(
             0
-          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(0)},${this.y?.toFixed(0)})`
+          )},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
+            0
+          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(
+            0
+          )},${this.y?.toFixed(0)})`
         );
       }
       // Identify Center AA gun by its unique RELATIVE Y offset (baseOffsetY - 15 => 30 - 15 = 15)
       else if (this.type === "aaGun" && Math.abs(this.offsetY - 15) < 1) {
         // Log Center AA Gun's position calculation
         console.log(
-          `UPDATE_POS CenterAA: bossXY=(${this.boss.x?.toFixed(0)},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
+          `UPDATE_POS CenterAA: bossXY=(${this.boss.x?.toFixed(
             0
-          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(0)},${this.y?.toFixed(0)})`
+          )},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
+            0
+          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(
+            0
+          )},${this.y?.toFixed(0)})`
         );
       }
     } catch (e) {
@@ -76,7 +93,11 @@ export class BossWeakPoint {
     }
 
     // --- Log Damage Received ---
-    console.log(`   -> WP ${this.type} hit() received damage: ${damage.toFixed(1)}. Current health: ${this.health.toFixed(1)}`);
+    console.log(
+      `   -> WP ${this.type} hit() received damage: ${damage.toFixed(
+        1
+      )}. Current health: ${this.health.toFixed(1)}`
+    );
     this.health -= damage;
     console.log(`   -> WP ${this.type} new health: ${this.health.toFixed(1)}`);
 
@@ -92,17 +113,70 @@ export class BossWeakPoint {
   }
 
   destroy() {
-    if (!this.isActive) return;
+    if (!this.isActive) {
+      console.warn(
+        `Attempted to destroy already inactive weak point: ${this.type} (Index: ${this.index})`
+      ); // Add Warning
+      return;
+    }
+
     this.isActive = false;
     this.health = 0;
     console.log(`WeakPoint ${this.type} (Index: ${this.index}) DESTROYED!`);
-    this.game.createExplosion(this.x + this.width / 2, this.y + this.height / 2, "air");
-    // Notify the boss, passing type and index
-    this.boss.weakPointDestroyed(this.type, this.index); // Pass index too
+
+    // --- LOG 2: Confirm boss notification is called ---
+    console.log(
+      `   -> Notifying Boss1 via weakPointDestroyed(${this.type}, ${this.index})`
+    );
+    // Ensure 'this.boss' is valid and the method exists before calling
+    if (this.boss && typeof this.boss.weakPointDestroyed === "function") {
+      this.boss.weakPointDestroyed(this.type, this.index); // Pass index too
+    } else {
+      // Use 'air' explosion for most destructible parts, maybe 'ship'/'ground' for specific types?
+      const explosionType =
+        this.type === "hangar" || this.type === "radar" ? "ground" : "air";
+
+      this.game.createExplosion(
+        this.x + this.width / 2,
+        this.y + this.height / 2,
+        explosionType
+      );
+      if (this.boss && typeof this.boss.weakPointDestroyed === "function") {
+        console.log(
+          `   Notifying boss ${this.boss.id} about destruction of ${this.type}`
+        ); // <<< Add log
+        // Notify the boss, passing type and index
+        this.boss.weakPointDestroyed(this.type, this.index); // Pass index too
+      } else {
+        console.error(
+          `   ERROR: Cannot notify boss! Boss object or method missing. Boss:`,
+          this.boss
+        ); // Add Error log
+      }
+    }
 
     if (Math.random() < 0.75) {
-      this.game.createPowerUp(this.x + this.width / 2, this.y + this.height / 2);
-    }
+      console.log(`Spawning power-up from destroyed weak point ${this.type}`);
+
+      // --- >>> Determine origin based on BOSS's enemyType <<< ---
+      // Treat ground_installation like 'ship' for upward movement
+      const bossOriginType =
+        this.boss.enemyType === "ship" ||
+        this.boss.enemyType === "ground_installation"
+          ? "ship"
+          : "air";
+      // --- >>> END Determine origin <<< ---
+
+      console.log(
+        `   Boss type: ${this.boss.enemyType}, Powerup origin: ${bossOriginType}`
+      );
+      // --- >>> Pass determined originType <<< ---
+      this.game.createPowerUp(
+        this.x + this.width / 2,
+        this.y + this.height / 2,
+        bossOriginType
+      );
+    } // End destroy
   }
 
   // Inside js/bossWeakPoint.js -> draw() method
@@ -126,12 +200,17 @@ export class BossWeakPoint {
       const barY = this.y - 8;
       const barHeight = 4;
       console.log(
-        `  -> HEALTH BAR DRAW for Type: ${this.type}, X: ${this.x?.toFixed(0)}, Y: ${this.y?.toFixed(0)}, Health: ${this.health?.toFixed(1)}`
+        `  -> HEALTH BAR DRAW for Type: ${this.type}, X: ${this.x?.toFixed(
+          0
+        )}, Y: ${this.y?.toFixed(0)}, Health: ${this.health?.toFixed(1)}`
       );
       context.fillStyle = "red";
       context.fillRect(this.x, barY, this.width, barHeight);
       context.fillStyle = "lime";
-      const currentHealthWidth = Math.max(0, this.width * (this.health / this.maxHealth));
+      const currentHealthWidth = Math.max(
+        0,
+        this.width * (this.health / this.maxHealth)
+      );
       context.fillRect(this.x, barY, currentHealthWidth, barHeight);
       context.restore(); // << RESTORE 2
     }

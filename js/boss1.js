@@ -100,39 +100,81 @@ export class Boss1 extends Enemy {
   }
   // --- >>> END REVISED createWeakPoints Method <<< ---
 
-  // Called by BossWeakPoint when destroyed
-  weakPointDestroyed(type) {
-    if (this.markedForDeletion) return;
-    this.activeWeakPoints--;
+  /**
+   * Called by a BossWeakPoint instance when its health reaches zero.
+   * Updates the active weak point count, adjusts difficulty (boosts),
+   * potentially triggers helper spawns, and checks for the win condition.
+   * @param {string} type - The type of the weak point that was destroyed.
+   * @param {number} index - The index of the weak point within the boss's array (passed from BossWeakPoint).
+   */
+  weakPointDestroyed(type, index) {
+    // Ensure 'index' parameter is present if passed from BossWeakPoint
+    // --- LOG 1: Confirm this method is entered ---
     console.log(
-      `Boss weak point ${type} destroyed! ${this.activeWeakPoints} remaining.`
+      `Boss1.weakPointDestroyed CALLED for type: ${type}. Current active count BEFORE decrement: ${this.activeWeakPoints}`
     );
 
-    // Difficulty Scaling Logic (Adjusted for 4 initial points)
-    let boostMultiplier = 1.0;
-    if (this.activeWeakPoints === 3) {
-      boostMultiplier = 0.85;
-      this.attackPhase = 2;
-    } else if (this.activeWeakPoints === 2) {
-      boostMultiplier = 0.7;
-      this.attackPhase = 3;
-      this.game.resetBoss1HelperSpawnTimer();
-    } // Start helpers at 2 left
-    else if (this.activeWeakPoints === 1) {
-      boostMultiplier = 0.55;
-      this.attackPhase = 4;
-    } else if (this.activeWeakPoints <= 0) {
-      boostMultiplier = 1.0;
-      this.attackPhase = 5;
+    // Prevent updates if boss is already defeated and marked
+    if (this.markedForDeletion) {
+      console.log("   (Boss already marked for deletion, ignoring.)");
+      return;
     }
 
-    if (this.attackPhase > 1 && this.attackPhase < 5) {
+    // Decrement the count of active points
+    this.activeWeakPoints--;
+    // --- LOG 2: Check active points count AFTER decrementing ---
+    console.log(
+      `   Active weak points AFTER decrement: ${this.activeWeakPoints}`
+    );
+
+    // --- Difficulty Scaling & Phase Logic ---
+    let boostMultiplier = 1.0; // Default multiplier
+
+    if (this.activeWeakPoints === 3) {
+      // Phase 2
+      boostMultiplier = 0.85;
+      this.attackPhase = 2;
       console.log(
-        `Boss1 Phase ${this.attackPhase} active. Boost: ${boostMultiplier}`
+        `   Phase 2 active (${this.activeWeakPoints} points left). Boost: ${boostMultiplier}`
+      );
+    } else if (this.activeWeakPoints === 2) {
+      // Phase 3 - Start Helpers
+      boostMultiplier = 0.7;
+      this.attackPhase = 3;
+      console.log(
+        `   Phase 3 active (${this.activeWeakPoints} points left). Boost: ${boostMultiplier}`
+      );
+      // --- LOG 3: Check Helper Trigger ---
+      console.log("   >>> Triggering Boss 1 Helper Spawns <<<");
+      // Ensure game reference and method exist before calling
+      if (
+        this.game &&
+        typeof this.game.resetBoss1HelperSpawnTimer === "function"
+      ) {
+        this.game.resetBoss1HelperSpawnTimer();
+      } else {
+        console.error(
+          "   ERROR: Game reference or resetBoss1HelperSpawnTimer method not found!"
+        );
+      }
+    } else if (this.activeWeakPoints === 1) {
+      // Phase 4
+      boostMultiplier = 0.55;
+      this.attackPhase = 4;
+      console.log(
+        `   Phase 4 active (${this.activeWeakPoints} point left). Boost: ${boostMultiplier}`
+      );
+    } else if (this.activeWeakPoints <= 0) {
+      // Phase 5 - Defeated
+      boostMultiplier = 1.0; // Interval doesn't matter much now
+      this.attackPhase = 5;
+      // --- LOG 4: Confirm <= 0 detected for phase ---
+      console.log(
+        "   -> Boss1 activeWeakPoints <= 0 detected for phase logic."
       );
     }
 
-    // Apply boost
+    // Apply boost multiplier to attack intervals based on ORIGINAL values
     this.aimedArtilleryInterval =
       this.originalAimedArtilleryInterval * boostMultiplier;
     this.forwardSpreadInterval =
@@ -140,8 +182,9 @@ export class Boss1 extends Enemy {
     this.rearSpreadInterval = this.originalRearSpreadInterval * boostMultiplier;
     this.missileInterval = this.originalMissileInterval * boostMultiplier;
 
+    // Log the potentially updated intervals
     console.log(
-      `  New Intervals -> AimedArt: ${this.aimedArtilleryInterval.toFixed(
+      `   New Intervals -> AimedArt: ${this.aimedArtilleryInterval.toFixed(
         0
       )}, FwdSpread: ${this.forwardSpreadInterval.toFixed(
         0
@@ -150,12 +193,32 @@ export class Boss1 extends Enemy {
       )}, Mis: ${this.missileInterval.toFixed(0)}`
     );
 
-    // WIN CONDITION
+    // --- >>> WIN CONDITION CHECK <<< ---
+    console.log(
+      `   Checking Win Condition: activeWeakPoints = ${this.activeWeakPoints}`
+    ); // LOG 5
     if (this.activeWeakPoints <= 0) {
-      /* ... defeat logic ... */
-    }
-  }
+      // --- LOG 6: Confirm Win Condition Met ---
+      console.log("   >>> WIN CONDITION MET! Marking boss for deletion. <<<");
 
+      // --- >>> SET THE FLAG <<< ---
+      this.markedForDeletion = true;
+
+      // --- LOG 7: Confirm Flag Value <<< ---
+      console.log(
+        `       -> Boss1 this.markedForDeletion is now: ${this.markedForDeletion}`
+      );
+
+      // --- Trigger Defeat Effects ---
+      this.game.addScore(this.scoreValue);
+      this.triggerDefeatExplosion();
+    } else {
+      // --- LOG 8: Confirm Win Condition NOT Met ---
+      console.log(
+        `   (Win condition not met - ${this.activeWeakPoints} points remain)`
+      );
+    }
+  } // End weakPointDestroyed
   triggerDefeatExplosion() {
     const numExplosions = 12;
     const duration = 1600;

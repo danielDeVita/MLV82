@@ -64,9 +64,11 @@ export class Game {
     this.boss1HelperPlaneBaseInterval = 1800; // Base time between Boss 1 helper spawns
     this.boss1HelperPlaneRandomInterval = 600; // Random variance for Boss 1 helpers
     this.powerUpDropChance = 0.1; // Base chance for enemy to drop power-up on death
+
     // Default intervals for timed power-ups during boss fights
     this.defaultBossPowerUpBaseInterval = 15000;
     this.defaultBossPowerUpRandomInterval = 5000;
+
     // Specific intervals for Boss 2 timed power-ups
     this.boss2PowerUpBaseInterval = 9000;
     this.boss2PowerUpRandomInterval = 3000;
@@ -89,10 +91,12 @@ export class Game {
     this.boss2Defeated = false;
     this.boss3Defeated = false;
     this.bossPowerUpTimer = 0;
-    // Initialize boss powerup interval using defaults (spawnBoss will set correctly later)
+
+    // Initialize using the DEFAULT values. spawnBoss will set the correct one later.
     this.bossPowerUpInterval =
-      this.defaultBossPowerUpBaseInterval +
-      Math.random() * this.defaultBossPowerUpRandomInterval;
+      this.defaultBossPowerUpBaseInterval + // <<< USE DEFAULT HERE
+      Math.random() * this.defaultBossPowerUpRandomInterval; // <<< USE DEFAULT HERE
+    // --- >>> END CORRECTION <<< ---
 
     // --- Initialize Core Components ---
     // These need the 'this' (game instance) reference but their specific state
@@ -176,21 +180,27 @@ export class Game {
         ...this.explosions,
         ...this.powerUps,
       ].forEach((obj) => obj.update(deltaTime));
-
-      if (this.bossActive) {
+      // --- Timed Boss Power-up Spawn ---
+      if (this.bossActive && this.currentBoss) {
         this.bossPowerUpTimer += deltaTime;
         if (this.bossPowerUpTimer >= this.bossPowerUpInterval) {
           this.bossPowerUpTimer = 0; // Use subtraction reset for accuracy: this.bossPowerUpTimer -= this.bossPowerUpInterval;
           this.bossPowerUpInterval =
-            this.bossPowerUpBaseInterval +
+            this.defaultBossPowerUpBaseInterval +
             Math.random() * this.bossPowerUpRandomInterval; // Reset next interval
 
-          const spawnX = Math.random() * (this.width * 0.7) + this.width * 0.1; // Random X, avoid edges
-          const spawnY = 50 + Math.random() * 50; // Spawn near top/mid screen
-          console.log("Spawning timed boss power-up");
-          this.createPowerUp(spawnX, spawnY);
+          const spawnX = Math.random() * (this.width * 0.7) + this.width * 0.1;
+          const spawnY = 50 + Math.random() * 50;
+          console.log(
+            `Spawning timed boss power-up (Next interval: ${this.bossPowerUpInterval.toFixed(
+              0
+            )}ms)`
+          );
+          // --- >>> Pass 'air' as originType <<< ---
+          this.createPowerUp(spawnX, spawnY, "air"); // Assume timed drops float down
         }
       }
+      // --- End Timed Boss Power-up ---
 
       // 3. Spawn / Difficulty / Boss Checks
       this.updateDifficulty();
@@ -341,7 +351,7 @@ export class Game {
       // Reset power-up timer when boss spawns
       this.bossPowerUpTimer = 0;
       this.bossPowerUpInterval =
-        this.bossPowerUpBaseInterval +
+        this.defaultBossPowerUpBaseInterval +
         Math.random() * this.bossPowerUpRandomInterval;
     } else {
       console.error(`Unknown boss number requested: ${bossNumber}`);
@@ -378,7 +388,8 @@ export class Game {
       // Spread them out a bit
       this.createPowerUp(
         this.width / 2 + (i - (numPowerups - 1) / 2) * 80,
-        this.height * 0.6
+        this.height * 0.6,
+        "air"
       );
     }
 
@@ -903,7 +914,7 @@ export class Game {
   }
 
   // --- Powerup Creation Method ---
-  createPowerUp(x, y) {
+  createPowerUp(x, y, originType = "air") {
     const rand = Math.random();
     let PowerUpClass = null; // Use null initially
 
@@ -976,7 +987,7 @@ export class Game {
 
     if (PowerUpClass) {
       console.log(`Spawning PowerUp: ${PowerUpClass.name}`); // Log which type
-      this.powerUps.push(new PowerUpClass(this, x, y));
+      this.powerUps.push(new PowerUpClass(this, x, y, originType));
     } else {
       // console.log("No power-up dropped this time."); // Optional log
     }
