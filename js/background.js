@@ -79,29 +79,35 @@ class BackgroundLayer {
 
 export class Background {
   constructor(gameWidth, gameHeight) {
-    this.game = null; // Will be set via setGame()
+    this.game = null;
     this.gameWidth = gameWidth;
     this.gameHeight = gameHeight;
-    this.baseGameSpeed = 0.5; // Affects star drift
 
-    // --- Color & State Definitions ---
-    // Define the properties for each time of day
+    // --- Color & State Definitions (Adjusted) ---
     this.dayState = {
       sky: "#87CEEB",
       sea: "#1E90FF",
-      sunMoon: "#FFFF00",
+      sunMoon: "#FEFFBF",
       wave: "#FFFFFF",
       starAlpha: 0.0,
       isSun: true,
-    };
-    this.afternoonState = {
-      sky: "#FFB347",
-      sea: "#4682B4",
-      sunMoon: "#FFA500",
-      wave: "#DDDDDD",
+    }; // Slightly pale yellow sun
+    this.sunsetState = {
+      sky: "#E17000",
+      sea: "#336699",
+      sunMoon: "#FF8C00",
+      wave: "#CCCCCC",
       starAlpha: 0.0,
       isSun: true,
-    };
+    }; // Deeper orange sunset sky, darker orange sun
+    this.duskState = {
+      sky: "#483D8B",
+      sea: "#191970",
+      sunMoon: "#FFFFE0",
+      wave: "#BBBBBB",
+      starAlpha: 0.5,
+      isSun: false,
+    }; // Dark slate blue sky, start showing moon/stars
     this.nightState = {
       sky: "#0B0B22",
       sea: "#000044",
@@ -109,9 +115,9 @@ export class Background {
       wave: "#AAAAAA",
       starAlpha: 1.0,
       isSun: false,
-    }; // isSun is false for moon
+    }; // Full night
 
-    // Current visual properties, updated via lerping
+    // Current visual properties
     this.currentSkyColor = this.dayState.sky;
     this.currentSeaColor = this.dayState.sea;
     this.currentSunMoonColor = this.dayState.sunMoon;
@@ -119,60 +125,69 @@ export class Background {
     this.currentStarAlphaMultiplier = this.dayState.starAlpha;
 
     // Sun/Moon position control
-    this.sunMoonY = this.gameHeight * 0.15; // Initial Y for sun
-    this.displaySunMoon = true; // Whether to draw the current celestial body
+    this.sunMoonY = this.gameHeight * 0.15; // Start high
+    this.displaySunMoon = true;
 
-    // Stars
     this.stars = [];
     this.createStars(150);
 
-    // Transition Score Thresholds (initialized, but set properly in update)
-    this.dayToAfternoonStartScore = 1000;
-    this.dayToAfternoonEndScore = 4500;
-    this.afternoonToNightStartScore = 5200;
-    this.afternoonToNightEndScore = 13500;
+    // Transition Score Thresholds (PLACEHOLDERS - set in setGame)
+    this.phase1EndScore = 800; // End of pure Day (around Boss 1)
+    this.phase2EndScore = 4800; // End of Sunset (around Boss 2)
+    this.phase3EndScore = 13500; // End of Dusk (around Boss 3)
 
     console.log("Background Initialized (Canvas Draw Version)");
   }
 
-  // Link to the main game instance to access score and thresholds
   setGame(gameInstance) {
     this.game = gameInstance;
     if (!this.game) {
       console.error("Background: Game instance failed to set!");
       return;
     }
-    // Define transition points relative to boss score thresholds from game instance
-    // Add some padding so transitions don't start/end exactly when bosses spawn
-    const PADDING_START = 200; // Start transition this many points after boss threshold
-    const PADDING_END = 500; // End transition this many points before next boss threshold
 
-    this.dayToAfternoonStartScore =
-      this.game.BOSS1_SCORE_THRESHOLD + PADDING_START;
-    this.dayToAfternoonEndScore = this.game.BOSS2_SCORE_THRESHOLD - PADDING_END;
-    this.afternoonToNightStartScore =
-      this.game.BOSS2_SCORE_THRESHOLD + PADDING_START;
-    this.afternoonToNightEndScore =
-      this.game.BOSS3_SCORE_THRESHOLD - PADDING_END;
+    // --- Define phase end points relative to boss thresholds ---
+    // Add less padding maybe, to ensure states are reached closer to bosses
+    const PADDING_BEFORE_BOSS = 100; // Start changing slightly before boss
+    const PADDING_AFTER_BOSS = 300; // Finish change a bit after boss
+    const TRANSITION_DURATION_DEFAULT = 3000; // How many score points a transition takes
 
-    console.log(
-      `Background Transitions Set: Day->Aft (${this.dayToAfternoonStartScore}-${this.dayToAfternoonEndScore}), Aft->Night (${this.afternoonToNightStartScore}-${this.afternoonToNightEndScore})`
+    this.phase1EndScore = this.game.BOSS1_SCORE_THRESHOLD - PADDING_BEFORE_BOSS; // End Day just before B1
+    // End Sunset just before B2
+    this.phase2EndScore = this.game.BOSS2_SCORE_THRESHOLD - PADDING_BEFORE_BOSS;
+    // End Dusk just before B3 (Full night arrives for B3)
+    this.phase3EndScore = this.game.BOSS3_SCORE_THRESHOLD - PADDING_BEFORE_BOSS;
+
+    // --- Define transition start/end based on phases ---
+    // Transition 1: Day -> Sunset
+    this.t1_start = this.phase1EndScore;
+    this.t1_end = Math.min(
+      this.phase2EndScore,
+      this.t1_start + TRANSITION_DURATION_DEFAULT
+    ); // Ensure transition ends before next phase starts solidly
+
+    // Transition 2: Sunset -> Dusk (Start showing moon/stars)
+    this.t2_start = this.phase2EndScore;
+    this.t2_end = Math.min(
+      this.phase3EndScore,
+      this.t2_start + TRANSITION_DURATION_DEFAULT
     );
 
-    // Basic validation
-    if (
-      this.dayToAfternoonEndScore <= this.dayToAfternoonStartScore ||
-      this.afternoonToNightEndScore <= this.afternoonToNightStartScore
-    ) {
-      console.warn(
-        "Background transition score thresholds seem overlapping or invalid based on Boss scores!"
-      );
-    }
+    // Transition 3: Dusk -> Night (Full night)
+    this.t3_start = this.phase3EndScore;
+    // Make the final transition to full night quicker?
+    this.t3_end = this.t3_start + TRANSITION_DURATION_DEFAULT * 0.5;
+
+    console.log(
+      `Background Phases Set: DayEnd ${this.phase1EndScore}, SunsetEnd ${this.phase2EndScore}, DuskEnd ${this.phase3EndScore}`
+    );
+    console.log(
+      `Background Transitions: T1(${this.t1_start}-${this.t1_end}), T2(${this.t2_start}-${this.t2_end}), T3(${this.t3_start}-${this.t3_end})`
+    );
+
     if (this.game.seaLevelY === undefined) {
-      console.error(
-        "Background: Game instance is missing 'seaLevelY' property!"
-      );
-      this.game.seaLevelY = this.gameHeight * 0.6; // Set a fallback if needed
+      console.error("Background: Game instance missing 'seaLevelY' property!");
+      this.game.seaLevelY = this.gameHeight * 0.6; // Fallback
     }
   }
 
@@ -190,78 +205,90 @@ export class Background {
   }
 
   update(deltaTime, score = 0) {
-    if (!this.game) return; // Don't update if game reference isn't set
+    if (!this.game) return;
 
-    // --- Determine Current Phase and Transition ---
+    // --- Define Target States & Amount for Lerping ---
     let startState, endState;
     let transitionAmount = 0;
 
-    // Define target Y positions for Sun/Moon
-    const sunHighY = this.gameHeight * 0.15;
-    const sunLowY = this.gameHeight * 0.55; // Lower position before setting
-    const belowHorizonY = this.gameHeight + 60; // Off-screen bottom
-    const moonHighY = this.gameHeight * 0.15;
-    const moonLowY = this.gameHeight * 0.6; // Lower position when rising
+    // Define key Y positions for celestial bodies
+    const highY = this.gameHeight * 0.15; // Highest point
+    const midY = this.gameHeight * 0.4; // Mid-sky
+    const lowY = this.game.seaLevelY - 40; // Just above the horizon (seaLevelY is defined in game.js)
+    const belowHorizonY = this.game.seaLevelY + 60; // Off-screen below horizon
 
     let targetSunMoonY = belowHorizonY; // Default to off-screen
-    this.displaySunMoon = true;
+    this.displaySunMoon = true; // Assume we draw something unless specified otherwise
 
-    if (score < this.dayToAfternoonStartScore) {
+    // --- Determine Phase and Calculate ---
+    if (score < this.t1_start) {
       // --- Phase: Day ---
       startState = this.dayState;
       endState = this.dayState;
       transitionAmount = 0;
-      // Sun moves from high towards low during the day phase
-      targetSunMoonY = lerp(
-        sunHighY,
-        sunLowY,
-        score / this.dayToAfternoonStartScore
-      );
+      // Sun moves from high towards mid
+      targetSunMoonY = lerp(highY, midY, score / this.t1_start);
       this.displaySunMoon = startState.isSun;
-    } else if (score < this.dayToAfternoonEndScore) {
-      // --- Transition: Day -> Afternoon ---
+    } else if (score < this.t1_end) {
+      // --- Transition 1: Day -> Sunset ---
       startState = this.dayState;
-      endState = this.afternoonState;
-      // Calculate progress within this specific transition range
-      const duration =
-        this.dayToAfternoonEndScore - this.dayToAfternoonStartScore;
-      transitionAmount =
-        duration <= 0 ? 1 : (score - this.dayToAfternoonStartScore) / duration;
-      // Sun moves from low to below horizon (setting)
-      targetSunMoonY = lerp(sunLowY, belowHorizonY, transitionAmount);
-      this.displaySunMoon = startState.isSun; // Still the sun during this transition
-    } else if (score < this.afternoonToNightStartScore) {
-      // --- Phase: Afternoon ---
-      startState = this.afternoonState;
-      endState = this.afternoonState;
+      endState = this.sunsetState;
+      const duration = this.t1_end - this.t1_start;
+      transitionAmount = duration <= 0 ? 1 : (score - this.t1_start) / duration;
+      // Sun moves from mid towards low (horizon)
+      targetSunMoonY = lerp(midY, lowY, transitionAmount);
+      this.displaySunMoon = startState.isSun;
+    } else if (score < this.t2_start) {
+      // --- Phase: Sunset ---
+      startState = this.sunsetState;
+      endState = this.sunsetState;
       transitionAmount = 0;
-      targetSunMoonY = belowHorizonY; // Sun has set
-      this.displaySunMoon = false; // Neither sun nor moon fully visible
-    } else if (score < this.afternoonToNightEndScore) {
-      // --- Transition: Afternoon -> Night ---
-      startState = this.afternoonState;
+      // Sun stays low near horizon
+      targetSunMoonY = lowY;
+      this.displaySunMoon = startState.isSun;
+    } else if (score < this.t2_end) {
+      // --- Transition 2: Sunset -> Dusk ---
+      startState = this.sunsetState;
+      endState = this.duskState; // Transitioning towards dusk (moon state)
+      const duration = this.t2_end - this.t2_start;
+      transitionAmount = duration <= 0 ? 1 : (score - this.t2_start) / duration;
+      // Sun moves from low to below horizon
+      targetSunMoonY = lerp(lowY, belowHorizonY, transitionAmount * 2); // Make it dip faster
+      // Decide based on *endState* if it's the moon, show only moon after sun sets
+      this.displaySunMoon = !endState.isSun; // Only display if the target state is moon
+      // Moon also needs a position - let's have it rise during this phase?
+      if (this.displaySunMoon) {
+        // If we should display moon
+        targetSunMoonY = lerp(belowHorizonY, midY, transitionAmount); // Moon rises from below to mid
+      }
+    } else if (score < this.t3_start) {
+      // --- Phase: Dusk ---
+      startState = this.duskState;
+      endState = this.duskState;
+      transitionAmount = 0;
+      // Moon stays at mid height
+      targetSunMoonY = midY;
+      this.displaySunMoon = !startState.isSun; // It's the moon
+    } else if (score < this.t3_end) {
+      // --- Transition 3: Dusk -> Night ---
+      startState = this.duskState;
       endState = this.nightState;
-      // Calculate progress within this specific transition range
-      const duration =
-        this.afternoonToNightEndScore - this.afternoonToNightStartScore;
-      transitionAmount =
-        duration <= 0
-          ? 1
-          : (score - this.afternoonToNightStartScore) / duration;
-      // Moon rises from below horizon towards high position
-      targetSunMoonY = lerp(belowHorizonY, moonHighY, transitionAmount);
-      // Decide when to show the moon based on transition progress (e.g., halfway)
-      this.displaySunMoon = transitionAmount > 0.1 && !endState.isSun; // Show moon once it starts rising
+      const duration = this.t3_end - this.t3_start;
+      transitionAmount = duration <= 0 ? 1 : (score - this.t3_start) / duration;
+      // Moon moves from mid to high
+      targetSunMoonY = lerp(midY, highY, transitionAmount);
+      this.displaySunMoon = !startState.isSun; // It's the moon
     } else {
       // --- Phase: Night ---
       startState = this.nightState;
       endState = this.nightState;
       transitionAmount = 0;
-      targetSunMoonY = moonHighY; // Moon stays high
+      // Moon stays high
+      targetSunMoonY = highY;
       this.displaySunMoon = !startState.isSun; // It's the moon
     }
 
-    // Clamp transition amount just in case
+    // Clamp transition amount
     transitionAmount = Math.max(0, Math.min(1, transitionAmount));
 
     // --- Calculate Interpolated Visual Properties ---
@@ -285,25 +312,29 @@ export class Background {
       endState.starAlpha,
       transitionAmount
     );
-    // Determine which celestial body color to use
-    this.currentSunMoonColor = startState.isSun
-      ? lerpColor(startState.sunMoon, endState.sunMoon, transitionAmount)
-      : endState.sunMoon;
-    // Smoothly update the Y position
-    this.sunMoonY = lerp(this.sunMoonY, targetSunMoonY, 0.05); // Smooth interpolation towards target Y
+    // Lerp sun/moon color based on transition state (use start/end sunMoon prop)
+    this.currentSunMoonColor = lerpColor(
+      startState.sunMoon,
+      endState.sunMoon,
+      transitionAmount
+    );
 
-    // --- Update Stars ---
+    // Smoothly update the Y position towards target
+    // Use a higher lerp factor for faster movement if needed, e.g., 0.1
+    this.sunMoonY = lerp(this.sunMoonY, targetSunMoonY, 0.05);
+
+    // --- Update Stars (unchanged) ---
     const safeDeltaTime = Math.max(0.1, deltaTime);
     const deltaScale = safeDeltaTime / 16.67;
     if (this.currentStarAlphaMultiplier > 0) {
       this.stars.forEach((star) => {
-        star.x -= star.driftSpeed * deltaScale; // Horizontal drift
+        star.x -= star.driftSpeed * deltaScale;
         if (star.x < -star.radius) {
           star.x = this.gameWidth + star.radius;
         }
         if (Math.random() < 0.05) {
           star.opacity = Math.random() * 0.5 + 0.3;
-        } // Twinkle
+        }
       });
     }
   }
@@ -314,18 +345,18 @@ export class Background {
     if (typeof seaLevel !== "number" || isNaN(seaLevel)) return;
 
     try {
-      // 1. Draw Sky Background
+      // 1. Draw Sky
       context.fillStyle = this.currentSkyColor;
       context.fillRect(0, 0, this.gameWidth, this.gameHeight);
 
       // 2. Draw Stars
       if (this.currentStarAlphaMultiplier > 0.01) {
         context.save();
-        context.globalAlpha = this.currentStarAlphaMultiplier; // Apply overall fade alpha
+        context.globalAlpha = this.currentStarAlphaMultiplier;
         this.stars.forEach((star) => {
           if (star.y < seaLevel) {
-            // Only draw above sea level
-            const finalAlpha = context.globalAlpha * star.opacity; // Combine fade and twinkle
+            // Clip below sea level
+            const finalAlpha = context.globalAlpha * star.opacity;
             context.fillStyle = `rgba(255, 255, 255, ${finalAlpha})`;
             context.beginPath();
             context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
@@ -337,20 +368,19 @@ export class Background {
 
       // 3. Draw Sun or Moon
       if (this.displaySunMoon) {
-        const sunMoonRadius =
-          this.currentSunMoonColor === this.nightState.sunMoon ? 30 : 40; // Moon is smaller
-        const sunMoonX =
-          this.currentSunMoonColor === this.nightState.sunMoon
-            ? this.gameWidth * 0.75
-            : this.gameWidth * 0.25; // Moon on right, sun on left
-        // Ensure it's drawn above the sea visually
+        // Check if current color matches the moon color to determine size/position
+        const isMoon =
+          this.currentSunMoonColor === this.nightState.sunMoon ||
+          this.currentSunMoonColor === this.duskState.sunMoon; // Check against base moon color
+        const sunMoonRadius = isMoon ? 30 : 40;
+        const sunMoonX = isMoon ? this.gameWidth * 0.75 : this.gameWidth * 0.25;
         const effectiveDrawY = Math.min(
           this.sunMoonY,
           seaLevel - sunMoonRadius - 10
-        );
+        ); // Keep above sea
 
         if (effectiveDrawY > -sunMoonRadius) {
-          // Only draw if at least partially visible on top edge
+          // Only draw if potentially visible
           context.fillStyle = this.currentSunMoonColor;
           context.beginPath();
           context.arc(sunMoonX, effectiveDrawY, sunMoonRadius, 0, Math.PI * 2);
@@ -358,12 +388,12 @@ export class Background {
         }
       }
 
-      // 4. Draw the Sea Rectangle
+      // 4. Draw Sea
       context.fillStyle = this.currentSeaColor;
       const seaDrawHeight = Math.max(0, this.gameHeight - seaLevel);
       context.fillRect(0, seaLevel, this.gameWidth, seaDrawHeight);
 
-      // 5. Draw the Dashed Sea Line
+      // 5. Draw Dashed Sea Line
       const lineY = seaLevel + 2;
       context.strokeStyle = this.currentWaveColor;
       context.lineWidth = 2;
