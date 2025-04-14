@@ -19,7 +19,7 @@ export class Boss2 extends Enemy {
     this.height = 100;
     this.maxHealth = 450; // Maybe slightly more health?
     this.health = this.maxHealth;
-    this.scoreValue = 4500; // Higher score value
+    this.scoreValue = 800; // Higher score value
     this.color = "#404040";
     this.detailColor = "#A0A0A0";
     this.cockpitColor = "#00BFFF";

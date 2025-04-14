@@ -146,37 +146,39 @@ export class Background {
       return;
     }
 
-    // --- Define phase end points relative to boss thresholds ---
-    // Add less padding maybe, to ensure states are reached closer to bosses
-    const PADDING_BEFORE_BOSS = 100; // Start changing slightly before boss
-    const PADDING_AFTER_BOSS = 300; // Finish change a bit after boss
-    const TRANSITION_DURATION_DEFAULT = 3000; // How many score points a transition takes
+    // Get boss thresholds from game instance
+    const B1_SCORE = this.game.BOSS1_SCORE_THRESHOLD; // e.g., 1800
+    const B2_SCORE = this.game.BOSS2_SCORE_THRESHOLD; // e.g., 6500
+    const B3_SCORE = this.game.BOSS3_SCORE_THRESHOLD; // e.g., 15000
 
-    this.phase1EndScore = this.game.BOSS1_SCORE_THRESHOLD - PADDING_BEFORE_BOSS; // End Day just before B1
-    // End Sunset just before B2
-    this.phase2EndScore = this.game.BOSS2_SCORE_THRESHOLD - PADDING_BEFORE_BOSS;
-    // End Dusk just before B3 (Full night arrives for B3)
-    this.phase3EndScore = this.game.BOSS3_SCORE_THRESHOLD - PADDING_BEFORE_BOSS;
+    // --- Define Transition Points ---
+    // Padding around boss events for the transition's start/end
+    const PADDING_TRANSITION_START = 200; // How many points *before* threshold to START changing
+    const PADDING_TRANSITION_END = 300; // How many points *after* threshold to FINISH changing
 
-    // --- Define transition start/end based on phases ---
-    // Transition 1: Day -> Sunset
-    this.t1_start = this.phase1EndScore;
-    this.t1_end = Math.min(
-      this.phase2EndScore,
-      this.t1_start + TRANSITION_DURATION_DEFAULT
-    ); // Ensure transition ends before next phase starts solidly
+    // Transition 1: Day -> Sunset (Around Boss 1)
+    this.t1_start = B1_SCORE - PADDING_TRANSITION_START;
+    this.t1_end = B1_SCORE + PADDING_TRANSITION_END;
 
-    // Transition 2: Sunset -> Dusk (Start showing moon/stars)
-    this.t2_start = this.phase2EndScore;
-    this.t2_end = Math.min(
-      this.phase3EndScore,
-      this.t2_start + TRANSITION_DURATION_DEFAULT
-    );
+    // Transition 2: Sunset -> Dusk (Around Boss 2)
+    this.t2_start = B2_SCORE - PADDING_TRANSITION_START;
+    this.t2_end = B2_SCORE + PADDING_TRANSITION_END;
 
-    // Transition 3: Dusk -> Night (Full night)
-    this.t3_start = this.phase3EndScore;
-    // Make the final transition to full night quicker?
-    this.t3_end = this.t3_start + TRANSITION_DURATION_DEFAULT * 0.5;
+    // --- >>> Adjust Final Transition (Dusk -> Night) <<< ---
+    // Ensure the transition to full night *finishes* exactly at the Boss 3 threshold.
+    const T3_DURATION = 2000; // How many score points this final transition takes (adjust if needed)
+    this.t3_end = B3_SCORE; // <<< FINISH exactly at Boss 3 score
+    // Calculate the start based on the desired duration and the end point
+    this.t3_start = Math.max(this.t2_end + 100, this.t3_end - T3_DURATION); // Start earlier, ensure it doesn't overlap t2_end
+    // The +100 ensures there's at least a small gap after the previous transition ends.
+    // --- >>> END ADJUSTMENT <<< ---
+
+    // --- Define Stable Phase End points (Less critical now, but good for logic) ---
+    // These points define when a state should be *fully* reached, well before the next transition starts
+    // Adjust these to be comfortably between the transition end points.
+    this.phase1EndScore = this.t1_start; // Day ends when Day->Sunset starts
+    this.phase2EndScore = this.t2_start; // Sunset ends when Sunset->Dusk starts
+    this.phase3EndScore = this.t3_start; // Dusk ends when Dusk->Night starts
 
     console.log(
       `Background Phases Set: DayEnd ${this.phase1EndScore}, SunsetEnd ${this.phase2EndScore}, DuskEnd ${this.phase3EndScore}`
@@ -185,49 +187,40 @@ export class Background {
       `Background Transitions: T1(${this.t1_start}-${this.t1_end}), T2(${this.t2_start}-${this.t2_end}), T3(${this.t3_start}-${this.t3_end})`
     );
 
+    // Validation
+    if (this.t1_end >= this.t2_start || this.t2_end >= this.t3_start) {
+      console.warn(
+        "Background transition score ranges might be overlapping with chosen thresholds/padding!"
+      );
+    }
     if (this.game.seaLevelY === undefined) {
       console.error("Background: Game instance missing 'seaLevelY' property!");
       this.game.seaLevelY = this.gameHeight * 0.6; // Fallback
     }
   }
 
-  createStars(count) {
-    this.stars = [];
-    for (let i = 0; i < count; i++) {
-      this.stars.push({
-        x: Math.random() * this.gameWidth,
-        y: Math.random() * this.gameHeight, // Allow spawning anywhere initially, will clip drawing
-        radius: Math.random() * 1.2 + 0.3,
-        opacity: Math.random() * 0.5 + 0.3,
-        driftSpeed: Math.random() * 0.05 + 0.01, // Slower drift
-      });
-    }
-  }
-
   update(deltaTime, score = 0) {
     if (!this.game) return;
 
-    // --- Define Target States & Amount for Lerping ---
     let startState, endState;
     let transitionAmount = 0;
 
-    // Define key Y positions for celestial bodies
-    const highY = this.gameHeight * 0.15; // Highest point
-    const midY = this.gameHeight * 0.4; // Mid-sky
-    const lowY = this.game.seaLevelY - 40; // Just above the horizon (seaLevelY is defined in game.js)
-    const belowHorizonY = this.game.seaLevelY + 60; // Off-screen below horizon
+    // Define key Y positions (unchanged)
+    const highY = this.gameHeight * 0.15;
+    const midY = this.gameHeight * 0.4;
+    const lowY = this.game.seaLevelY - 40;
+    const belowHorizonY = this.game.seaLevelY + 60;
 
-    let targetSunMoonY = belowHorizonY; // Default to off-screen
-    this.displaySunMoon = true; // Assume we draw something unless specified otherwise
+    let targetSunMoonY = belowHorizonY;
+    this.displaySunMoon = true;
 
-    // --- Determine Phase and Calculate ---
+    // --- Determine Phase/Transition using the NEW thresholds ---
     if (score < this.t1_start) {
       // --- Phase: Day ---
       startState = this.dayState;
       endState = this.dayState;
       transitionAmount = 0;
-      // Sun moves from high towards mid
-      targetSunMoonY = lerp(highY, midY, score / this.t1_start);
+      targetSunMoonY = lerp(highY, midY, score / this.t1_start); // Sun high -> mid
       this.displaySunMoon = startState.isSun;
     } else if (score < this.t1_end) {
       // --- Transition 1: Day -> Sunset ---
@@ -235,63 +228,54 @@ export class Background {
       endState = this.sunsetState;
       const duration = this.t1_end - this.t1_start;
       transitionAmount = duration <= 0 ? 1 : (score - this.t1_start) / duration;
-      // Sun moves from mid towards low (horizon)
-      targetSunMoonY = lerp(midY, lowY, transitionAmount);
+      targetSunMoonY = lerp(midY, lowY, transitionAmount); // Sun mid -> low
       this.displaySunMoon = startState.isSun;
     } else if (score < this.t2_start) {
-      // --- Phase: Sunset ---
+      // --- Phase: Sunset --- (Shorter stable phase now)
       startState = this.sunsetState;
       endState = this.sunsetState;
       transitionAmount = 0;
-      // Sun stays low near horizon
-      targetSunMoonY = lowY;
+      targetSunMoonY = lowY; // Sun stays low
       this.displaySunMoon = startState.isSun;
     } else if (score < this.t2_end) {
       // --- Transition 2: Sunset -> Dusk ---
       startState = this.sunsetState;
-      endState = this.duskState; // Transitioning towards dusk (moon state)
+      endState = this.duskState;
       const duration = this.t2_end - this.t2_start;
       transitionAmount = duration <= 0 ? 1 : (score - this.t2_start) / duration;
-      // Sun moves from low to below horizon
-      targetSunMoonY = lerp(lowY, belowHorizonY, transitionAmount * 2); // Make it dip faster
-      // Decide based on *endState* if it's the moon, show only moon after sun sets
-      this.displaySunMoon = !endState.isSun; // Only display if the target state is moon
-      // Moon also needs a position - let's have it rise during this phase?
+      targetSunMoonY = lerp(lowY, belowHorizonY, transitionAmount * 1.5); // Sun low -> below (slightly faster dip)
+      this.displaySunMoon = !endState.isSun; // Switch to moon display
       if (this.displaySunMoon) {
-        // If we should display moon
-        targetSunMoonY = lerp(belowHorizonY, midY, transitionAmount); // Moon rises from below to mid
+        targetSunMoonY = lerp(belowHorizonY, midY, transitionAmount); // Moon below -> mid
       }
     } else if (score < this.t3_start) {
-      // --- Phase: Dusk ---
+      // --- Phase: Dusk --- (Shorter stable phase now)
       startState = this.duskState;
       endState = this.duskState;
       transitionAmount = 0;
-      // Moon stays at mid height
-      targetSunMoonY = midY;
-      this.displaySunMoon = !startState.isSun; // It's the moon
+      targetSunMoonY = midY; // Moon stays mid
+      this.displaySunMoon = !startState.isSun;
     } else if (score < this.t3_end) {
       // --- Transition 3: Dusk -> Night ---
       startState = this.duskState;
       endState = this.nightState;
       const duration = this.t3_end - this.t3_start;
       transitionAmount = duration <= 0 ? 1 : (score - this.t3_start) / duration;
-      // Moon moves from mid to high
-      targetSunMoonY = lerp(midY, highY, transitionAmount);
-      this.displaySunMoon = !startState.isSun; // It's the moon
+      targetSunMoonY = lerp(midY, highY, transitionAmount); // Moon mid -> high
+      this.displaySunMoon = !startState.isSun;
     } else {
       // --- Phase: Night ---
       startState = this.nightState;
       endState = this.nightState;
       transitionAmount = 0;
-      // Moon stays high
-      targetSunMoonY = highY;
-      this.displaySunMoon = !startState.isSun; // It's the moon
+      targetSunMoonY = highY; // Moon stays high
+      this.displaySunMoon = !startState.isSun;
     }
 
-    // Clamp transition amount
+    // Clamp transition amount (unchanged)
     transitionAmount = Math.max(0, Math.min(1, transitionAmount));
 
-    // --- Calculate Interpolated Visual Properties ---
+    // Calculate Interpolated Visual Properties (unchanged)
     this.currentSkyColor = lerpColor(
       startState.sky,
       endState.sky,
@@ -312,29 +296,41 @@ export class Background {
       endState.starAlpha,
       transitionAmount
     );
-    // Lerp sun/moon color based on transition state (use start/end sunMoon prop)
     this.currentSunMoonColor = lerpColor(
       startState.sunMoon,
       endState.sunMoon,
       transitionAmount
     );
 
-    // Smoothly update the Y position towards target
-    // Use a higher lerp factor for faster movement if needed, e.g., 0.1
+    // Smoothly update the Y position (unchanged)
     this.sunMoonY = lerp(this.sunMoonY, targetSunMoonY, 0.05);
 
-    // --- Update Stars (unchanged) ---
+    // Update Stars (unchanged)
+    // ... star update logic ...
     const safeDeltaTime = Math.max(0.1, deltaTime);
     const deltaScale = safeDeltaTime / 16.67;
     if (this.currentStarAlphaMultiplier > 0) {
       this.stars.forEach((star) => {
-        star.x -= star.driftSpeed * deltaScale;
+        star.x -= star.driftSpeed * deltaScale; // Horizontal drift
         if (star.x < -star.radius) {
           star.x = this.gameWidth + star.radius;
         }
         if (Math.random() < 0.05) {
           star.opacity = Math.random() * 0.5 + 0.3;
-        }
+        } // Twinkle
+      });
+    }
+  }
+
+  createStars(count) {
+    this.stars = [];
+    for (let i = 0; i < count; i++) {
+      this.stars.push({
+        x: Math.random() * this.gameWidth,
+        y: Math.random() * this.gameHeight, // Allow spawning anywhere initially, will clip drawing
+        radius: Math.random() * 1.2 + 0.3,
+        opacity: Math.random() * 0.5 + 0.3,
+        driftSpeed: Math.random() * 0.05 + 0.01, // Slower drift
       });
     }
   }

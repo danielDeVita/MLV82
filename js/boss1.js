@@ -19,7 +19,7 @@ export class Boss1 extends Enemy {
     this.color = "#383848";
     this.deckColor = "#585868";
     this.detailColor = "#D05050";
-    this.scoreValue = 3000;
+    this.scoreValue = 500;
     this.enemyType = "ship";
 
     // --- >>> ADJUST Y POSITIONING <<< ---
@@ -219,7 +219,7 @@ export class Boss1 extends Enemy {
       );
 
       // --- Trigger Defeat Effects ---
-      this.game.addScore(this.scoreValue);
+      this.game.addScore(350);
       this.triggerDefeatExplosion();
     } else {
       // --- LOG 8: Confirm Win Condition NOT Met ---
