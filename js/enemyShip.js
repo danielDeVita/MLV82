@@ -75,27 +75,47 @@ export class EnemyShip extends Enemy {
     }
   } // End of EnemyShip update
 
+  // --- >>> UPDATED hit Method <<< ---
   hit(damage = 1, projectileType = "bullet") {
-    if (this.markedForDeletion) return;
-    const initialHealth = this.health;
+    if (this.markedForDeletion) return; // Skip if already dying
 
-    console.log(
-      `SHIP HIT override: ${this.id} Type='${projectileType}', Dmg=${damage}, HealthBefore=${initialHealth}`
-    );
+    // --- Calculate Effective Damage Based on Projectile Type ---
+    let effectiveDamage = damage; // Start with the projectile's base damage
+    let resistanceFactor = 1.0; // 1.0 = no change, < 1.0 = resistance, > 1.0 = vulnerability
 
-    // Only call base Enemy.hit (which reduces health) if hit by a bomb
     if (projectileType === "bomb") {
-      console.log(` -> Bomb detected! Calling Enemy.hit(${damage})`);
-      // Call the BASE Enemy hit method directly, passing type for log consistency
-      Enemy.prototype.hit.call(this, damage, projectileType);
+      // Bombs are fully effective (or maybe even bonus damage?)
+      resistanceFactor = 1.0; // Example: 100% effective
+      // console.log(` -> Ship Hit by BOMB: Applying ${resistanceFactor}x damage factor.`);
+    } else if (projectileType === "bullet") {
+      // Bullets are less effective against ship armor
+      resistanceFactor = 0.25; // Example: Bullets only do 25% of their base damage
+      // console.log(` -> Ship Hit by BULLET: Applying ${resistanceFactor}x damage factor.`);
     } else {
-      console.log(` -> Bullet detected! Doing visual flash only.`);
-      // Bullets still trigger the flash visually, but don't reduce health
-      this.isHit = true;
-      this.hitTimer = this.hitDuration;
-      // playSound('ricochet'); // Optional sound
+      // Handle potential other types if needed, otherwise default
+      // console.log(` -> Ship Hit by UNKNOWN type '${projectileType}': Applying default 1.0x damage factor.`);
     }
-  } // End hit
+
+    effectiveDamage *= resistanceFactor;
+
+    // Optional: Ensure minimum damage is dealt unless resistance is 100%
+    // if (effectiveDamage < 0.1 && resistanceFactor < 1.0) {
+    //     effectiveDamage = 0.1;
+    // }
+    // Ensure damage is not negative
+    effectiveDamage = Math.max(0, effectiveDamage);
+
+    // --- Call the BASE Enemy.hit method ---
+    // Pass the *calculated* effective damage. The base method handles:
+    // - Reducing health (`this.health -= effectiveDamage`)
+    // - Setting hit flash (`this.isHit = true`, `this.hitTimer = ...`)
+    // - Checking if health <= 0 and setting `this.markedForDeletion`
+    // - Triggering explosion/sound via `this.destroy()` if markedForDeletion
+    // - Adding score via `this.destroy()`
+    super.hit(effectiveDamage, projectileType); // <<< Use super.hit()
+
+    // console.log(`   -> Ship health after super.hit: ${this.health.toFixed(1)}`); // Optional check
+  } // --- >>> END UPDATED hit Method <<< ---
 
   // Overriding draw completely, need hit flash logic wrapper here
   draw(context) {

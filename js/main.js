@@ -40,13 +40,13 @@ window.addEventListener("load", function () {
 
     // 4. Test Boss 3 Start:
     // ----------------------------------------------------
-    const gameConfig = {
-      startScore: 14000, // Meets B3 threshold
-      startDifficulty: 9, // Approx level for score 14000
-      playerLives: 99,
-      defeatedBosses: [1, 2], // Boss 1 & 2 MUST be defeated
-      startWithPowerups: ["bullet", "bomb", "shield", "invincibility"], // Example starting powerups
-    };
+    // const gameConfig = {
+    //   startScore: 14000, // Meets B3 threshold
+    //   startDifficulty: 9, // Approx level for score 14000
+    //   playerLives: 99,
+    //   defeatedBosses: [1, 2], // Boss 1 & 2 MUST be defeated
+    //   startWithPowerups: ["bullet", "bomb", "shield", "invincibility"], // Example starting powerups
+    // };
 
     // 5. Test Mine Layers / Beam Ships (Mid-game after Boss 2):
     // ----------------------------------------------------
