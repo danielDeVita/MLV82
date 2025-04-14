@@ -1,17 +1,41 @@
 import { Enemy } from "./enemy.js";
 import { randomInt } from "./utils.js";
-import { Bomb } from "./bomb.js"; // Needed for hit logic
-import { SuperBomb } from "./superBomb.js"; // Needed for hit logic
-import { playSound } from "./audio.js"; // Needed for hit logic
 
 export class EnemyShip extends Enemy {
   constructor(game, speedBoost = 0) {
     super(game); // Calls base Enemy constructor
     this.width = 80;
     this.height = 40;
-    this.y = this.game.height - this.height - randomInt(10, 60);
-    this.speedX = randomInt(1, 2) + speedBoost;
+
+    // this.speedX = randomInt(1, 2) + speedBoost;
     this.enemyType = "ship"; // Set type
+
+    // --- >>> ADJUST Y POSITION CALCULATION <<< ---
+    // Ensure seaLevelY exists in game object (default if missing for safety)
+    const seaLevel =
+      game.seaLevelY !== undefined ? game.seaLevelY : game.height * 0.5; // Default to 50% if undefined
+
+    // Calculate the vertical space available for the sea
+    const availableSeaHeight = game.height - seaLevel;
+
+    // Calculate the maximum random offset within the sea, ensuring the ship fits
+    // Subtract ship height and a small padding (e.g., 10px) from the bottom
+    const maxSpawnOffset = availableSeaHeight - this.height - 10;
+
+    // Ensure the offset isn't negative if the sea area is too small for the ship
+    const safeMaxSpawnOffset = Math.max(0, maxSpawnOffset);
+
+    // Calculate a random vertical position within the allowed sea area
+    const randomOffset = Math.random() * safeMaxSpawnOffset;
+
+    // Set the final Y position: sea level + random offset
+    this.y = seaLevel + randomOffset;
+    // --- >>> END ADJUST Y POSITION <<< ---
+
+    // --- Movement ---
+    this.speedX =
+      (1 + Math.random() * 0.5 + speedBoost) * (Math.random() < 0.5 ? 1 : 0.8); // Move left, some speed variation
+    this.x = this.game.width; // Start off-screen right
 
     // --- Set Health HERE ---
     this.maxHealth = 5; // Max health for basic ship

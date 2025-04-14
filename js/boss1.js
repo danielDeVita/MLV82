@@ -4,7 +4,6 @@ import { EnemyBullet } from "./enemyBullet.js";
 import { TrackingMissile } from "./trackingMissile.js";
 import { BossWeakPoint } from "./bossWeakPoint.js";
 import { playSound } from "./audio.js";
-import { Bomb } from "./bomb.js";
 import { checkCollision } from "./utils.js";
 import { randomInt } from "./utils.js"; // Keep import
 
@@ -22,12 +21,22 @@ export class Boss1 extends Enemy {
     this.detailColor = "#D05050";
     this.scoreValue = 3000;
     this.enemyType = "ship";
+
+    // --- >>> ADJUST Y POSITIONING <<< ---
+    const seaLevel =
+      game.seaLevelY !== undefined ? game.seaLevelY : game.height * 0.5;
+    this.targetY = seaLevel + 20;
+    // Ensure it doesn't go off the bottom edge
+    this.targetY = Math.min(this.targetY, game.height - this.height - 10);
+    // --- >>> END ADJUST Y POSITIONING <<< ---
+
+    // --- Movement (Unchanged horizontal logic) ---
     this.speedX = 0.6;
     this.patrolTargetX1 = 40;
     this.patrolTargetX2 = this.game.width - this.width - 40;
     this.moveDirectionX = 1;
     this.x = -this.width;
-    this.targetY = this.game.height - this.height - 40;
+    //this.targetY = this.game.height - this.height - 40;
     this.y = this.targetY;
     this.driftRange = 10;
 
@@ -248,7 +257,18 @@ export class Boss1 extends Enemy {
       this.x = this.patrolTargetX1;
       this.moveDirectionX = 1;
     }
+
+    // --- >>> ADJUST Y POSITION UPDATE <<< ---
+    // Apply vertical drift based on the targetY calculated from seaLevel
     this.y = this.targetY + Math.sin(Date.now() * 0.0005) * this.driftRange;
+    // Optional: Add clamping to ensure drift doesn't go above seaLevelY if driftRange is large
+    const seaLevel =
+      this.game.seaLevelY !== undefined
+        ? this.game.seaLevelY
+        : this.game.height * 0.5;
+    this.y = Math.max(seaLevel + 5, this.y); // Keep slightly below sea level even with drift
+    this.y = Math.min(this.y, this.game.height - this.height - 5); // Keep above bottom edge
+    // --- >>> END ADJUST Y POSITION UPDATE <<< ---
 
     // Update Weak Points
     this.weakPoints.forEach((wp) => wp.update(deltaTime));

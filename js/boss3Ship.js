@@ -1,21 +1,34 @@
-// js/boss3Ship.js
 import { EnemyShip } from "./enemyShip.js";
 import { EnemyBullet } from "./enemyBullet.js"; // For AA and main cannon
 import { Bomb } from "./bomb.js"; // For hit checks AND reused for depth charges
 import { SuperBomb } from "./superBomb.js"; // For hit checks
 import { playSound } from "./audio.js";
-import { checkCollision } from "./utils.js"; // May not be needed directly in this file anymore
 import { randomInt } from "./utils.js";
 import { lerp } from "./utils.js";
 import { Enemy } from "./enemy.js";
 
 export class Boss3Ship extends EnemyShip {
   constructor(game, speedBoost = 0) {
-    super(game, speedBoost); // Calls EnemyShip -> Enemy constructors
+    // It will also potentially set initial width, height, y based on EnemyShip's logic.
+    super(game, speedBoost); // <<< MUST be called before using 'this'
+
+    // Call the base Enemy constructor instead.
+    // Enemy.call(this, game); // Call Enemy constructor directly
+
     this.id = "boss_3_ship_component_v3";
     this.enemyType = "ship";
     this.width = 350;
     this.height = 120;
+
+    // --- >>> ADJUST Y POSITIONING <<< ---
+    const seaLevel =
+      game.seaLevelY !== undefined ? game.seaLevelY : game.height * 0.5;
+    // Position the boss ship relative to the sea level. Example: 40px below the line.
+    this.targetY = seaLevel + 40;
+    // Ensure it doesn't go off the bottom edge
+    this.targetY = Math.min(this.targetY, game.height - this.height - 10);
+    this.y = this.targetY; // Set Y directly
+    // --- >>> END ADJUST Y POSITIONING <<< ---
 
     // --- Set Health HERE ---
     this.maxHealth = 2000; // Increased health
@@ -26,9 +39,11 @@ export class Boss3Ship extends EnemyShip {
     this.color = "#2F4F4F";
     this.deckColor = "#696969";
     this.detailColor = "#FF4500";
+
+    // --- Movement
     this.speedX = 0.4;
-    this.targetY = this.game.height - this.height - 50;
-    this.y = this.targetY;
+    // this.targetY = this.game.height - this.height - 50;
+    //  this.y = this.targetY;
     this.x = this.game.width + this.width;
     this.entryTargetX = this.game.width - this.width - 100;
     this.isEntering = true;
@@ -44,9 +59,9 @@ export class Boss3Ship extends EnemyShip {
     this.depthChargeCount = 4;
     this.depthChargeDelay = 200;
 
-    console.log(
-      `${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
-    );
+    // console.log(
+    //   `${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
+    // );
   } // End constructor
 
   update(deltaTime) {
@@ -60,7 +75,7 @@ export class Boss3Ship extends EnemyShip {
         this.x = this.entryTargetX; // Snap
         this.isEntering = false;
         this.moveDirectionX = -1; // Start patrolling LEFT after entry
-        console.log(`${this.id} entry complete.`);
+        //  console.log(`${this.id} entry complete.`);
       }
       // Update hit flash timer even during entry
       if (this.isHit) {
@@ -74,7 +89,6 @@ export class Boss3Ship extends EnemyShip {
     // --- End Entry Logic ---
 
     // --- Normal Update (Patrol Movement + Attacks) ---
-
     // Horizontal Patrol Movement
     this.x += this.speedX * this.moveDirectionX * deltaScale;
     const shipMinX = 50;
@@ -87,8 +101,10 @@ export class Boss3Ship extends EnemyShip {
       this.moveDirectionX = -1;
     }
 
-    // Fixed Y position (no vertical movement logic from super needed)
+    // --- >>> ADJUST Y ASSIGNMENT <<< ---
+    // Keep Y fixed at the calculated targetY (no vertical drift for this boss)
     this.y = this.targetY;
+    // --- >>> END ADJUST Y <<< ---
 
     // --- Attack Logic ---
     // Main Cannon

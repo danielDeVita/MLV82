@@ -1,6 +1,3 @@
-// js/game.js
-
-// --- Imports (Include Boss1, Boss2, Boss3 Components) ---
 import { InputHandler } from "./input.js";
 import { Player } from "./player.js";
 import { Background } from "./background.js";
@@ -28,10 +25,8 @@ import { Boss2 } from "./boss2.js";
 import { Boss3Ship } from "./boss3Ship.js";
 import { Boss3Plane } from "./boss3Plane.js";
 import { checkCollision } from "./utils.js";
-// Ensure addSound is imported if you want the game won sound
 import { playSound } from "./audio.js";
 import { Bomb } from "./bomb.js";
-import { Bullet } from "./bullet.js";
 
 export class Game {
   constructor(canvasId, width, height) {
@@ -46,6 +41,15 @@ export class Game {
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.context = this.canvas.getContext("2d");
+
+    // --- >>> ADD SEA LEVEL DEFINITION <<< ---
+    // Example: Sea starts at 40% down the screen (60% sea area)
+    this.seaLevelY = this.height * 0.7;
+    // Example: Sea starts at 30% down the screen (70% sea area)
+    // this.seaLevelY = this.height * 0.30;
+    console.log(`Sea level Y set to: ${this.seaLevelY}`); // Log for verification
+    // --- >>> END ADD <<< ---
+
     if (!this.context) throw new Error("FATAL: Failed to get 2D context.");
     console.log("DEBUG: Constructor - Context obtained.");
 
@@ -107,6 +111,8 @@ export class Game {
     try {
       this.input = new InputHandler(this);
       this.background = new Background(this.width, this.height);
+      this.background.setGame(this); // <<< ADD THIS LINE
+
       this.background.game = this;
       this.player = new Player(this);
     } catch (error) {

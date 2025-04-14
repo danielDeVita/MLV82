@@ -22,7 +22,8 @@ body {
   height: 720px; /* Match game height */
   overflow: hidden; /* Hide anything spilling out */
   border: 3px solid black;
-  background-color: #87ceeb; /* Default sky blue */
+  /* Background color acts as a fallback or initial sky before canvas draws */
+  background-color: #87ceeb; /* Default day sky blue */
 }
 
 /* Canvas */
@@ -32,122 +33,104 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 10; /* Above background layers, below UI */
+  /* Canvas should be above CSS background layers but below UI */
+  z-index: 10;
 }
 
-/* Background Layers */
+/* Background Layers (CSS Controlled - Optional for Clouds/Mountains) */
 .background-layer {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-repeat: repeat-x; /* Essential for horizontal scrolling */
-  background-size: auto 100%; /* Scale height, auto width */
-  background-position: 0 0;
+  background-repeat: repeat-x;
+  background-size: auto 100%; /* Default: Scale height, auto width */
+  background-position: 0 0; /* Default: Start at top-left */
   will-change: background-position; /* Optimize animation */
 }
 
-/* Specific Layers - Assign background-image and z-index */
-/* Z-Index Order: Lower numbers are further back */
+/* Specific Layers - Sky/Mountains/Clouds ONLY */
+/* (Comment/uncomment background-image based on image availability) */
 #sky-color-layer {
-  z-index: 0; /* Handled by container background */
+  z-index: 0; /* Handled by container background or canvas draw */
 }
-/* Stars/Moon/Sun are drawn on canvas */
 #distant-mountains-layer {
   z-index: 1;
-  background-image: url("images/placeholder_mountains_distant.png");
+  /* background-image: url("images/placeholder_mountains_distant.png"); */
 }
 #far-clouds-layer {
   z-index: 2;
-  background-image: url("images/clouds_far.png");
+  /* background-image: url("images/clouds_far.png"); */
 }
 #near-mountains-layer {
   z-index: 3;
-  background-image: url("images/placeholder_mountains_near.png");
+  /* background-image: url("images/placeholder_mountains_near.png"); */
 }
 #mid-clouds-layer {
   z-index: 4;
-  background-image: url("images/clouds_mid.png");
-}
-#far-sea-layer {
-  z-index: 5;
-  background-image: url("images/sea_far.png");
+  /* background-image: url("images/clouds_mid.png"); */
 }
 #near-clouds-layer {
-  z-index: 6;
-  background-image: url("images/clouds_near.png");
+  z-index: 6; /* Visually behind where the near sea would be */
+  /* background-image: url("images/clouds_near.png"); */
 }
-#mid-sea-layer {
-  z-index: 7;
-  background-image: url("images/sea_mid.png");
-}
-#close-sea-layer {
-  z-index: 8;
-  background-image: url("images/sea_close.png");
-}
-/* Canvas is z-index: 10 */
 
-/* --- PARALLAX ANIMATIONS --- */
-/* Adjust animation duration for different speeds */
+/* --- Sea Layer Styles REMOVED as Sea is drawn on Canvas --- */
+/* #far-sea-layer, #mid-sea-layer, #close-sea-layer no longer need styles here */
+
+/* PARALLAX ANIMATIONS (Only for CSS layers being used) */
+/* Keyframes */
 @keyframes parallax-scroll-slow {
   from {
-    background-position: 0 0;
+    background-position-x: 0;
   }
   to {
-    background-position: -1000px 0;
-  } /* Adjust distance based on image width */
+    background-position-x: -1000px;
+  }
 }
 @keyframes parallax-scroll-medium {
   from {
-    background-position: 0 0;
+    background-position-x: 0;
   }
   to {
-    background-position: -2000px 0;
+    background-position-x: -2000px;
   }
 }
 @keyframes parallax-scroll-fast {
   from {
-    background-position: 0 0;
+    background-position-x: 0;
   }
   to {
-    background-position: -4000px 0;
+    background-position-x: -4000px;
   }
 }
 @keyframes parallax-scroll-very-fast {
   from {
-    background-position: 0 0;
+    background-position-x: 0;
   }
   to {
-    background-position: -8000px 0;
+    background-position-x: -8000px;
   }
 }
 
-/* Apply animations to layers */
+/* Apply animations only to layers with uncommented images */
 #distant-mountains-layer {
-  animation: parallax-scroll-slow 120s linear infinite;
+  /* animation: parallax-scroll-slow 120s linear infinite; */
 }
 #far-clouds-layer {
-  animation: parallax-scroll-medium 80s linear infinite;
+  /* animation: parallax-scroll-medium 80s linear infinite; */
 }
 #near-mountains-layer {
-  animation: parallax-scroll-medium 90s linear infinite;
+  /* animation: parallax-scroll-medium 90s linear infinite; */
 }
 #mid-clouds-layer {
-  animation: parallax-scroll-fast 40s linear infinite;
-}
-#far-sea-layer {
-  animation: parallax-scroll-medium 70s linear infinite;
+  /* animation: parallax-scroll-fast 40s linear infinite; */
 }
 #near-clouds-layer {
-  animation: parallax-scroll-very-fast 20s linear infinite;
+  /* animation: parallax-scroll-very-fast 20s linear infinite; */
 }
-#mid-sea-layer {
-  animation: parallax-scroll-fast 45s linear infinite;
-}
-#close-sea-layer {
-  animation: parallax-scroll-very-fast 25s linear infinite;
-}
+/* --- Sea Layer Animations REMOVED --- */
 
 /* UI Overlay (Score, Lives, etc.) */
 #ui {
@@ -158,77 +141,69 @@ body {
   font-size: 1.2em;
   text-shadow: 1px 1px 2px black;
   z-index: 50; /* Above canvas */
-  display: flex; /* Arrange items horizontally */
-  gap: 20px; /* Space between items */
+  display: flex;
+  gap: 20px;
 }
 #ui div {
   background-color: rgba(0, 0, 0, 0.3);
   padding: 5px 10px;
   border-radius: 4px;
 }
-/* Style for low lives warning */
 #lives.low-lives {
   color: red;
   font-weight: bold;
 }
 
-/* --- OVERLAYS (Game Over / Game Won) --- */
+/* OVERLAYS (Game Over / Game Won) */
 .overlay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background-color: rgba(0, 0, 0, 0.75); /* Slightly darker */
+  background-color: rgba(0, 0, 0, 0.75);
   color: white;
-  padding: 40px; /* More padding */
+  padding: 40px;
   border-radius: 10px;
   text-align: center;
-  z-index: 100; /* Ensure it's above everything */
-  min-width: 300px; /* Ensure minimum width */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Add shadow */
+  z-index: 100; /* Above everything */
+  min-width: 300px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
-
 .overlay h1 {
   margin-bottom: 25px;
-  font-size: 2.5em; /* Larger heading */
+  font-size: 2.5em;
 }
-
 .overlay button {
-  padding: 12px 25px; /* Larger button padding */
+  padding: 12px 25px;
   font-size: 1.1em;
   cursor: pointer;
   color: white;
   border: none;
   border-radius: 5px;
   margin-top: 20px;
-  transition: background-color 0.2s ease; /* Smooth hover */
+  transition: background-color 0.2s ease;
 }
-
 /* Game Over Specific Styles */
 #game-over h1 {
-  color: #ff4d4d; /* Reddish color */
+  color: #ff4d4d;
 }
 #game-over button#restartButton {
-  /* Target specific button */
-  background-color: #dc3545; /* Bootstrap danger red */
+  background-color: #dc3545;
 }
 #game-over button#restartButton:hover {
   background-color: #c82333;
 }
-
 /* Game Won Specific Styles */
 #game-won h1 {
-  color: #4dd2ff; /* Light blue color */
+  color: #4dd2ff;
 }
 #game-won p#final-score-won {
-  /* Target specific paragraph */
-  font-size: 1.4em; /* Larger score text */
-  color: #ffcc00; /* Gold score color */
+  font-size: 1.4em;
+  color: #ffcc00;
   margin-bottom: 25px;
 }
 #game-won button#restartButtonWon {
-  /* Target specific button */
-  background-color: #007bff; /* Bootstrap primary blue */
+  background-color: #007bff;
 }
 #game-won button#restartButtonWon:hover {
   background-color: #0056b3;

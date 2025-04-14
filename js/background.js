@@ -2,35 +2,39 @@
 // NOTE: This version ONLY handles drawing the sky color, sun, moon, and stars onto the CANVAS.
 // Scrolling layers are handled by CSS.
 
-import { randomInt } from "./utils.js";
-function lerp(start, end, amount) {
-  amount = Math.max(0, Math.min(1, amount));
-  return start + (end - start) * amount;
-}
-function lerpColor(hexColor1, hexColor2, amount) {
-  try {
-    if (!/^#[0-9A-F]{6}$/i.test(hexColor1) || !/^#[0-9A-F]{6}$/i.test(hexColor2)) {
-      throw new Error(`Invalid hex: ${hexColor1}, ${hexColor2}`);
-    }
-    const r1 = parseInt(hexColor1.slice(1, 3), 16),
-      g1 = parseInt(hexColor1.slice(3, 5), 16),
-      b1 = parseInt(hexColor1.slice(5, 7), 16);
-    const r2 = parseInt(hexColor2.slice(1, 3), 16),
-      g2 = parseInt(hexColor2.slice(3, 5), 16),
-      b2 = parseInt(hexColor2.slice(5, 7), 16);
-    if (isNaN(r1 + g1 + b1 + r2 + g2 + b2)) {
-      throw new Error("NaN parsing hex");
-    }
-    const r = Math.round(lerp(r1, r2, amount)),
-      g = Math.round(lerp(g1, g2, amount)),
-      b = Math.round(lerp(b1, b2, amount));
-    const toHex = (c) => c.toString(16).padStart(2, "0");
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  } catch (e) {
-    console.error("Error lerpColor:", e);
-    return hexColor1;
-  }
-}
+import { randomInt, lerp, lerpColor } from "./utils.js";
+
+// function lerp(start, end, amount) {
+//   amount = Math.max(0, Math.min(1, amount));
+//   return start + (end - start) * amount;
+// }
+// function lerpColor(hexColor1, hexColor2, amount) {
+//   try {
+//     if (
+//       !/^#[0-9A-F]{6}$/i.test(hexColor1) ||
+//       !/^#[0-9A-F]{6}$/i.test(hexColor2)
+//     ) {
+//       throw new Error(`Invalid hex: ${hexColor1}, ${hexColor2}`);
+//     }
+//     const r1 = parseInt(hexColor1.slice(1, 3), 16),
+//       g1 = parseInt(hexColor1.slice(3, 5), 16),
+//       b1 = parseInt(hexColor1.slice(5, 7), 16);
+//     const r2 = parseInt(hexColor2.slice(1, 3), 16),
+//       g2 = parseInt(hexColor2.slice(3, 5), 16),
+//       b2 = parseInt(hexColor2.slice(5, 7), 16);
+//     if (isNaN(r1 + g1 + b1 + r2 + g2 + b2)) {
+//       throw new Error("NaN parsing hex");
+//     }
+//     const r = Math.round(lerp(r1, r2, amount)),
+//       g = Math.round(lerp(g1, g2, amount)),
+//       b = Math.round(lerp(b1, b2, amount));
+//     const toHex = (c) => c.toString(16).padStart(2, "0");
+//     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+//   } catch (e) {
+//     console.error("Error lerpColor:", e);
+//     return hexColor1;
+//   }
+// }
 
 // ======================================================
 // Represents a SINGLE background layer object (CSS Controlled Version)
@@ -75,240 +79,319 @@ class BackgroundLayer {
 
 export class Background {
   constructor(gameWidth, gameHeight) {
-    this.game = null;
+    this.game = null; // <<< IMPORTANT: This MUST be set by the Game instance after creation
     this.gameWidth = gameWidth;
     this.gameHeight = gameHeight;
-    this.baseGameSpeed = 0.5;
+    this.baseGameSpeed = 0.5; // Used for star drift?
+
+    // --- Color Definitions ---
     this.dayColors = {
       sky: "#87CEEB",
-      sea: "#0077CC",
+      sea: "#1E90FF",
       sun: "#FFFF00",
-      cloudAlpha: 1.0,
       waveColor: "#FFFFFF",
-    }; // White waves
+      starAlphaMultiplier: 0.0,
+    };
     this.afternoonColors = {
       sky: "#FFB347",
-      sea: "#0055AA",
+      sea: "#4682B4",
       sun: "#FFA500",
-      cloudAlpha: 0.9,
       waveColor: "#DDDDDD",
+      starAlphaMultiplier: 0.0,
     };
     this.nightColors = {
       sky: "#0B0B22",
       sea: "#000044",
       moon: "#FFFFE0",
-      cloudAlpha: 0.6,
-      stars: true,
       waveColor: "#AAAAAA",
-    }; // Darker clouds at night
+      starAlphaMultiplier: 1.0,
+    }; // Stars fully visible at night
+
+    // --- Current State Variables ---
     this.currentSkyColor = this.dayColors.sky;
     this.currentSeaColor = this.dayColors.sea;
     this.currentSunColor = this.dayColors.sun;
     this.currentMoonColor = this.nightColors.moon;
-    this.currentCloudAlpha = this.dayColors.cloudAlpha;
     this.currentWaveColor = this.dayColors.waveColor;
+    this.currentStarAlphaMultiplier = this.dayColors.starAlphaMultiplier; // For fading stars in/out
+
     this.showSun = true;
     this.showMoon = false;
-    this.sunY = this.gameHeight * 0.15;
-    this.moonY = this.gameHeight * 0.15;
-    this.nightProgress = 0;
-    this.AFTERNOON_START_SCORE = 500;
-    this.NIGHT_START_SCORE = 1500;
-    this.CYCLE_END_SCORE = 2500;
-    // Layers
-    const layer1 = new BackgroundLayer("images/far-clouds.png", 0.2, gameWidth, gameHeight, 50);
-    const layer2 = new BackgroundLayer("images/near-clouds.png", 0.4, gameWidth, gameHeight, 100); // Changed from mid-clouds
-    const layer3 = new BackgroundLayer("images/sea.png", 0.8, gameWidth, gameHeight, gameHeight - 100);
-    this.layers = [layer1, layer2, layer3];
-    this.seaLevelY = gameHeight - 100;
-    this.drawFallback = !layer3.image.src.endsWith(".png"); // Check sea layer
+    this.sunY = this.gameHeight * 0.15; // Initial Y position
+    this.moonY = this.gameHeight * 0.15; // Initial Y position
+
     this.stars = [];
-    if (this.nightColors.stars) {
-      this.createStars();
-    }
-    this.gameContainerElement = document.getElementById("game-container"); // Keep reference
-    // console.log("Hybrid Background Manager Initialized.");
+    this.createStars(150); // Create stars
+
+    // --- Transition Timing ---
+    this.AFTERNOON_START_SCORE = 3000; // Example threshold
+    this.NIGHT_START_SCORE = 7000; // Example threshold
+    this.CYCLE_DURATION = 5000; // Time (in score points) for transition between phases
+
+    // console.log("Canvas Background Manager Initialized.");
   }
 
-  createStars() {
-    this.stars = []; // Initialize or clear the array
-    const numStars = 150; // Density of stars
-    for (let i = 0; i < numStars; i++) {
+  // --- Needs reference to the Game instance ---
+  setGame(gameInstance) {
+    this.game = gameInstance;
+    if (!this.game) {
+      console.error("Background: Game instance not set correctly!");
+    }
+    if (this.game && this.game.seaLevelY === undefined) {
+      console.error(
+        "Background: Game instance is missing 'seaLevelY' property!"
+      );
+      // Set a default fallback if needed, though game.js should define it
+      this.game.seaLevelY = this.gameHeight * 0.5;
+    }
+  }
+
+  createStars(count) {
+    this.stars = [];
+    for (let i = 0; i < count; i++) {
       this.stars.push({
-        // Random position across the screen width
         x: Math.random() * this.gameWidth,
-        // Random position in the upper 80% of the screen height (avoiding sea area)
-        y: Math.random() * (this.gameHeight * 0.8),
-        // Random size
-        radius: Math.random() * 1.2 + 0.3, // Range: 0.3 to 1.5 pixels
-        // Random initial opacity for twinkling effect base
-        opacity: Math.random() * 0.5 + 0.3, // Range: 0.3 to 0.8
-        // Individual drift speed (very slow)
-        driftSpeed: Math.random() * 0.1 + 0.02, // Range: 0.02 to 0.12
+        // Spawn stars only above the *initial* guess of sea level
+        // (will be clipped later if sea level changes drastically)
+        y: Math.random() * (this.gameHeight * 0.6), // Spawn higher up initially
+        radius: Math.random() * 1.2 + 0.3,
+        opacity: Math.random() * 0.5 + 0.3, // Base flicker opacity
+        driftSpeed: Math.random() * 0.1 + 0.02,
       });
     }
-    console.log(`Created ${this.stars.length} stars.`); // Log creation
+    // console.log(`Created ${this.stars.length} stars.`);
   }
 
   update(deltaTime, score = 0) {
-    this.currentScore = score;
-    this.layers.forEach((layer) => layer.update(this.baseGameSpeed, deltaTime));
+    // Ensure game reference is set
+    if (!this.game || this.game.seaLevelY === undefined) {
+      // console.warn("Background.update skipped: Game reference or seaLevelY missing.");
+      return;
+    }
 
     // --- Calculate Transition Progress ---
-    let skyC1, skyC2, seaC1, seaC2, sunC1, sunC2, cloudA1, cloudA2, waveC1, waveC2; // Declare all needed vars
+    let skyC1,
+      skyC2,
+      seaC1,
+      seaC2,
+      sunC1,
+      sunC2,
+      waveC1,
+      waveC2,
+      starA1,
+      starA2;
     let transitionAmount = 0;
     this.showSun = false;
     this.showMoon = false;
-    this.nightProgress = 0;
 
-    // Determine phase and set BOTH start and end colors for ALL properties
+    // Determine phase and set start/end colors/alphas
     if (score < this.AFTERNOON_START_SCORE) {
-      // Day
+      // --- Day ---
+      const phaseProgress =
+        this.AFTERNOON_START_SCORE <= 0
+          ? 1
+          : score / this.AFTERNOON_START_SCORE;
       skyC1 = skyC2 = this.dayColors.sky;
       seaC1 = seaC2 = this.dayColors.sea;
       sunC1 = sunC2 = this.dayColors.sun;
-      cloudA1 = cloudA2 = this.dayColors.cloudAlpha;
       waveC1 = waveC2 = this.dayColors.waveColor;
+      starA1 = starA2 = this.dayColors.starAlphaMultiplier;
       this.showSun = true;
-      this.sunY = lerp(this.gameHeight * 0.15, this.gameHeight * 0.5, score / this.AFTERNOON_START_SCORE);
-    } else if (score < this.NIGHT_START_SCORE) {
-      // Day -> Afternoon Transition
-      const phaseDuration = this.NIGHT_START_SCORE - this.AFTERNOON_START_SCORE;
-      transitionAmount = phaseDuration <= 0 ? 1.0 : (score - this.AFTERNOON_START_SCORE) / phaseDuration;
+      this.sunY = lerp(
+        this.gameHeight * 0.15,
+        this.gameHeight * 0.5,
+        phaseProgress
+      ); // Sun moves down
+      transitionAmount = 0; // Not transitioning between phases
+    } else if (score < this.AFTERNOON_START_SCORE + this.CYCLE_DURATION) {
+      // --- Day -> Afternoon ---
+      transitionAmount =
+        (score - this.AFTERNOON_START_SCORE) / this.CYCLE_DURATION;
       skyC1 = this.dayColors.sky;
       skyC2 = this.afternoonColors.sky;
       seaC1 = this.dayColors.sea;
       seaC2 = this.afternoonColors.sea;
       sunC1 = this.dayColors.sun;
       sunC2 = this.afternoonColors.sun;
-      cloudA1 = this.dayColors.cloudAlpha;
-      cloudA2 = this.afternoonColors.cloudAlpha;
       waveC1 = this.dayColors.waveColor;
       waveC2 = this.afternoonColors.waveColor;
+      starA1 = this.dayColors.starAlphaMultiplier;
+      starA2 = this.afternoonColors.starAlphaMultiplier;
       this.showSun = true;
-      this.sunY = lerp(this.gameHeight * 0.5, this.gameHeight - 50, transitionAmount); // Sun sets
-    } else {
-      // Afternoon -> Night Transition (or stay Night)
-      const phaseDuration = this.CYCLE_END_SCORE - this.NIGHT_START_SCORE;
-      transitionAmount = phaseDuration <= 0 ? 1.0 : Math.min(1.0, (score - this.NIGHT_START_SCORE) / phaseDuration);
+      this.sunY = lerp(
+        this.gameHeight * 0.5,
+        this.gameHeight + 50,
+        transitionAmount
+      ); // Sun sets below horizon
+    } else if (score < this.NIGHT_START_SCORE) {
+      // --- Afternoon ---
+      skyC1 = skyC2 = this.afternoonColors.sky;
+      seaC1 = seaC2 = this.afternoonColors.sea;
+      sunC1 = sunC2 = this.afternoonColors.sun; // Sun color stays, even if not shown
+      waveC1 = waveC2 = this.afternoonColors.waveColor;
+      starA1 = starA2 = this.afternoonColors.starAlphaMultiplier;
+      this.showSun = false; // Sun has set
+      transitionAmount = 0; // Not transitioning between phases
+    } else if (score < this.NIGHT_START_SCORE + this.CYCLE_DURATION) {
+      // --- Afternoon -> Night ---
+      transitionAmount = (score - this.NIGHT_START_SCORE) / this.CYCLE_DURATION;
       skyC1 = this.afternoonColors.sky;
       skyC2 = this.nightColors.sky;
       seaC1 = this.afternoonColors.sea;
       seaC2 = this.nightColors.sea;
-      // Set sun colors even though not shown, to avoid undefined if lerpColor is called unexpectedly
-      sunC1 = sunC2 = this.afternoonColors.sun;
-      cloudA1 = this.afternoonColors.cloudAlpha;
-      cloudA2 = this.nightColors.cloudAlpha;
+      sunC1 = sunC2 = this.afternoonColors.sun; // Sun color irrelevant
       waveC1 = this.afternoonColors.waveColor;
       waveC2 = this.nightColors.waveColor;
+      starA1 = this.afternoonColors.starAlphaMultiplier;
+      starA2 = this.nightColors.starAlphaMultiplier;
       this.showMoon = true;
-      this.moonY = lerp(this.gameHeight * 0.6, this.gameHeight * 0.15, transitionAmount); // Moon rises
-      this.nightProgress = transitionAmount;
+      // Moon rises from below horizon up to its peak position
+      this.moonY = lerp(
+        this.gameHeight + 30,
+        this.gameHeight * 0.15,
+        transitionAmount
+      );
+    } else {
+      // --- Night ---
+      skyC1 = skyC2 = this.nightColors.sky;
+      seaC1 = seaC2 = this.nightColors.sea;
+      sunC1 = sunC2 = this.afternoonColors.sun; // Sun color irrelevant
+      waveC1 = waveC2 = this.nightColors.waveColor;
+      starA1 = starA2 = this.nightColors.starAlphaMultiplier;
+      this.showMoon = true;
+      this.moonY = this.gameHeight * 0.15; // Moon stays high
+      transitionAmount = 1; // Fully transitioned to night state
     }
 
-    // Calculate Interpolated Values (Now safe, as start/end colors always defined)
-    this.currentSkyColor = lerpColor(skyC1, skyC2, transitionAmount);
-    this.currentSeaColor = lerpColor(seaC1, seaC2, transitionAmount);
-    this.currentCloudAlpha = lerp(cloudA1, cloudA2, transitionAmount);
-    this.currentWaveColor = lerpColor(waveC1, waveC2, transitionAmount);
-    // Only calculate sun color if needed
-    if (this.showSun) {
-      this.currentSunColor = lerpColor(sunC1, sunC2, transitionAmount);
+    // Calculate Interpolated Values
+    try {
+      this.currentSkyColor = lerpColor(skyC1, skyC2, transitionAmount);
+      this.currentSeaColor = lerpColor(seaC1, seaC2, transitionAmount);
+      this.currentWaveColor = lerpColor(waveC1, waveC2, transitionAmount);
+      this.currentStarAlphaMultiplier = lerp(starA1, starA2, transitionAmount);
+      if (this.showSun) {
+        this.currentSunColor = lerpColor(sunC1, sunC2, transitionAmount);
+      }
+      this.currentMoonColor = this.nightColors.moon; // Moon color doesn't change
+    } catch (e) {
+      console.error("Error during color lerping:", e);
+      // Assign default values on error to prevent crashes
+      this.currentSkyColor = this.dayColors.sky;
+      this.currentSeaColor = this.dayColors.sea;
+      this.currentWaveColor = this.dayColors.waveColor;
+      this.currentStarAlphaMultiplier = 0;
+      this.currentSunColor = this.dayColors.sun;
+      this.currentMoonColor = this.nightColors.moon;
     }
-    this.currentMoonColor = this.nightColors.moon;
 
-    // Update CSS var
-    if (this.gameContainerElement) {
-      this.gameContainerElement.style.setProperty("--sky-color", this.currentSkyColor);
-    }
-
-    // Update stars (position/twinkle)
-    const safeDeltaTime = Math.max(0.1, deltaTime); // Use safeDeltaTime here too
+    // --- Update Stars ---
+    const safeDeltaTime = Math.max(0.1, deltaTime);
     const deltaScale = safeDeltaTime / 16.67;
-    if (this.nightProgress > 0 && this.nightColors.stars) {
+    if (this.currentStarAlphaMultiplier > 0) {
       this.stars.forEach((star) => {
-        // Apply horizontal drift based on individual speed and deltaTime
-        star.x -= star.driftSpeed * deltaScale;
-        // Wrap stars around screen
+        star.x -= star.driftSpeed * deltaScale; // Horizontal drift
         if (star.x < -star.radius) {
           star.x = this.gameWidth + star.radius;
-          // Optionally randomize Y position slightly when wrapping
-          // star.y = Math.random() * (this.gameHeight * 0.8);
         }
-        // Simple twinkle effect: small chance to change opacity each frame
         if (Math.random() < 0.05) {
-          // 5% chance each frame
-          star.opacity = Math.random() * 0.5 + 0.3; // Re-randomize opacity (0.3 to 0.8)
-        }
+          star.opacity = Math.random() * 0.5 + 0.3;
+        } // Twinkle
       });
     }
   }
 
   draw(context) {
-    if (!context) {
-      console.error("Background.draw: Canvas context is missing!");
+    // Ensure game reference and context are valid
+    if (!this.game || !context) {
+      // console.error("Background.draw skipped: Game reference or context missing.");
       return;
     }
+    // Ensure seaLevelY is valid
+    const seaLevel = this.game.seaLevelY;
+    if (typeof seaLevel !== "number" || isNaN(seaLevel)) {
+      console.error(`Background.draw skipped: Invalid seaLevelY: ${seaLevel}`);
+      return; // Don't draw if sea level isn't set right
+    }
+
     try {
-      // 1. Draw Base Sky Color on Canvas
+      // --- 1. Draw Sky Background ---
       context.fillStyle = this.currentSkyColor;
       context.fillRect(0, 0, this.gameWidth, this.gameHeight);
 
-      // 2. Draw Stars (If applicable)
-      // Use the locally stored nightProgress calculated in update
-      if (this.nightProgress > 0 && this.nightColors.stars) {
+      // --- 2. Draw Stars (If applicable) ---
+      if (this.currentStarAlphaMultiplier > 0.01) {
+        // Only draw if stars are somewhat visible
+        context.save();
+        // Use the main multiplier AND the individual star opacity
+        context.globalAlpha = this.currentStarAlphaMultiplier;
         this.stars.forEach((star) => {
-          context.save();
-          // Fade stars in based on night progress, combine with individual opacity
-          // Make fade-in slightly faster
-          context.globalAlpha = Math.min(1.0, this.nightProgress * 2.0) * star.opacity;
-          context.fillStyle = "white"; // Simple white stars
-          context.beginPath();
-          // Draw small circle for star
-          context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-          context.fill();
-          context.restore(); // Restore alpha
+          // Only draw stars *above* the current sea level
+          if (star.y < seaLevel) {
+            // Combine global alpha with star's twinkle opacity
+            const finalAlpha = context.globalAlpha * star.opacity;
+            context.fillStyle = `rgba(255, 255, 255, ${finalAlpha})`;
+            context.beginPath();
+            context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+            context.fill();
+          }
         });
+        context.restore(); // Restore globalAlpha
       }
 
-      // 3. Draw Sun or Moon on Canvas
-      if (this.showMoon) {
-        context.fillStyle = this.currentMoonColor; // Use calculated moon color (usually fixed)
+      // --- 3. Draw Sun or Moon ---
+      // Ensure sun/moon are drawn only above the sea
+      const sunMoonRadius = this.showSun ? 40 : 30; // Sun is bigger
+      const sunMoonVisibleY = this.showSun ? this.sunY : this.moonY;
+      // Calculate effective Y, ensuring it's above seaLevel
+      const effectiveDrawY = Math.min(
+        sunMoonVisibleY,
+        seaLevel - sunMoonRadius - 10
+      );
+
+      if (this.showMoon && effectiveDrawY > 0) {
+        // Only draw if above top edge
+        context.fillStyle = this.currentMoonColor;
         context.beginPath();
-        // Draw moon (adjust position/size as needed)
-        context.arc(this.gameWidth * 0.75, this.moonY, 30, 0, Math.PI * 2);
+        context.arc(
+          this.gameWidth * 0.75,
+          effectiveDrawY,
+          sunMoonRadius,
+          0,
+          Math.PI * 2
+        );
         context.fill();
-      } else if (this.showSun) {
-        context.fillStyle = this.currentSunColor; // Use calculated sun color
+      } else if (this.showSun && effectiveDrawY > 0) {
+        // Only draw if above top edge
+        context.fillStyle = this.currentSunColor;
         context.beginPath();
-        // Draw sun (adjust position/size as needed)
-        context.arc(this.gameWidth * 0.25, this.sunY, 40, 0, Math.PI * 2);
+        context.arc(
+          this.gameWidth * 0.25,
+          effectiveDrawY,
+          sunMoonRadius,
+          0,
+          Math.PI * 2
+        );
         context.fill();
-        // Optional: Add simple sun rays/glow?
-        // context.fillStyle = 'rgba(255, 255, 0, 0.1)'; // Yellow glow
-        // for (let i=0; i<3; i++) {
-        //    context.beginPath();
-        //    context.arc(this.gameWidth*0.25, this.sunY, 40 + (i+1)*15, 0, Math.PI*2);
-        //    context.fill();
-        // }
       }
 
-      // --- Fallback Sea/Wave Drawing --- (If using fallback)
-      const seaLayer = this.layers[2]; // Index 2 is sea image in this version
-      const seaImageLoaded = seaLayer && seaLayer.image.complete && seaLayer.image.naturalWidth > 0;
-      if (this.drawFallback || !seaImageLoaded) {
-        context.fillStyle = this.currentSeaColor;
-        context.fillRect(0, this.seaLevelY, this.gameWidth, this.gameHeight - this.seaLevelY);
-        context.fillStyle = this.currentWaveColor;
-        const seaLayerX = seaLayer ? seaLayer.x : 0;
-        for (let i = 0; i < this.gameWidth; i += 25) {
-          let waveX = (i - (seaLayerX % 50)) % this.gameWidth;
-          if (waveX < 0) waveX += this.gameWidth;
-          context.fillRect(waveX, this.seaLevelY + 5 + Math.sin(i * 0.4 + Date.now() * 0.0015) * 2, 15, 3);
-        }
-      } // else: CSS handles drawing the actual sea image layer
+      // --- 4. Draw the Sea Rectangle ---
+      context.fillStyle = this.currentSeaColor;
+      // Ensure height calculation is non-negative
+      const seaDrawHeight = Math.max(0, this.gameHeight - seaLevel);
+      context.fillRect(0, seaLevel, this.gameWidth, seaDrawHeight);
+
+      // --- 5. Draw the Dashed Sea Line / Wave effect ---
+      const lineY = seaLevel + 2; // Slightly below the fill edge
+      context.strokeStyle = this.currentWaveColor; // Use transitioned wave color
+      context.lineWidth = 2;
+      context.setLineDash([10, 10]); // Dashes
+      context.beginPath();
+      context.moveTo(0, lineY);
+      context.lineTo(this.gameWidth, lineY);
+      context.stroke();
+      context.setLineDash([]); // Reset line dash
     } catch (e) {
       console.error("Error during Background.draw:", e);
     }
-  } // End of draw method
-} // End of Background class
+  } // End draw()
+} // End Background class
