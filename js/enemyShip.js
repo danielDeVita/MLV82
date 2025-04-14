@@ -1,26 +1,32 @@
 import { Enemy } from "./enemy.js";
 import { randomInt } from "./utils.js";
+import { Bomb } from "./bomb.js"; // Needed for hit logic
+import { SuperBomb } from "./superBomb.js"; // Needed for hit logic
+import { playSound } from "./audio.js"; // Needed for hit logic
 
 export class EnemyShip extends Enemy {
   constructor(game, speedBoost = 0) {
-    // Added speedBoost parameter
-    super(game);
+    super(game); // Calls base Enemy constructor
     this.width = 80;
     this.height = 40;
     this.y = this.game.height - this.height - randomInt(10, 60);
     this.speedX = randomInt(1, 2) + speedBoost;
-    this.enemyType = "ship"; // Correct type
+    this.enemyType = "ship"; // Set type
 
-    // --- Health ---
-    this.maxHealth = 5; // Define Max Health
-    this.health = this.maxHealth; // <<< SET health TO maxHealth
+    // --- Set Health HERE ---
+    this.maxHealth = 5; // Max health for basic ship
+    this.health = this.maxHealth;
     // --- End Health ---
 
     this.scoreValue = 50;
     this.color = "darkslategray";
     this.deckColor = "slategray";
     this.detailColor = "gray";
-  }
+
+    console.log(
+      `EnemyShip ${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
+    ); // Log health here
+  } // End Constructor
 
   // Make sure update receives deltaTime
   update(deltaTime) {
@@ -45,32 +51,27 @@ export class EnemyShip extends Enemy {
     }
   } // End of EnemyShip update
 
-  // --- >>> REVISED Hit Method <<< ---
-  // Override hit because only bombs should deal full damage
   hit(damage = 1, projectileType = "bullet") {
-    // Accept default damage
     if (this.markedForDeletion) return;
-    const initialHealth = this.health; // Log initial health
+    const initialHealth = this.health;
 
     console.log(
       `SHIP HIT override: ${this.id} Type='${projectileType}', Dmg=${damage}, HealthBefore=${initialHealth}`
     );
 
-    // Only apply actual damage if hit by a bomb
+    // Only call base Enemy.hit (which reduces health) if hit by a bomb
     if (projectileType === "bomb") {
-      console.log(` -> Bomb detected! Applying damage.`);
-      // Call the base Enemy hit method to handle health reduction, deletion, score, drops etc.
-      super.hit(damage, projectileType); // Pass original damage and type
+      console.log(` -> Bomb detected! Calling Enemy.hit(${damage})`);
+      // Call the BASE Enemy hit method directly, passing type for log consistency
+      Enemy.prototype.hit.call(this, damage, projectileType);
     } else {
       console.log(` -> Bullet detected! Doing visual flash only.`);
-      // Bullets still trigger the flash visually, but don't reduce health here
+      // Bullets still trigger the flash visually, but don't reduce health
       this.isHit = true;
       this.hitTimer = this.hitDuration;
       // playSound('ricochet'); // Optional sound
     }
-    // No need to manually reduce health or check for deletion here if type is 'bullet'
-  }
-  // --- >>> END REVISED Hit Method <<< ---
+  } // End hit
 
   // Overriding draw completely, need hit flash logic wrapper here
   draw(context) {

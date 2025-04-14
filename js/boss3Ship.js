@@ -6,55 +6,48 @@ import { SuperBomb } from "./superBomb.js"; // For hit checks
 import { playSound } from "./audio.js";
 import { checkCollision } from "./utils.js"; // May not be needed directly in this file anymore
 import { randomInt } from "./utils.js";
+import { lerp } from "./utils.js";
+import { Enemy } from "./enemy.js";
 
 export class Boss3Ship extends EnemyShip {
   constructor(game, speedBoost = 0) {
-    super(game, speedBoost); // Call base EnemyShip constructor
-
-    this.id = "boss_3_ship_component_v3"; // Update version
-    this.enemyType = "ship"; // Important for effects/collisions
-
-    // --- Stats ---
+    super(game, speedBoost); // Calls EnemyShip -> Enemy constructors
+    this.id = "boss_3_ship_component_v3";
+    this.enemyType = "ship";
     this.width = 350;
     this.height = 120;
-    // --- >>> INCREASE HEALTH DRAMATICALLY <<< ---
-    this.maxHealth = 2000; // Example: Was 850, try much higher
-    this.health = this.maxHealth;
-    // --- >>> END INCREASE <<< ---
-    this.scoreValue = 3000; // Score split between components
 
-    // Appearance
+    // --- Set Health HERE ---
+    this.maxHealth = 2000; // Increased health
+    this.health = this.maxHealth;
+    // --- End Health ---
+
+    this.scoreValue = 3000;
     this.color = "#2F4F4F";
     this.deckColor = "#696969";
     this.detailColor = "#FF4500";
-
-    // --- Movement ---
     this.speedX = 0.4;
-    this.targetY = this.game.height - this.height - 50; // Position low
+    this.targetY = this.game.height - this.height - 50;
     this.y = this.targetY;
-    this.x = this.game.width + this.width; // Start off-screen right
-    this.entryTargetX = this.game.width - this.width - 100; // Target X position on screen
+    this.x = this.game.width + this.width;
+    this.entryTargetX = this.game.width - this.width - 100;
     this.isEntering = true;
-    this.moveDirectionX = -1; // Initialize for patrol after entry
+    this.moveDirectionX = -1;
 
-    // --- Attack Timers <<< ---
-    // Main Cannon (Aimed)
+    // Attack Timers
     this.mainCannonTimer = randomInt(3000, 5000);
-    this.mainCannonInterval = 4000; // Faster cannon
-
-    // AA Guns (Upward Burst)
+    this.mainCannonInterval = 4000;
     this.aaGunTimer = randomInt(1000, 2500);
-    this.aaGunInterval = 1600; // Faster AA
+    this.aaGunInterval = 1600;
+    this.depthChargeTimer = randomInt(7000, 10000);
+    this.depthChargeInterval = 8500;
+    this.depthChargeCount = 4;
+    this.depthChargeDelay = 200;
 
-    // Depth Charge Attack Timer
-    this.depthChargeTimer = randomInt(7000, 10000); // Starts later
-    this.depthChargeInterval = 8500; // Cooldown for barrage
-    this.depthChargeCount = 4; // How many charges per barrage
-    this.depthChargeDelay = 200; // Delay between each charge drop
-    // --- >>> END Attack Timers <<< ---
-
-    console.log(`${this.id} created. Health: ${this.health}`);
-  }
+    console.log(
+      `${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
+    );
+  } // End constructor
 
   update(deltaTime) {
     const safeDeltaTime = Math.max(0.1, deltaTime);
@@ -225,21 +218,23 @@ export class Boss3Ship extends EnemyShip {
   }
   // --- END Attack Methods ---
 
-  // --- Hit method ---
   hit(projectile) {
+    // Basic Checks
     if (
       this.markedForDeletion ||
       !projectile ||
       typeof projectile !== "object" ||
       projectile.markedForDeletion
-    )
+    ) {
       return;
+    }
+    const previousHealth = this.health;
     const projectileType =
       projectile instanceof Bomb || projectile instanceof SuperBomb
         ? "bomb"
         : "bullet";
     const incomingDamage = projectile.damage || 1;
-    const previousHealth = this.health;
+
     console.log(
       `Boss3Ship HIT: By ${
         projectile.constructor.name
@@ -247,20 +242,38 @@ export class Boss3Ship extends EnemyShip {
         1
       )}`
     );
-    const effectiveDamage =
-      incomingDamage * (projectileType === "bomb" ? 1.5 : 0.5); // Prefer bombs
+
+    // Calculate Effective Damage
+    let effectiveDamage = incomingDamage;
+    if (projectileType === "bomb") {
+      effectiveDamage *= 1.5;
+    } else {
+      // Bullets
+      effectiveDamage *= 0.5;
+    }
     console.log(
-      `   -> Applying ${effectiveDamage.toFixed(1)} effective damage.`
+      `   -> Applying ${effectiveDamage.toFixed(
+        1
+      )} effective damage (Bomb Pref: 1.5x, Bullet: 0.5x).`
     );
 
-    // Call EnemyShip's hit method - this handles flash and potentially damage reduction based on type
-    super.hit(effectiveDamage, projectileType);
+    // --- Call base Enemy.hit DIRECTLY ---
+    Enemy.prototype.hit.call(this, effectiveDamage, projectileType); // This handles health reduction and setting markedForDeletion
 
-    // Trigger Reinforcements ONCE upon destruction
-    if (previousHealth > 0 && this.health <= 0 && !this.markedForDeletion) {
-      console.log(`${this.id} destroyed! Triggering Plane Reinforcements!`);
-      this.game.spawnBoss3HelperPlanes(2, "mixed");
-      this.markedForDeletion = true; // Ensure flag is set
+    console.log(
+      `   -> Health After hit(): ${this.health?.toFixed(
+        1
+      )}, MarkedForDeletion: ${this.markedForDeletion}`
+    );
+
+    // --- Trigger Reinforcements ONCE upon destruction ---
+    // REMOVED THE DIRECT SPAWN CALL FROM HERE
+    if (previousHealth > 0 && this.health <= 0 && this.markedForDeletion) {
+      console.log(
+        `${this.id} destroyed! Game state will trigger SHIP reinforcements.`
+      );
+      // The Game.handleBossState method will now detect this ship's
+      // markedForDeletion status and set the isSpawningShipHelpers flag.
     }
   } // End hit
 
@@ -300,4 +313,45 @@ export class Boss3Ship extends EnemyShip {
     // Draw Health Bar (from Enemy.draw via EnemyShip)
     super.draw(context);
   } // End draw
+
+  /**
+   * Creates a series of explosions over the boss component's area upon defeat.
+   */
+  triggerDefeatExplosion() {
+    console.log(`Triggering Defeat Explosion for ${this.id}`);
+    // Number of explosions for this component
+    const numExplosions = this.enemyType === "ship" ? 15 : 12; // More for the ship?
+    // Duration of the explosion sequence
+    const duration = this.enemyType === "ship" ? 2000 : 1600; // Slightly longer for ship?
+
+    for (let i = 0; i < numExplosions; i++) {
+      // Use setTimeout to stagger the explosions over the duration
+      setTimeout(() => {
+        // Double-check game isn't over when the timeout actually runs
+        if (!this.game || this.game.isGameOver) {
+          return;
+        }
+
+        // Calculate random position within the component's bounds
+        const randomX = this.x + Math.random() * this.width;
+        const randomY = this.y + Math.random() * this.height;
+
+        // Determine explosion type based on component type
+        let explosionType = "air"; // Default
+        if (this.enemyType === "ship") {
+          explosionType = Math.random() < 0.7 ? "ship" : "air"; // Mostly ship explosions
+        } else {
+          // Assumed 'air' type for plane
+          explosionType = Math.random() < 0.7 ? "air" : "tiny"; // Mostly air explosions
+        }
+
+        // Create the explosion via the game instance
+        this.game.createExplosion(randomX, randomY, explosionType);
+      }, i * (duration / numExplosions) + Math.random() * 150); // Staggered timing with slight randomness
+    }
+
+    // Optional: Play a distinct final explosion sound for each component?
+    // if(this.enemyType === 'ship') playSound('bossShipDestroyed');
+    // else playSound('bossPlaneDestroyed');
+  } // End triggerDefeatExplosion
 } // End Boss3Ship class

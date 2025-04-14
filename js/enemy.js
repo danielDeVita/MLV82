@@ -1,4 +1,4 @@
-// js/enemy.js
+import { playSound } from "./audio.js"; // Ensure playSound is imported
 
 export class Enemy {
   constructor(game) {
@@ -10,26 +10,22 @@ export class Enemy {
     this.height = 30; // Default size
     this.speedX = Math.random() * 2 + 1;
     this.markedForDeletion = false;
-    this.enemyType = "air"; // Default type, subclasses should override
+    this.enemyType = "air"; // Default type, subclasses MUST override if different
 
-    // --- Explicit Health Initialization ---
-    this.maxHealth = 1; // Default max health for basic enemies
-    this.health = this.maxHealth; // Set current health TO max health
-    // --- End Health ---
+    // --- Health properties are now expected to be set by subclasses ---
+    // No default this.health or this.maxHealth initialization here
 
-    this.scoreValue = 10;
-    this.color = "grey";
+    this.scoreValue = 10; // Default score
+    this.color = "grey"; // Default color
 
     // Hit Flash
     this.isHit = false;
     this.hitTimer = 0;
     this.hitDuration = 100;
 
-    // --- ADD Constructor Log ---
-    console.log(
-      `Enemy ${this.id} (${this.constructor.name}) constructed. Health: ${this.health}/${this.maxHealth}, Type: ${this.enemyType}`
-    );
-  }
+    // Base constructor log no longer shows health, subclasses should log
+    // console.log(`Enemy ${this.id} (${this.constructor.name}) base constructed.`);
+  } // End Constructor
 
   update(deltaTime) {
     const safeDeltaTime = Math.max(0.1, deltaTime);
@@ -73,29 +69,40 @@ export class Enemy {
     context.fillRect(this.x, this.y, this.width, this.height);
     context.restore();
   }
-
+  
   hit(damage = 1, projectileType = "bullet") {
-    // Default damage to 1
     if (this.markedForDeletion) return;
-    const initialHealth = this.health;
+    // Safety check: Ensure health properties exist before using them
+    if (typeof this.health !== "number" || typeof this.maxHealth !== "number") {
+      console.error(
+        `Enemy ${this.id} (${this.constructor.name}) hit() called before health initialized!`
+      );
+      this.health = 0; // Force deletion if health wasn't set
+    }
 
-    // --- ADD LOGGING ---
+    const initialHealth = this.health;
     console.log(
-      `ENEMY HIT: ${this.id} (${this.constructor.name}) Type=${projectileType}, Dmg=${damage}, HealthBefore=${initialHealth}`
+      `ENEMY HIT: ${this.id} (${
+        this.constructor.name
+      }) Type=${projectileType}, Dmg=${damage}, HealthBefore=${initialHealth?.toFixed(
+        1
+      )}`
     );
 
     this.isHit = true;
     this.hitTimer = this.hitDuration;
     this.health -= damage; // Apply damage
 
-    console.log(`   -> HealthAfter=${this.health}`); // Log new health
+    console.log(`   -> HealthAfter=${this.health?.toFixed(1)}`);
 
     if (this.health <= 0 && !this.markedForDeletion) {
-      console.log(`   -> Marked for deletion! Score: +${this.scoreValue}`); // Log deletion
+      console.log(`   -> Marked for deletion! Score: +${this.scoreValue}`);
       this.markedForDeletion = true;
       this.game.addScore(this.scoreValue);
-
-      const dropOriginType = this.enemyType === "ship" ? "ship" : "air";
+      const dropOriginType =
+        this.enemyType === "ship" || this.enemyType === "ground_installation"
+          ? "ship"
+          : "air"; // Include ground type
       this.game.createExplosion(
         this.x + this.width / 2,
         this.y + this.height / 2,

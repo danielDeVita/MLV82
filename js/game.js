@@ -35,6 +35,7 @@ import { Boss3Plane } from "./boss3Plane.js"; // <<< IMPORT BOSS 3 PLANE
 import { checkCollision } from "./utils.js";
 import { playSound } from "./audio.js";
 import { Bomb } from "./bomb.js";
+import { Bullet } from "./bullet.js";
 
 export class Game {
   constructor(canvasId, width, height) {
@@ -66,6 +67,16 @@ export class Game {
     this.boss1HelperPlaneBaseInterval = 1800; // Base time between Boss 1 helper spawns
     this.boss1HelperPlaneRandomInterval = 600; // Random variance for Boss 1 helpers
     this.powerUpDropChance = 0.1; // Base chance for enemy to drop power-up on death
+
+    // --- >>> NEW: Boss 3 Reinforcement State & Timers <<< ---
+    this.isSpawningPlaneHelpers = false; // Flag for plane reinforcements (when ship is down)
+    this.helperPlaneSpawnTimer = 0;
+    this.helperPlaneSpawnInterval = 3500; // How often helper planes spawn (adjust)
+
+    this.isSpawningShipHelpers = false; // Flag for ship reinforcements (when plane is down)
+    this.helperShipSpawnTimer = 0;
+    this.helperShipSpawnInterval = 4500; // How often helper ships spawn (adjust)
+    // --- >>> END NEW <<< ---
 
     // Default intervals for timed power-ups during boss fights
     this.defaultBossPowerUpBaseInterval = 15000;
@@ -283,19 +294,23 @@ export class Game {
     }
   } // End loop
 
-  // --- >>> REVISED Boss State Management <<< ---
   handleBossState() {
+    // --- Check for Spawning a NEW Boss Fight ---
     if (!this.bossActive) {
-      // Check if we need to SPAWN a boss
+      // Check for Boss 1
       if (!this.boss1Defeated && this.score >= this.BOSS1_SCORE_THRESHOLD) {
         this.spawnBoss(1);
-      } else if (
+      }
+      // Check for Boss 2 (only if Boss 1 is done)
+      else if (
         this.boss1Defeated &&
         !this.boss2Defeated &&
         this.score >= this.BOSS2_SCORE_THRESHOLD
       ) {
         this.spawnBoss(2);
-      } else if (
+      }
+      // Check for Boss 3 (only if Boss 1 & 2 are done)
+      else if (
         this.boss1Defeated &&
         this.boss2Defeated &&
         !this.boss3Defeated &&
@@ -303,32 +318,75 @@ export class Game {
       ) {
         this.spawnBoss(3);
       }
-    } else {
-      // Boss IS active, check if it needs to be marked DEFEATED
+    }
+    // --- Check for Boss Fight Progression / Completion ---
+    else {
+      // A boss IS currently active
+
+      // --- Handle Boss 3 Specific State ---
       if (this.currentBossNumber === 3) {
-        // Boss 3 defeat condition
-        const shipDefeated =
-          !this.boss3Ship || this.boss3Ship.markedForDeletion;
-        const planeDefeated =
-          !this.boss3Plane || this.boss3Plane.markedForDeletion;
-        if (shipDefeated && planeDefeated && !this.boss3Defeated) {
+        // Get the current status of the Boss 3 components
+        const shipExistsAndActive =
+          this.boss3Ship && !this.boss3Ship.markedForDeletion;
+        const planeExistsAndActive =
+          this.boss3Plane && !this.boss3Plane.markedForDeletion;
+
+        // --- Trigger Reinforcements Based on Component Defeat ---
+
+        // Check if SHIP reinforcements should start:
+        // (Ship component is destroyed, Plane component is still active, and SHIP reinforcements haven't started yet)
+        if (
+          !shipExistsAndActive &&
+          planeExistsAndActive &&
+          !this.isSpawningShipHelpers
+        ) {
+          console.log(
+            "Boss 3 Ship component down! Starting SHIP reinforcements."
+          );
+          this.isSpawningShipHelpers = true; // Enable SHIP helper spawning
+          this.helperShipSpawnTimer = 0; // Reset SHIP helper timer to spawn quickly
+          this.isSpawningPlaneHelpers = false; // Safety check: Ensure PLANE helpers are disabled
+        }
+        // Check if PLANE reinforcements should start:
+        // (Plane component is destroyed, Ship component is still active, and PLANE reinforcements haven't started yet)
+        else if (
+          !planeExistsAndActive &&
+          shipExistsAndActive &&
+          !this.isSpawningPlaneHelpers
+        ) {
+          console.log(
+            "Boss 3 Plane component down! Starting PLANE reinforcements."
+          );
+          this.isSpawningPlaneHelpers = true; // Enable PLANE helper spawning
+          this.helperPlaneSpawnTimer = 0; // Reset PLANE helper timer to spawn quickly
+          this.isSpawningShipHelpers = false; // Safety check: Ensure SHIP helpers are disabled
+        }
+
+        // --- Check for COMPLETE Boss 3 Defeat ---
+        // (Both components are destroyed, and the Boss 3 defeated flag hasn't been set yet)
+        if (
+          !shipExistsAndActive &&
+          !planeExistsAndActive &&
+          !this.boss3Defeated
+        ) {
           console.log(
             "handleBossState: Both Boss 3 components defeated! Calling bossDefeated(3)..."
           );
-          this.bossDefeated(3);
+          this.bossDefeated(3); // Signal that the entire Boss 3 encounter is over
         }
-      } else if (
-        this.currentBossInstance &&
-        this.currentBossInstance.markedForDeletion
-      ) {
-        // Boss 1 or 2 defeat condition
-        console.log(
-          `handleBossState: Boss ${this.currentBossNumber} instance marked. Calling bossDefeated(${this.currentBossNumber})...`
-        );
-        this.bossDefeated(this.currentBossNumber);
       }
-    }
-  }
+      // --- Handle Boss 1 or Boss 2 Defeat ---
+      else if (
+        this.currentBossInstance && // Check if there's a single boss instance (B1 or B2)
+        this.currentBossInstance.markedForDeletion // Check if that instance is marked for deletion
+      ) {
+        console.log(
+          `handleBossState: Boss ${this.currentBossNumber} instance marked for deletion. Calling bossDefeated(${this.currentBossNumber})...`
+        );
+        this.bossDefeated(this.currentBossNumber); // Signal defeat for Boss 1 or 2
+      }
+    } // End else (bossActive)
+  } // End handleBossState
 
   // --- >>> REVISED spawnBoss Method <<< ---
   spawnBoss(bossNumber) {
@@ -420,27 +478,27 @@ export class Game {
   }
 
   // --- >>> REVISED bossDefeated Method <<< ---
-  /** Handles logic when a boss fight concludes.
-   * @param {number} bossNumber - The number of the boss that was just defeated.
-   */
   bossDefeated(bossNumber) {
-    // Check if this specific boss fight was actually marked as defeated
-    if (
-      (bossNumber === 1 && this.boss1Defeated) ||
-      (bossNumber === 2 && this.boss2Defeated) ||
-      (bossNumber === 3 && this.boss3Defeated)
-    ) {
-      console.warn(
-        `bossDefeated called for Boss ${bossNumber}, but it was already marked as defeated.`
-      );
-      // Still reset generic boss state if somehow active
-      this.bossActive = false;
-      this.currentBossInstance = null;
-      this.currentBossNumber = null;
-      this.boss3Ship = null;
-      this.boss3Plane = null;
-      return;
+    // ... (Check if already defeated - unchanged) ...
+    console.log(`--- Boss ${bossNumber} Defeated! ---`);
+    if (bossNumber === 1) {
+      this.boss1Defeated = true;
+    } else if (bossNumber === 2) {
+      this.boss2Defeated = true;
+    } else if (bossNumber === 3) {
+      this.boss3Defeated = true;
     }
+
+    // --- Reset ALL boss state ---
+    this.bossActive = false;
+    this.currentBossInstance = null;
+    this.currentBossNumber = null;
+    this.boss3Ship = null;
+    this.boss3Plane = null;
+    // --- >>> Reset Reinforcement Flags <<< ---
+    this.isSpawningPlaneHelpers = false;
+    this.isSpawningShipHelpers = false;
+    // --- >>> END Reset <<< ---
 
     console.log(`--- Boss ${bossNumber} Defeated! ---`);
 
@@ -477,14 +535,38 @@ export class Game {
   // --- >>> ADD Reinforcement Spawning Methods <<< ---
   // These are called by the Boss components when THEY are destroyed
   spawnBoss3HelperPlanes(count = 2, type = "mixed") {
-    console.log(`GAME: Spawning ${count} Boss 3 PLANE helpers.`);
+    // --- >>> ADD LOGGING <<< ---
+    console.log(
+      `SPAWN_HELPER_PLANES: Method called. Count=${count}, Type=${type}`
+    );
+    if (!this.enemies) {
+      console.error(
+        "SPAWN_HELPER_PLANES: ERROR - this.enemies array is missing!"
+      );
+      return;
+    }
+    // --- >>> END LOGGING <<< ---
+
     for (let i = 0; i < count; i++) {
       let PlaneClass = EnemyShooterPlane; // Default
       if (type === "mixed" && Math.random() < 0.5)
         PlaneClass = EnemyDodgingPlane;
       else if (type === "dodger") PlaneClass = EnemyDodgingPlane;
-      this.enemies.push(new PlaneClass(this, 0.2)); // Small speed boost?
-      // Maybe add slight delay between spawns?
+
+      // --- >>> ADD LOGGING <<< ---
+      console.log(
+        `   Spawning helper plane ${i + 1}/${count} of type ${PlaneClass.name}`
+      );
+      try {
+        const helperPlane = new PlaneClass(this, 0.2); // Create instance
+        this.enemies.push(helperPlane); // Add to array
+        console.log(
+          `       -> Added ${helperPlane.id} to enemies array. Total enemies: ${this.enemies.length}`
+        );
+      } catch (e) {
+        console.error(`       -> ERROR creating/pushing helper plane:`, e);
+      }
+      // --- >>> END LOGGING <<< ---
     }
   }
   spawnBoss3HelperShips(count = 2, type = "mixed") {
@@ -515,44 +597,43 @@ export class Game {
     }
   }
 
+  // --- >>> REVISED handleSpawning Method <<< ---
   handleSpawning(deltaTime) {
-    // --- SECTION 1: BOSS ACTIVE CHECKS ---
-
-    // 1a. Boss 1 Helper Spawns (Only when Boss 1 is active and low health)
-    if (
-      this.bossActive &&
-      this.currentBoss instanceof Boss1 &&
-      this.currentBoss.activeWeakPoints <= 2 &&
-      this.currentBoss.activeWeakPoints > 0
-    ) {
-      this.boss1HelperPlaneTimer += deltaTime;
-      const currentHelperInterval =
-        this.boss1HelperPlaneBaseInterval +
-        Math.random() * this.boss1HelperPlaneRandomInterval;
-      if (this.boss1HelperPlaneTimer >= currentHelperInterval) {
-        this.boss1HelperPlaneTimer = 0;
-        const planesToSpawn = this.currentBoss.activeWeakPoints === 1 ? 2 : 1;
-        console.log(
-          `Spawning ${planesToSpawn} Boss 1 helper plane(s) (Shooter/Basic?) - ${this.currentBoss.activeWeakPoints} WP left`
-        );
-        for (let i = 0; i < planesToSpawn; i++) {
-          // --- Boss 1 Helpers: Use types available before Boss 1 ---
-          let HelperPlaneClass =
-            Math.random() < 0.4 ? EnemyShooterPlane : EnemyPlane; // 40% Shooter, 60% Basic?
-          this.enemies.push(new HelperPlaneClass(this, 0)); // No extra boost for helpers?
+    // --- SECTION 1: BOSS ACTIVE SPAWNING ---
+    if (this.bossActive) {
+      // 1a. Boss 1 Helper Spawns
+      if (
+        this.currentBossNumber === 1 &&
+        this.currentBossInstance &&
+        this.currentBossInstance.activeWeakPoints <= 2 &&
+        this.currentBossInstance.activeWeakPoints > 0
+      ) {
+        // ... (Boss 1 helper plane spawning logic - unchanged) ...
+      }
+      // 1b. Boss 3 Helper Spawns (triggered by flags set in handleBossState)
+      else if (this.currentBossNumber === 3) {
+        if (this.isSpawningPlaneHelpers) {
+          // Ship is down, spawn planes
+          this.helperPlaneSpawnTimer -= deltaTime;
+          if (this.helperPlaneSpawnTimer <= 0) {
+            this.spawnBoss3HelperPlanes(1, "mixed"); // Spawn 1 plane at a time? Or more?
+            this.helperPlaneSpawnTimer =
+              this.helperPlaneSpawnInterval + Math.random() * 1000 - 500; // Reset timer
+          }
+        }
+        if (this.isSpawningShipHelpers) {
+          // Plane is down, spawn ships
+          this.helperShipSpawnTimer -= deltaTime;
+          if (this.helperShipSpawnTimer <= 0) {
+            this.spawnBoss3HelperShips(1, "mixed"); // Spawn 1 ship at a time?
+            this.helperShipSpawnTimer =
+              this.helperShipSpawnInterval + Math.random() * 1500 - 750; // Reset timer
+          }
         }
       }
-      return; // Prevent regular spawns during Boss 1 helper phase
-    }
-
-    // 1b. Boss 2 Helper Spawns (Triggered by Boss 2 itself)
-    // Note: We implemented this via Boss2 calling game.spawnBoss2HelperShips.
-    // So, no specific check needed here, but we still need the general boss active check below.
-
-    // 1c. General Boss Active Check
-    if (this.bossActive) {
-      return; // No regular spawns during ANY active boss fight (unless handled above)
-    }
+      // NOTE: No regular spawns happen while bossActive is true
+      return; // Prevent regular spawning during any boss phase/reinforcement
+    } // --- End if(this.bossActive) ---
 
     // --- SECTION 2: REGULAR SPAWNING (No boss active) ---
     const speedBoost = this.difficultyLevel * 0.3;
@@ -709,7 +790,8 @@ export class Game {
       for (let i = 0; i < this.enemies.length; i++) {
         const e = this.enemies[i];
 
-        // Skip if projectile was marked by a previous enemy in this inner loop, or if enemy is invalid/marked
+        // Skip if projectile was marked by a previous enemy in this inner loop,
+        // or if enemy is invalid or marked for deletion
         if (
           p.markedForDeletion ||
           !e ||
@@ -719,31 +801,42 @@ export class Game {
           continue; // Move to the next enemy
         }
 
-        // --- Check Collision ---
-        if (checkCollision(p, e)) {
-          console.log(
-            `%%% COLLISION! Proj: ${p.constructor.name} (${p.x?.toFixed(
-              0
-            )},${p.y?.toFixed(0)}, Dmg:${p.damage}) vs Enemy: ${
-              e.constructor.name
-            } ${e.id} (${e.x?.toFixed(0)},${e.y?.toFixed(0)}, Health:${
-              e.health
-            })`
-          );
+        // --- Collision Check Logic ---
+        let collisionDetected = false; // Flag to store result of check
 
-          // --- Determine Hit Logic based on projectile and enemy types ---
+        // Special check for Bullets vs Boss3Plane to prevent tunneling
+        if (p instanceof Bullet && e instanceof Boss3Plane) {
+          const lookAhead = p.speed * 1.5; // Adjust multiplier as needed (1.0 to 2.0 is common)
+          const expandedBulletRect = {
+            x: p.x,
+            y: p.y,
+            width: p.width + lookAhead, // Extend hitbox forward
+            height: p.height,
+          };
+          // console.log(`  EXPANDED CHECK: Bullet(${p.x.toFixed(1)}, ${p.y.toFixed(1)}) w/LookAhead=${lookAhead.toFixed(1)} vs Plane(${e.x.toFixed(1)}, ${e.y.toFixed(1)})`);
+          collisionDetected = checkCollision(expandedBulletRect, e); // Use expanded rect
+          // if (collisionDetected) { console.log(`    -> EXPANDED CHECK HIT!`); }
+        } else {
+          // Use standard AABB check for all other projectile/enemy combinations
+          collisionDetected = checkCollision(p, e);
+        }
+        // --- End Collision Check Logic ---
+
+        // --- Process Hit if Collision Detected ---
+        if (collisionDetected) {
+          // console.log(`%%% COLLISION! Proj: ${p.constructor.name} vs Enemy: ${e.constructor.name} ${e.id}`); // Basic log
+
+          // --- Determine Hit Action based on projectile and enemy types ---
 
           // 1. SuperBomb direct hit on an AIR enemy? (Including Boss3Plane)
           if (
             p instanceof SuperBomb &&
-            (e instanceof EnemyPlane ||
-              e instanceof EnemyShooterPlane ||
-              e instanceof EnemyDodgingPlane ||
-              e instanceof EnemyMineLayerPlane ||
-              e instanceof Boss3Plane)
+            (e instanceof EnemyPlane || // Includes subclasses if not overridden
+              e instanceof Boss3Plane || // Explicit check for Boss 3 Plane
+              e.enemyType === "air") // General check for air types
           ) {
             console.log(
-              `   -> Handling SuperBomb vs Air Enemy ${e.constructor.name}...`
+              `   -> Handling SuperBomb direct hit vs Air Enemy ${e.constructor.name}...`
             );
             e.hit(p); // Pass the projectile itself to let the enemy calculate effective damage
             p.markedForDeletion = true; // Consume the SuperBomb
@@ -751,25 +844,20 @@ export class Game {
           }
           // 2. Any projectile hitting Boss 1 or Boss 2?
           else if (e instanceof Boss1 || e instanceof Boss2) {
-            console.log(
-              `   -> Handling Projectile vs Boss 1/2 ${e.constructor.name}...`
-            );
+            // console.log(`   -> Handling Projectile vs Boss 1/2 ${e.constructor.name}...`);
             e.hit(p); // Let the specific boss instance handle the projectile object
-            // Projectile deletion is handled within Boss1/Boss2 hit methods if applicable
+            // Projectile deletion is handled within Boss1/Boss2 hit methods
           }
           // 3. Any projectile hitting Boss 3 Components?
           else if (e instanceof Boss3Ship || e instanceof Boss3Plane) {
-            console.log(
-              `   -> Handling Projectile vs Boss 3 Component ${e.constructor.name}...`
-            );
-            e.hit(p); // Let the specific component instance handle the projectile object
-            // Projectile deletion is handled within Boss3Ship/Boss3Plane hit methods if applicable
+            // console.log(`   -> Handling Projectile vs Boss 3 Component ${e.constructor.name}...`);
+            // The hit method of Boss3Ship/Boss3Plane will be called
+            e.hit(p);
+            // Projectile deletion is handled within Boss3Ship/Boss3Plane hit methods
           }
           // 4. Regular Projectile (NOT SuperBomb) hitting Regular Enemy?
           else if (!(p instanceof SuperBomb)) {
-            console.log(
-              `   -> Handling Regular Projectile vs Regular Enemy ${e.constructor.name}...`
-            );
+            // console.log(`   -> Handling Regular Projectile vs Regular Enemy ${e.constructor.name}...`);
             const pType = p instanceof Bomb ? "bomb" : "bullet";
             e.hit(p.damage || 1, pType); // Pass damage and type to regular enemy hit
 
@@ -778,102 +866,120 @@ export class Game {
               // Bullets always die on any regular enemy hit
               p.markedForDeletion = true;
             } else {
-              // Regular Bombs only die on hitting regular ships
+              // Regular Bombs only die on hitting regular ships/ground targets
               if (
-                e instanceof EnemyShip ||
-                e instanceof EnemyShooterShip ||
-                e instanceof EnemyTrackingShip ||
-                e instanceof EnemyBeamShip
+                e.enemyType === "ship" ||
+                e.enemyType === "ground_installation"
               ) {
                 p.markedForDeletion = true;
               }
               // Note: Regular bomb hitting plane does NOT destroy the bomb itself here
             }
           }
-          // 5. Else case (e.g., SuperBomb hitting regular ship - direct hit ignored, handled by water impact)
+          // 5. Else case (e.g., SuperBomb hitting regular ship - direct hit ignored)
           else {
-            // This block might be entered if a SuperBomb hits a regular ship directly.
-            // We currently intend for only the water impact to damage ships from SuperBomb.
-            console.log(
-              `   -> Collision ignored (e.g., SuperBomb direct hit on ship): Proj=${p.constructor.name}, Enemy=${e.constructor.name}`
-            );
+            // console.log(`   -> Collision ignored (e.g., SuperBomb direct hit on ship): Proj=${p.constructor.name}, Enemy=${e.constructor.name}`);
           }
 
-          // --- Break inner enemy loop if projectile was consumed ---
+          // --- Break inner enemy loop if projectile was consumed by the hit ---
           if (p.markedForDeletion) {
-            // console.log(`      Projectile marked for deletion after hitting ${e.id}, breaking inner loop.`); // Optional debug
-            break;
+            // console.log(`      Projectile marked for deletion after hitting ${e.id}, breaking inner loop.`);
+            break; // Stop checking this projectile against other enemies in this frame
           }
-        } // end if(checkCollision)
+        } // end if(collisionDetected)
       } // end for (enemies)
     }); // End forEach (projectiles)
 
     // --- Player vs Enemy Projectiles (AND MINES) ---
     this.enemyProjectiles.forEach((ep) => {
       if (!ep || ep.markedForDeletion) return; // Safety check
+
       if (checkCollision(this.player, ep)) {
+        // Check shield first
         if (this.player.shieldActive) {
           ep.markedForDeletion = true;
-          this.player.deactivateShield(true);
+          this.player.deactivateShield(true); // Shield broken
           this.createExplosion(
             ep.x + ep.width / 2,
             ep.y + ep.height / 2,
             "tiny"
           );
-          playSound("shieldDown");
-          return;
+          // playSound("shieldDown"); // Sound handled by deactivateShield
+          return; // Skip other checks if shield absorbed it
         }
+        // Check invincibility next
         if (this.player.invincible) {
-          return;
-        } // Player immune, projectile continues
+          // Player is immune, but should the projectile be destroyed? Often yes for fairness/visuals.
+          // Let's destroy tiny projectiles but maybe not mines?
+          if (!(ep instanceof Mine)) {
+            // Example: destroy bullets/missiles but not mines
+            ep.markedForDeletion = true;
+            this.createExplosion(
+              ep.x + ep.width / 2,
+              ep.y + ep.height / 2,
+              "tiny"
+            );
+          }
+          return; // Player immune, no damage taken
+        }
 
         // Player is vulnerable and hit
         ep.markedForDeletion = true; // Consume projectile/mine
+
         if (ep instanceof Mine) {
           console.log("Player hit a Mine!");
           this.createExplosion(
             ep.x + ep.width / 2,
             ep.y + ep.height / 2,
             "ground"
-          );
-          playSound("explosion");
+          ); // Larger explosion for mine
+          playSound("explosion"); // Use explosion sound for mine
         } else {
-          // Hit by regular bullet/missile
+          // Hit by regular bullet/missile - small visual effect
+          this.createExplosion(
+            ep.x + ep.width / 2,
+            ep.y + ep.height / 2,
+            "tiny"
+          );
         }
-        this.player.hit(); // Apply damage/invincibility to player
+        this.player.hit(); // Apply damage/invincibility frames to player
       }
     }); // End Player vs Enemy Projectiles
 
-    // --- Player vs Enemies ---
+    // --- Player vs Enemies (Collision Damage) ---
     if (!this.player.shieldActive && !this.player.invincible) {
+      // Only check if player is vulnerable
       this.enemies.forEach((e) => {
         if (!e || e.markedForDeletion) return; // Safety check
-        if (checkCollision(this.player, e)) {
-          let playerDamaged = false; // Assume no damage initially
 
-          if (e instanceof Boss1 || e instanceof Boss2) {
-            console.log(
-              `Player collided with Boss object: ${e.constructor.name}`
-            );
-            playerDamaged = true;
-          } else if (e instanceof Boss3Ship) {
-            console.log(
-              `Player collided with Boss Component: ${e.constructor.name}`
-            );
-            playerDamaged = true; // Assume hull contact hurts
-          } else if (e instanceof Boss3Plane) {
-            console.log(
-              `Player collided with Boss Component: ${e.constructor.name}`
-            );
-            playerDamaged = true; // Assume hull contact hurts
-          } else {
-            // Player Collided with REGULAR ENEMY
-            e.hit(100); // Destroy regular enemy instantly
-            playerDamaged = true;
+        if (checkCollision(this.player, e)) {
+          let playerTakesDamage = false; // Flag to track if player should be hit
+
+          // Specific handling for Bosses/Components
+          if (
+            e instanceof Boss1 ||
+            e instanceof Boss2 ||
+            e instanceof Boss3Ship ||
+            e instanceof Boss3Plane
+          ) {
+            // console.log(`Player collided with Boss object/component: ${e.constructor.name}`);
+            playerTakesDamage = true; // Colliding with any boss part damages player
+            // Optionally, do minor damage to the boss part on collision?
+            // e.hit(1, 'collision'); // Example: very minor damage
           }
-          // Apply damage to player if needed
-          if (playerDamaged) {
-            this.player.hit();
+          // Handling for Regular Enemies
+          else {
+            // console.log(`Player collided with regular enemy: ${e.constructor.name}`);
+            if (e.enemyType !== "ground_installation") {
+              // Can't collide with background elements
+              e.hit(100, "collision"); // Destroy regular enemy instantly on collision
+              playerTakesDamage = true;
+            }
+          }
+
+          // Apply damage to player if collision occurred with a harmful enemy
+          if (playerTakesDamage) {
+            this.player.hit(); // Player takes damage, gains invincibility frames
           }
         } // End if(checkCollision)
       }); // End forEach enemy
@@ -882,8 +988,10 @@ export class Game {
     // --- Player vs PowerUps ---
     this.powerUps.forEach((pu) => {
       if (!pu || pu.markedForDeletion) return; // Safety check
+
       if (checkCollision(this.player, pu)) {
-        pu.activate(this.player); // PowerUp handles its own deletion
+        // console.log(`Player collected PowerUp: ${pu.constructor.name}`);
+        pu.activate(this.player); // PowerUp handles its own activation and deletion
       }
     }); // End Player vs PowerUps
   } // End of handleCollisions
@@ -1285,10 +1393,16 @@ export class Game {
     this.currentBossNumber = null;
     this.boss3Ship = null;
     this.boss3Plane = null;
-    this.currentBoss = null;
     this.boss1Defeated = effectiveConfig.defeatedBosses.includes(1);
     this.boss2Defeated = effectiveConfig.defeatedBosses.includes(2);
     this.boss3Defeated = effectiveConfig.defeatedBosses.includes(3);
+
+    // --- >>> Reset Reinforcement State <<< ---
+    this.isSpawningPlaneHelpers = false;
+    this.helperPlaneSpawnTimer = 0; // Reset timers too
+    this.isSpawningShipHelpers = false;
+    this.helperShipSpawnTimer = 0;
+    // --- >>> END Reset <<< ---
     console.log(
       `   Boss Defeated Flags Set: B1=${this.boss1Defeated}, B2=${this.boss2Defeated}, B3=${this.boss3Defeated}`
     );

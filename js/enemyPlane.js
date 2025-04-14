@@ -4,7 +4,7 @@ import { randomInt } from "./utils.js"; // Keep for speed/position
 
 export class EnemyPlane extends Enemy {
   constructor(game, speedBoost = 0) {
-    super(game); // Calls base Enemy constructor
+    super(game); // Calls base Enemy constructor (which no longer sets health)
     this.width = 50;
     this.height = 30;
     const topSpawnMargin = 20;
@@ -14,22 +14,26 @@ export class EnemyPlane extends Enemy {
       this.game.height - this.height - bottomSpawnMargin
     );
     this.speedX = 2.5 + Math.random() * 1.5 + speedBoost;
+    this.enemyType = "air"; // Set type
 
-    // --- Health (Base EnemyPlane has 1 health) ---
-    this.maxHealth = 1; // Explicitly set max health
-    this.health = this.maxHealth; // Explicitly set current health
+    // --- Set Health HERE ---
+    this.maxHealth = 1; // Max health for basic plane
+    this.health = this.maxHealth; // Current health
     // --- End Health ---
 
     this.scoreValue = 10;
     this.color = "darkred";
-    this.enemyType = "air"; // Correct type
 
     // Sine Wave Properties
     this.angle = Math.random() * Math.PI * 2;
     this.amplitude = 40 + Math.random() * 30;
     this.frequency = 0.04 + Math.random() * 0.025;
     this.initialY = this.y;
-  }
+
+    console.log(
+      `EnemyPlane ${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
+    ); // Log health here
+  } // End Constructor
 
   // Override update to ensure sine calculation uses the correct initialY and applies bounds
   update(deltaTime) {
