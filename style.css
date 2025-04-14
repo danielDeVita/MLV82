@@ -116,21 +116,20 @@ body {
 
 /* Apply animations only to layers with uncommented images */
 #distant-mountains-layer {
-  /* animation: parallax-scroll-slow 120s linear infinite; */
+  animation: parallax-scroll-slow 120s linear infinite;
 }
 #far-clouds-layer {
-  /* animation: parallax-scroll-medium 80s linear infinite; */
+  animation: parallax-scroll-medium 80s linear infinite;
 }
 #near-mountains-layer {
-  /* animation: parallax-scroll-medium 90s linear infinite; */
+  animation: parallax-scroll-medium 90s linear infinite;
 }
 #mid-clouds-layer {
-  /* animation: parallax-scroll-fast 40s linear infinite; */
+  animation: parallax-scroll-fast 40s linear infinite;
 }
 #near-clouds-layer {
-  /* animation: parallax-scroll-very-fast 20s linear infinite; */
+  animation: parallax-scroll-very-fast 20s linear infinite;
 }
-/* --- Sea Layer Animations REMOVED --- */
 
 /* UI Overlay (Score, Lives, etc.) */
 #ui {
