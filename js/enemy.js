@@ -3,29 +3,38 @@
 export class Enemy {
   constructor(game) {
     this.game = game;
-    this.id = `enemy_${Math.random().toString(36).substring(2, 9)}`; // Simple unique-ish ID for logging
+    this.id = `enemy_${Math.random().toString(36).substring(2, 9)}`;
     this.x = this.game.width;
     this.y = 0; // Position set by subclasses
     this.width = 50; // Default size
     this.height = 30; // Default size
     this.speedX = Math.random() * 2 + 1;
     this.markedForDeletion = false;
-    this.enemyType = "air";
-    this.health = 1;
+    this.enemyType = "air"; // Default type, subclasses should override
+
+    // --- Explicit Health Initialization ---
+    this.maxHealth = 1; // Default max health for basic enemies
+    this.health = this.maxHealth; // Set current health TO max health
+    // --- End Health ---
+
     this.scoreValue = 10;
     this.color = "grey";
-    this.maxHealth = this.health;
 
     // Hit Flash
     this.isHit = false;
     this.hitTimer = 0;
     this.hitDuration = 100;
+
+    // --- ADD Constructor Log ---
+    console.log(
+      `Enemy ${this.id} (${this.constructor.name}) constructed. Health: ${this.health}/${this.maxHealth}, Type: ${this.enemyType}`
+    );
   }
 
   update(deltaTime) {
     const safeDeltaTime = Math.max(0.1, deltaTime);
     const deltaScale = safeDeltaTime / 16.67;
-    this.x -= this.speedX * deltaScale; // Scaled horizontal movement
+    this.x -= this.speedX * deltaScale;
 
     if (this.x + this.width < 0) {
       this.markedForDeletion = true;
@@ -39,26 +48,21 @@ export class Enemy {
     }
   }
 
-  // --- MODIFIED: Base draw method ONLY handles common elements like health bar ---
   draw(context) {
-    // --- HEALTH BAR LOGIC (Centralized Here) ---
+    // --- Health Bar Logic ---
+    // Only draw if maxHealth > 1 (basic enemies with 1 health won't show a bar)
     if (this.maxHealth && this.maxHealth > 1 && !this.markedForDeletion) {
-      const barY = this.y - 8; // Position above enemy
+      const barY = this.y - 8;
       const barHeight = 4;
-      context.fillStyle = "red"; // Background of health bar
+      context.fillStyle = "red";
       context.fillRect(this.x, barY, this.width, barHeight);
-      context.fillStyle = "green"; // Foreground (current health)
-      const currentHealthWidth = Math.max(
-        0,
-        this.width * (this.health / this.maxHealth)
-      );
-
-      // Optional Log for debugging health bar display issues
-      // console.log(`DEBUG HealthBar (Base Enemy Draw - ${this.constructor.name} ID=${this.id}): H=${this.health}, Max=${this.maxHealth}, W=${currentHealthWidth.toFixed(1)}`);
-
-      context.fillRect(this.x, barY, currentHealthWidth, barHeight); // Draw green part
+      context.fillStyle = "lime"; // Changed to lime for better visibility
+      // Ensure division by zero doesn't happen if maxHealth is somehow <= 0
+      const healthPercentage =
+        this.maxHealth > 0 ? this.health / this.maxHealth : 0;
+      const currentHealthWidth = Math.max(0, this.width * healthPercentage);
+      context.fillRect(this.x, barY, currentHealthWidth, barHeight);
     }
-    // NOTE: No shape drawing here! Subclasses handle their own shapes.
   }
 
   // --- NEW: Helper for subclasses that just want a default rectangle ---
@@ -70,25 +74,28 @@ export class Enemy {
     context.restore();
   }
 
-  hit(damage, projectileType = "bullet") {
-    if (this.markedForDeletion) return; // Prevent multiple hits triggering drops
+  hit(damage = 1, projectileType = "bullet") {
+    // Default damage to 1
+    if (this.markedForDeletion) return;
+    const initialHealth = this.health;
 
-    // console.log(`DEBUG BASE Enemy Hit: Called on ${this.constructor.name}, Damage=${damage}, CurrentHealth=${this.health}, Type='${projectileType}'`);
+    // --- ADD LOGGING ---
+    console.log(
+      `ENEMY HIT: ${this.id} (${this.constructor.name}) Type=${projectileType}, Dmg=${damage}, HealthBefore=${initialHealth}`
+    );
+
     this.isHit = true;
     this.hitTimer = this.hitDuration;
-    this.health -= damage;
-    // console.log(`DEBUG BASE Enemy Hit: Health AFTER damage: ${this.health}`);
+    this.health -= damage; // Apply damage
+
+    console.log(`   -> HealthAfter=${this.health}`); // Log new health
 
     if (this.health <= 0 && !this.markedForDeletion) {
-      // console.log(`DEBUG BASE Enemy Hit: Health <= 0! Marking for deletion. ID=${this.id}`);
+      console.log(`   -> Marked for deletion! Score: +${this.scoreValue}`); // Log deletion
       this.markedForDeletion = true;
       this.game.addScore(this.scoreValue);
 
-      // --- >>> Determine Origin Type <<< ---
-      // Default to 'air' if enemyType is missing or unknown
       const dropOriginType = this.enemyType === "ship" ? "ship" : "air";
-      // --- >>> END Determine Origin Type <<< ---
-
       this.game.createExplosion(
         this.x + this.width / 2,
         this.y + this.height / 2,
@@ -96,7 +103,7 @@ export class Enemy {
       );
       if (Math.random() < this.game.powerUpDropChance) {
         console.log(
-          `Enemy ${this.id} type ${this.enemyType} dropping powerup.`
+          `   -> Enemy ${this.id} type ${this.enemyType} dropping powerup.`
         );
         this.game.createPowerUp(
           this.x + this.width / 2,
@@ -104,7 +111,6 @@ export class Enemy {
           dropOriginType
         );
       }
-    } // else if (this.health > 0) { console.log(`DEBUG BASE Enemy Hit: Health > 0. Enemy survives.`); }
-    // else if (this.markedForDeletion) { console.log(`DEBUG BASE Enemy Hit: Health <= 0 but already marked.`); }
-  }
+    }
+  } // End hit
 }
