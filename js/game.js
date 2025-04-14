@@ -781,110 +781,73 @@ export class Game {
   handleCollisions() {
     // --- Player Projectiles vs Enemies ---
     this.projectiles.forEach((p) => {
-      // Safety check for projectile validity & deletion status at start
       if (typeof p !== "object" || p === null || p.markedForDeletion) {
-        return; // Skip this projectile entirely if invalid or already marked
+        return;
       }
 
-      // Loop through enemies to check for collision with projectile 'p'
       for (let i = 0; i < this.enemies.length; i++) {
         const e = this.enemies[i];
 
-        // Skip if projectile was marked by a previous enemy in this inner loop,
-        // or if enemy is invalid or marked for deletion
         if (
           p.markedForDeletion ||
           !e ||
           typeof e !== "object" ||
           e.markedForDeletion
         ) {
-          continue; // Move to the next enemy
+          continue;
         }
 
-        // --- Collision Check Logic ---
-        let collisionDetected = false; // Flag to store result of check
-
-        // Special check for Bullets vs Boss3Plane to prevent tunneling
-        if (p instanceof Bullet && e instanceof Boss3Plane) {
-          const lookAhead = p.speed * 1.5; // Adjust multiplier as needed (1.0 to 2.0 is common)
-          const expandedBulletRect = {
-            x: p.x,
-            y: p.y,
-            width: p.width + lookAhead, // Extend hitbox forward
-            height: p.height,
-          };
-          // console.log(`  EXPANDED CHECK: Bullet(${p.x.toFixed(1)}, ${p.y.toFixed(1)}) w/LookAhead=${lookAhead.toFixed(1)} vs Plane(${e.x.toFixed(1)}, ${e.y.toFixed(1)})`);
-          collisionDetected = checkCollision(expandedBulletRect, e); // Use expanded rect
-          // if (collisionDetected) { console.log(`    -> EXPANDED CHECK HIT!`); }
-        } else {
-          // Use standard AABB check for all other projectile/enemy combinations
-          collisionDetected = checkCollision(p, e);
-        }
-        // --- End Collision Check Logic ---
+        // --- >>> USE STANDARD COLLISION CHECK ONLY <<< ---
+        // Remove the special 'if (p instanceof Bullet && e instanceof Boss3Plane)' block
+        // Perform the standard check for ALL projectile/enemy pairs here.
+        const collisionDetected = checkCollision(p, e);
+        // --- >>> END STANDARD CHECK <<< ---
 
         // --- Process Hit if Collision Detected ---
         if (collisionDetected) {
-          // console.log(`%%% COLLISION! Proj: ${p.constructor.name} vs Enemy: ${e.constructor.name} ${e.id}`); // Basic log
+          // Log the initial detection minimally if needed
+          // console.log(`[Game] Standard Collision DETECTED! P=${p.constructor.name} vs E=${e.constructor.name}. Calling e.hit().`);
 
-          // --- Determine Hit Action based on projectile and enemy types ---
-
-          // 1. SuperBomb direct hit on an AIR enemy? (Including Boss3Plane)
+          // --- Determine Hit Action (This block remains the same) ---
           if (
             p instanceof SuperBomb &&
-            (e instanceof EnemyPlane || // Includes subclasses if not overridden
-              e instanceof Boss3Plane || // Explicit check for Boss 3 Plane
-              e.enemyType === "air") // General check for air types
+            (e instanceof EnemyPlane ||
+              e instanceof Boss3Plane ||
+              e.enemyType === "air")
           ) {
-            console.log(
-              `   -> Handling SuperBomb direct hit vs Air Enemy ${e.constructor.name}...`
-            );
-            e.hit(p); // Pass the projectile itself to let the enemy calculate effective damage
-            p.markedForDeletion = true; // Consume the SuperBomb
+            // console.log(`   -> Handling SuperBomb direct hit vs Air Enemy ${e.constructor.name}...`);
+            e.hit(p); // Pass projectile to enemy hit method
+            p.markedForDeletion = true;
             this.createExplosion(p.x + p.width / 2, p.y + p.height / 2, "air");
-          }
-          // 2. Any projectile hitting Boss 1 or Boss 2?
-          else if (e instanceof Boss1 || e instanceof Boss2) {
+          } else if (e instanceof Boss1 || e instanceof Boss2) {
             // console.log(`   -> Handling Projectile vs Boss 1/2 ${e.constructor.name}...`);
-            e.hit(p); // Let the specific boss instance handle the projectile object
-            // Projectile deletion is handled within Boss1/Boss2 hit methods
-          }
-          // 3. Any projectile hitting Boss 3 Components?
-          else if (e instanceof Boss3Ship || e instanceof Boss3Plane) {
+            e.hit(p); // Pass projectile
+          } else if (e instanceof Boss3Ship || e instanceof Boss3Plane) {
             // console.log(`   -> Handling Projectile vs Boss 3 Component ${e.constructor.name}...`);
-            // The hit method of Boss3Ship/Boss3Plane will be called
-            e.hit(p);
-            // Projectile deletion is handled within Boss3Ship/Boss3Plane hit methods
-          }
-          // 4. Regular Projectile (NOT SuperBomb) hitting Regular Enemy?
-          else if (!(p instanceof SuperBomb)) {
+            e.hit(p); // Pass projectile
+          } else if (!(p instanceof SuperBomb)) {
+            // Regular projectile vs Regular enemy
             // console.log(`   -> Handling Regular Projectile vs Regular Enemy ${e.constructor.name}...`);
             const pType = p instanceof Bomb ? "bomb" : "bullet";
-            e.hit(p.damage || 1, pType); // Pass damage and type to regular enemy hit
-
-            // Regular projectile deletion logic
+            e.hit(p.damage || 1, pType); // Pass damage and type
+            // Projectile deletion logic for regular hits
             if (pType !== "bomb") {
-              // Bullets always die on any regular enemy hit
               p.markedForDeletion = true;
             } else {
-              // Regular Bombs only die on hitting regular ships/ground targets
               if (
                 e.enemyType === "ship" ||
                 e.enemyType === "ground_installation"
               ) {
                 p.markedForDeletion = true;
               }
-              // Note: Regular bomb hitting plane does NOT destroy the bomb itself here
             }
           }
-          // 5. Else case (e.g., SuperBomb hitting regular ship - direct hit ignored)
-          else {
-            // console.log(`   -> Collision ignored (e.g., SuperBomb direct hit on ship): Proj=${p.constructor.name}, Enemy=${e.constructor.name}`);
-          }
+          // else: Ignore SuperBomb vs Ship direct hit, etc.
 
-          // --- Break inner enemy loop if projectile was consumed by the hit ---
+          // --- Break inner loop if projectile was consumed ---
+          // This is important: if e.hit(p) marked p for deletion, stop checking p
           if (p.markedForDeletion) {
-            // console.log(`      Projectile marked for deletion after hitting ${e.id}, breaking inner loop.`);
-            break; // Stop checking this projectile against other enemies in this frame
+            break;
           }
         } // end if(collisionDetected)
       } // end for (enemies)

@@ -187,9 +187,10 @@ export class BossWeakPoint {
 
     // --- BLOCK 1: Debug Shape ---
     context.save(); // << SAVE 1
-    context.fillStyle = "fuchsia";
-    context.strokeStyle = "black";
-    context.lineWidth = 1;
+    // Make the weak point box slightly more visible for testing
+    context.fillStyle = "rgba(255, 0, 255, 0.4)"; // Semi-transparent Fuchsia Fill
+    context.strokeStyle = "white"; // Bright White Outline
+    context.lineWidth = 1.5; // Slightly thicker line
     context.fillRect(this.x, this.y, this.width, this.height);
     context.strokeRect(this.x, this.y, this.width, this.height);
     context.restore(); // << RESTORE 1
@@ -197,16 +198,11 @@ export class BossWeakPoint {
     // --- BLOCK 2: Health Bar ---
     if (this.maxHealth && this.maxHealth > 1) {
       context.save(); // << SAVE 2
-      const barY = this.y - 8;
+      const barY = this.y - 8; // Position above the box
       const barHeight = 4;
-      console.log(
-        `  -> HEALTH BAR DRAW for Type: ${this.type}, X: ${this.x?.toFixed(
-          0
-        )}, Y: ${this.y?.toFixed(0)}, Health: ${this.health?.toFixed(1)}`
-      );
-      context.fillStyle = "red";
+      context.fillStyle = "rgba(255, 0, 0, 0.7)"; // More solid red background
       context.fillRect(this.x, barY, this.width, barHeight);
-      context.fillStyle = "lime";
+      context.fillStyle = "rgba(0, 255, 0, 0.9)"; // More solid lime foreground
       const currentHealthWidth = Math.max(
         0,
         this.width * (this.health / this.maxHealth)
