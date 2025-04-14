@@ -83,9 +83,9 @@ export class Game {
     this.boss2PowerUpRandomInterval = 3000;
 
     // Score thresholds
-    this.BOSS1_SCORE_THRESHOLD = 800; // Low for testing
-    this.BOSS2_SCORE_THRESHOLD = 5000; // Low for testing
-    this.BOSS3_SCORE_THRESHOLD = 14000; // Adjusted
+    this.BOSS1_SCORE_THRESHOLD = 2500; // Low for testing
+    this.BOSS2_SCORE_THRESHOLD = 9000; // Low for testing
+    this.BOSS3_SCORE_THRESHOLD = 18000; // Adjusted
 
     // --- Initialize properties reset by initializeLevel ---
     this.score = 0;
