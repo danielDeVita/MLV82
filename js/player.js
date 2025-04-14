@@ -83,7 +83,7 @@ export class Player {
       this.x += scaledSpeed;
 
     // --- Boundaries ---
-    const bottomBoundary = this.game.height - this.height - 80; // Max Y position
+    const bottomBoundary = this.game.height - this.height - 5; // Allow going to bottom - height - 5px padding
     this.x = Math.max(0, Math.min(this.game.width - this.width, this.x)); // Clamp X
     this.y = Math.max(0, Math.min(bottomBoundary, this.y)); // Clamp Y
 
