@@ -371,21 +371,16 @@ export class Boss3Plane extends EnemyPlane {
 
   hit(projectile) {
     // --- Basic Initial Checks ---
-    // Exit immediately if the boss plane itself is already destroyed,
-    // or if the projectile is invalid or already marked for deletion.
     if (
       this.markedForDeletion ||
       !projectile ||
       typeof projectile !== "object" ||
       projectile.markedForDeletion
     ) {
-      // console.log("Boss3Plane.hit: Early exit due to basic checks."); // Optional log
       return; // Stop processing this hit
     }
 
     // --- Ensure Previous Position Exists (Might be needed elsewhere) ---
-    // While not strictly needed for the current collision check logic here,
-    // it's good practice to ensure prevX/prevY exist on bullets if other systems rely on them.
     if (
       projectile instanceof Bullet &&
       (projectile.prevX === undefined || projectile.prevY === undefined)
@@ -401,14 +396,8 @@ export class Boss3Plane extends EnemyPlane {
     const incomingDamage = projectile.damage || 1; // Get base damage, default to 1
     let effectiveDamage = incomingDamage; // Start with base damage
 
-    // Apply damage multipliers specific to this boss/components if needed
     if (isBullet) {
       effectiveDamage *= 1.5; // Example: Bullets do 150% damage to plane components
-      // console.log(`  Bullet detected, applying 1.5x multiplier. Effective damage: ${effectiveDamage.toFixed(1)}`); // Optional log
-    } else if (isBomb) {
-      // console.log(`  Bomb detected. Base damage: ${incomingDamage}`); // Optional log
-      // Bombs might have different effectiveness, adjust if necessary
-      // effectiveDamage *= 0.8; // Example: Bombs less effective? (Unlikely for plane)
     }
 
     // --- Flag to track if any weak point was successfully hit by this projectile ---
@@ -416,101 +405,75 @@ export class Boss3Plane extends EnemyPlane {
 
     // --- Iterate Through Weak Points for Collision Check ---
     for (const wp of this.weakPoints) {
-      if (!wp.isActive) continue;
+      if (!wp.isActive) {
+        continue; // Move to the next weak point in the loop
+      }
 
       // --- Force Weak Point Position Update ---
       wp.updatePosition();
 
       // --- Create Adjusted Hitbox Representation for Bullets ---
-      let projectileHitbox = projectile;
+      let projectileHitbox = projectile; // Default: use the original projectile object
       if (isBullet) {
+        // If it's a bullet, create a new hitbox object centered around the bullet's (x,y).
         projectileHitbox = {
-          /* ... centered hitbox ... */
+          x: projectile.x - projectile.width / 2, // Calculate centered X
+          y: projectile.y - projectile.height / 2, // Calculate centered Y
+          width: projectile.width, // Use the bullet's original width
+          height: projectile.height, // Use the bullet's original height
         };
+        // Safety check for NaN
         if (isNaN(projectileHitbox.x) || isNaN(projectileHitbox.y)) {
-          projectileHitbox = projectile; // Fallback
+          projectileHitbox = projectile; // Revert to original projectile data if centering failed
         }
       }
 
       // --- Perform Collision Check ---
       const collisionResult = checkCollision(projectileHitbox, wp);
-      // --- Detailed Logging (KEEP UNCOMMENTED during testing/debugging) ---
-      // This log is crucial for diagnosing collision issues. It shows the exact
-      // coordinates and dimensions being compared for both the projectile and the weak point.
-      console.log(
-        `  Checking Proj (${
-          projectile.constructor.name
-        } @ ${projectileHitbox.x.toFixed(1)},${projectileHitbox.y.toFixed(
-          1
-        )} W:${projectileHitbox.width} H:${projectileHitbox.height}) vs WP (${
-          wp.type
-        } @ ${wp.x.toFixed(1)},${wp.y.toFixed(1)} W:${wp.width} H:${
-          wp.height
-        }) => Hit: ${collisionResult}`
-      );
+
+      // --- Detailed Logging REMOVED ---
+      // console.log( `...` ); // <-- REMOVED
 
       // --- Process the Hit if Collision Occurred ---
-      // --- Process the Hit if Collision Occurred ---
       if (collisionResult) {
-        console.log(
-          `      >>> SUCCESSFUL WP COLLISION DETECTED with ${wp.type} <<<`
-        );
-        wp.hit(effectiveDamage);
-        projectile.markedForDeletion = true; // <<< KEEP THIS: Delete bullet hitting WP
+        // --- Log Confirmation REMOVED ---
+        // console.log(`      >>> SUCCESSFUL WP COLLISION DETECTED with ${wp.type} <<<`); // <-- REMOVED
+
+        wp.hit(effectiveDamage); // Notify weak point
+        projectile.markedForDeletion = true; // Consume projectile hitting WP
         weakPointWasHit = true;
-        break; // Exit the for...of loop over weak points
+        break; // Exit the loop early
       }
     } // --- End of weak point loop ---
 
     // --- Handle Hits That Missed Weak Points ---
-    // This logic now ONLY handles effects if desired, but DOES NOT delete the bullet.
     if (!weakPointWasHit && !projectile.markedForDeletion && isBullet) {
-      // --- >>> CHANGE START <<< ---
-
-      // OLD LOGIC (Commented Out):
-      // console.log(`  -> Plane body hit (missed WP) by bullet. Applying flash & consuming bullet.`);
-      // this.isHit = true;       // Remove Flash? Optional.
-      // this.hitTimer = this.hitDuration; // Remove Flash Timer? Optional.
-      // projectile.markedForDeletion = true; // <<< REMOVE / COMMENT OUT THIS LINE
-
-      // NEW LOGIC (Optional): Log that the bullet passed through
-      console.log(
-        `  -> Bullet hit plane body but missed WPs. Bullet continues.`
-      );
-
-      // --- >>> CHANGE END <<< ---
+      // --- Logic to handle body hits REMOVED (no flash, no deletion) ---
+      // console.log(`  -> Bullet hit plane body but missed WPs. Bullet continues.`); // <-- REMOVED / Optional
     } else if (!weakPointWasHit && !projectile.markedForDeletion && isBomb) {
-      // Optional: Log bombs that hit the body but missed WPs, if needed for debugging.
-      // Bombs are typically NOT consumed in this case against air targets.
-      // console.log(`  -> Bomb hit plane body but missed all active weak points. Bomb NOT consumed.`);
+      // Bombs hitting body but missing WPs are ignored
     }
-
-    // console.log(`--- Boss3Plane.hit END ---`); // Optional log for end of method execution
   } // End hit() method
 
+  // Inside js/boss3Plane.js -> Boss3Plane class
   draw(context) {
     if (this.markedForDeletion || !context) return;
     context.save(); // Save context state
 
-    // --- >>> DRAW MAIN BOUNDING BOX (TEMP DEBUG) <<< ---
-    // Draw a semi-transparent cyan rectangle representing the main collision area
-    context.fillStyle = "rgba(0, 255, 255, 0.15)"; // Light cyan fill
-    context.fillRect(this.x, this.y, this.width, this.height);
-    context.strokeStyle = "cyan"; // Bright cyan outline
-    context.lineWidth = 1;
-    context.strokeRect(this.x, this.y, this.width, this.height);
-    // --- >>> END TEMP DEBUG <<< ---
+    // --- >>> DRAW MAIN BOUNDING BOX REMOVED <<< ---
 
-    // Apply main body hit flash if needed (only if doing main body flash from hit method)
-    // Using alpha variation for flash effect
+    // Apply main body hit flash if needed
+    // (Only triggers now if a non-WP part of the *main* plane is hit by something ELSE,
+    // or if you re-enable the flash in the hit() method for missed bullets)
     if (this.isHit) {
-      context.globalAlpha = 0.6 + Math.sin(performance.now() * 0.02) * 0.2; // Pulsing alpha
+      // Keep a simple flash effect if you want visual feedback for ANY hit on the body
+      // (e.g., if the main collision check in game.js triggers this)
+      context.globalAlpha = 0.7; // Simple semi-transparent flash
     }
 
-    // --- Draw Base Plane Shape (copied from EnemyPlane) ---
+    // --- Draw Base Plane Shape (Unchanged) ---
     context.fillStyle = this.color; // Base color (Dark Red)
     context.beginPath();
-    // ... (keep the path drawing lines exactly as they were) ...
     context.moveTo(this.x + this.width * 0.1, this.y + this.height * 0.2);
     context.lineTo(this.x + this.width * 0.5, this.y); // Nose
     context.lineTo(this.x + this.width * 0.9, this.y + this.height * 0.2);
@@ -520,7 +483,7 @@ export class Boss3Plane extends EnemyPlane {
     context.lineTo(this.x, this.y + this.height * 0.5); // Wingtip
     context.closePath();
     context.fill();
-    // --- Draw Cockpit ---
+    // --- Draw Cockpit (Unchanged) ---
     context.fillStyle = this.detailColor; // Detail color (Orange)
     context.beginPath();
     context.arc(
@@ -529,22 +492,17 @@ export class Boss3Plane extends EnemyPlane {
       this.width * 0.08,
       0,
       Math.PI * 2
-    ); // Adjust position/size
+    );
     context.fill();
     // --- End Base Plane Shape ---
 
-    context.restore(); // Restore context state (undoes alpha changes etc.)
+    context.restore(); // Restore context state
 
     // --- Draw Active Weak Points ---
     // Weak points draw themselves AFTER the main body and AFTER context restore
     this.weakPoints.forEach((wp) => {
       if (wp.isActive) {
-        // Only draw active ones
-        wp.draw(context); // Weak point draws itself (pink box + health bar)
-      } else {
-        // Optional: Draw destroyed state (e.g., small explosion graphic?)
-        // context.fillStyle = 'rgba(50,50,50,0.7)';
-        // context.fillRect(wp.x, wp.y, wp.width, wp.height);
+        wp.draw(context); // Weak point draws itself (Original pink box + health bar)
       }
     });
   }
