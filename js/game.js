@@ -601,15 +601,40 @@ export class Game {
   handleSpawning(deltaTime) {
     // --- SECTION 1: BOSS ACTIVE SPAWNING ---
     if (this.bossActive) {
+      // --- >>> ADD THIS BLOCK FOR BOSS 1 HELPERS <<< ---
       // 1a. Boss 1 Helper Spawns
+      // Check if Boss 1 is the current boss, exists, and has 2 or 1 weak points left.
       if (
         this.currentBossNumber === 1 &&
-        this.currentBossInstance &&
-        this.currentBossInstance.activeWeakPoints <= 2 &&
-        this.currentBossInstance.activeWeakPoints > 0
+        this.currentBossInstance && // Check if the boss instance is valid
+        this.currentBossInstance.activeWeakPoints <= 2 && // Check if weak points are 2 or less
+        this.currentBossInstance.activeWeakPoints > 0 // Check if the boss is not already defeated (WP > 0)
       ) {
-        // ... (Boss 1 helper plane spawning logic - unchanged) ...
+        // Conditions met, manage the spawn timer
+        this.boss1HelperPlaneTimer -= deltaTime; // Decrement timer
+
+        if (this.boss1HelperPlaneTimer <= 0) {
+          // Timer reached zero, spawn a helper plane
+
+          // Reset the timer for the next spawn
+          this.boss1HelperPlaneTimer =
+            this.boss1HelperPlaneBaseInterval + // Base time
+            Math.random() * this.boss1HelperPlaneRandomInterval; // Plus random variance
+
+          // Choose the type of helper plane to spawn
+          const speedBoost = this.difficultyLevel * 0.2; // Optional speed boost based on difficulty
+          // Example: 60% chance for Shooter, 40% for Dodger
+          let PlaneClass =
+            Math.random() < 0.6 ? EnemyShooterPlane : EnemyDodgingPlane;
+
+          // Spawn the plane instance
+          console.log(
+            `GAME: Spawning Boss 1 helper plane (Type: ${PlaneClass.name})`
+          ); // Log the spawn
+          this.enemies.push(new PlaneClass(this, speedBoost)); // Add the new enemy to the game
+        }
       }
+      // --- >>> END OF BLOCK TO ADD <<< ---
       // 1b. Boss 3 Helper Spawns (triggered by flags set in handleBossState)
       else if (this.currentBossNumber === 3) {
         if (this.isSpawningPlaneHelpers) {
