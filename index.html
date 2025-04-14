@@ -1,50 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MLV82</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="/MLV82.png" type="image/png">
-</head>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" href="/MLV82.png" type="image/png" />
+  </head>
 
-<body>
+  <body>
     <div id="game-container">
+      <!-- Background Layers (Order doesn't strictly matter, z-index does) -->
+      <div id="sky-color-layer" class="background-layer"></div>
+      <!-- Handled by container bg -->
+      <!-- Stars/Sun/Moon drawn on Canvas -->
+      <div id="distant-mountains-layer" class="background-layer parallax"></div>
+      <!-- Placeholder -->
+      <div id="far-clouds-layer" class="background-layer parallax"></div>
+      <div id="near-mountains-layer" class="background-layer parallax"></div>
+      <!-- Placeholder -->
+      <div id="mid-clouds-layer" class="background-layer parallax"></div>
+      <div id="near-clouds-layer" class="background-layer parallax"></div>
+      <!-- Typo corrected: class.background-layer -> class="background-layer" -->
+      <div id="far-sea-layer" class="background-layer parallax"></div>
+      <div id="mid-sea-layer" class="background-layer parallax"></div>
+      <div id="close-sea-layer" class="background-layer parallax"></div>
+      <!-- End Background Layers -->
 
-        <!-- Background Layers (Order doesn't strictly matter, z-index does) -->
-        <div id="sky-color-layer" class="background-layer"></div> <!-- Handled by container bg -->
-        <!-- Stars/Sun/Moon drawn on Canvas -->
-        <div id="distant-mountains-layer" class="background-layer parallax"></div> <!-- Placeholder -->
-        <div id="far-clouds-layer" class="background-layer parallax"></div>
-        <div id="near-mountains-layer" class="background-layer parallax"></div> <!-- Placeholder -->
-        <div id="mid-clouds-layer" class="background-layer parallax"></div>
-        <div id="near-clouds-layer" class="background-layer parallax"></div>
-        <div id="far-sea-layer" class.background-layer parallax"></div>
-        <div id="mid-sea-layer" class="background-layer parallax"></div>
-        <div id="close-sea-layer" class="background-layer parallax"></div>
-        <!-- End Background Layers -->
+      <canvas id="gameCanvas"></canvas>
 
-        <canvas id="gameCanvas"></canvas>
+      <!-- UI Overlay (Score, Lives, etc.) -->
+      <div id="ui">
+        <div id="score">Score: 0</div>
+        <div id="lives">Lives: 3</div>
+        <div id="difficulty-level">Level: 0</div>
+        <div id="powerup-status"></div>
+      </div>
 
-        <!-- UI Overlay (Score, Lives, etc.) -->
-        <div id="ui">
-            <div id="score">Score: 0</div>
-            <div id="lives">Lives: 3</div>
-            <div id="difficulty-level">Level: 0</div>
-            <div id="powerup-status"></div>
-        </div>
+      <!-- Game Over Screen -->
+      <!-- Added class="overlay" for styling consistency -->
+      <div id="game-over" class="overlay" style="display: none">
+        <h1>GAME OVER</h1>
+        <button id="restartButton">Restart</button>
+      </div>
 
-        <!-- Game Over Screen -->
-        <div id="game-over" style="display: none;">
-            <h1>GAME OVER</h1>
-            <button id="restartButton">Restart</button>
-        </div>
-
-    </div> <!-- End of game-container -->
+      <!-- >>> ADDED Game Won Overlay <<< -->
+      <div id="game-won" class="overlay" style="display: none">
+        <h1>Mission Accomplished!</h1>
+        <p id="final-score-won">Final Score: 0</p>
+        <button id="restartButtonWon">Play Again</button>
+      </div>
+      <!-- >>> END ADDED <<< -->
+    </div>
+    <!-- End of game-container -->
 
     <script type="module" src="js/main.js"></script>
-
-</body>
-
+  </body>
 </html>

@@ -1,6 +1,6 @@
 // js/game.js
 
-// --- Imports (Include Boss1) ---
+// --- Imports (Include Boss1, Boss2, Boss3 Components) ---
 import { InputHandler } from "./input.js";
 import { Player } from "./player.js";
 import { Background } from "./background.js";
@@ -10,12 +10,10 @@ import { EnemyShooterPlane } from "./enemyShooterPlane.js";
 import { EnemyShooterShip } from "./enemyShooterShip.js";
 import { EnemyDodgingPlane } from "./enemyDodgingPlane.js";
 import { EnemyTrackingShip } from "./enemyTrackingShip.js";
-import { EnemyMineLayerPlane } from "./enemyMineLayerPlane.js"; // <<< IMPORT
-import { Mine } from "./mine.js"; // <<< IMPORT
+import { EnemyMineLayerPlane } from "./enemyMineLayerPlane.js";
+import { Mine } from "./mine.js";
 import { EnemyBeamShip } from "./enemyBeamShip.js";
-
 import { Explosion } from "./explosion.js";
-
 import { PowerUpShield } from "./powerUpShield.js";
 import { PowerUpSpreadShot } from "./powerUpSpreadShot.js";
 import { PowerUpExtraLife } from "./powerUpExtraLife.js";
@@ -23,16 +21,14 @@ import { PowerUpBullet } from "./powerUpBullet.js";
 import { PowerUpBomb } from "./powerUpBomb.js";
 import { PowerUpRapidFire } from "./powerUpRapidFire.js";
 import { PowerUpInvincibility } from "./powerUpInvincibility.js";
-
-import { SuperBomb } from "./superBomb.js"; // <<< IMPORT SuperBomb
+import { SuperBomb } from "./superBomb.js";
 import { PowerUpSuperBomb } from "./powerUpSuperBomb.js";
-
-import { Boss1 } from "./boss1.js"; // <<< BOSS IMPORT
+import { Boss1 } from "./boss1.js";
 import { Boss2 } from "./boss2.js";
-// import { Boss3 } from "./boss3.js";
-import { Boss3Ship } from "./boss3Ship.js"; // <<< IMPORT BOSS 3 SHIP
-import { Boss3Plane } from "./boss3Plane.js"; // <<< IMPORT BOSS 3 PLANE
+import { Boss3Ship } from "./boss3Ship.js";
+import { Boss3Plane } from "./boss3Plane.js";
 import { checkCollision } from "./utils.js";
+// Ensure addSound is imported if you want the game won sound
 import { playSound } from "./audio.js";
 import { Bomb } from "./bomb.js";
 import { Bullet } from "./bullet.js";
@@ -53,48 +49,41 @@ export class Game {
     if (!this.context) throw new Error("FATAL: Failed to get 2D context.");
     console.log("DEBUG: Constructor - Context obtained.");
 
-    // --- Initialize properties that DON'T change based on level start ---
-    // These are core settings or base values used elsewhere.
-    this.lastTime = 0; // For deltaTime calculation
+    // --- Initialize properties ---
+    this.lastTime = 0;
     this.isGameOver = false; // Game state flag
-    this.projectiles = []; // Player bullets/bombs
-    this.enemyProjectiles = []; // Enemy bullets/missiles/mines
-    this.enemies = []; // All active enemies (regular + bosses)
-    this.explosions = []; // Visual effects
-    this.powerUps = []; // Collectible power-ups
-    this.baseEnemyPlaneInterval = 2000; // Base time between regular plane spawns
-    this.baseEnemyShipInterval = 6000; // Base time between regular ship spawns
-    this.boss1HelperPlaneBaseInterval = 1800; // Base time between Boss 1 helper spawns
-    this.boss1HelperPlaneRandomInterval = 600; // Random variance for Boss 1 helpers
-    this.powerUpDropChance = 0.1; // Base chance for enemy to drop power-up on death
+    this.isGameWon = false; // <<< NEW: Game Won state flag
+    this.projectiles = [];
+    this.enemyProjectiles = [];
+    this.enemies = [];
+    this.explosions = [];
+    this.powerUps = [];
+    this.baseEnemyPlaneInterval = 2000;
+    this.baseEnemyShipInterval = 6000;
+    this.boss1HelperPlaneBaseInterval = 1800;
+    this.boss1HelperPlaneRandomInterval = 600;
+    this.powerUpDropChance = 0.1;
 
-    // --- >>> NEW: Boss 3 Reinforcement State & Timers <<< ---
-    this.isSpawningPlaneHelpers = false; // Flag for plane reinforcements (when ship is down)
+    // Boss 3 Reinforcement State & Timers
+    this.isSpawningPlaneHelpers = false;
     this.helperPlaneSpawnTimer = 0;
-    this.helperPlaneSpawnInterval = 3500; // How often helper planes spawn (adjust)
-
-    this.isSpawningShipHelpers = false; // Flag for ship reinforcements (when plane is down)
+    this.helperPlaneSpawnInterval = 3500;
+    this.isSpawningShipHelpers = false;
     this.helperShipSpawnTimer = 0;
-    this.helperShipSpawnInterval = 4500; // How often helper ships spawn (adjust)
-    // --- >>> END NEW <<< ---
+    this.helperShipSpawnInterval = 4500;
 
-    // Default intervals for timed power-ups during boss fights
+    // Power-up Timers
     this.defaultBossPowerUpBaseInterval = 15000;
     this.defaultBossPowerUpRandomInterval = 5000;
-
-    // Specific intervals for Boss 2 timed power-ups
     this.boss2PowerUpBaseInterval = 9000;
     this.boss2PowerUpRandomInterval = 3000;
 
-    // Score thresholds to trigger bosses
-    this.BOSS1_SCORE_THRESHOLD = 800;
-    this.BOSS2_SCORE_THRESHOLD = 5000;
-    // --- >>> INCREASE THIS VALUE <<< ---
-    this.BOSS3_SCORE_THRESHOLD = 14000; // Example: Increased from 9500
-    // --- >>> END INCREASE <<< ---
+    // Score thresholds
+    this.BOSS1_SCORE_THRESHOLD = 800; // Low for testing
+    this.BOSS2_SCORE_THRESHOLD = 5000; // Low for testing
+    this.BOSS3_SCORE_THRESHOLD = 14000; // Adjusted
 
-    // --- Initialize properties that WILL BE OVERWRITTEN by initializeLevel ---
-    // Set safe defaults here, but initializeLevel is the source of truth at game start/restart.
+    // --- Initialize properties reset by initializeLevel ---
     this.score = 0;
     this.difficultyLevel = 0;
     this.scoreForNextLevel = 300;
@@ -102,35 +91,27 @@ export class Game {
     this.enemyShipTimer = 0;
     this.boss1HelperPlaneTimer = 0;
     this.bossActive = false;
-    // this.currentBoss = null;
-
-    // --- Boss Tracking ---
-    this.currentBossInstance = null; // For Boss 1 & 2
-    this.currentBossNumber = null; // Which boss fight is active (1, 2, or 3)
-    this.boss3Ship = null; // Reference to the Boss 3 Ship instance
-    this.boss3Plane = null; // Reference to the Boss 3 Plane instance
+    this.currentBossInstance = null;
+    this.currentBossNumber = null;
+    this.boss3Ship = null;
+    this.boss3Plane = null;
     this.boss1Defeated = false;
     this.boss2Defeated = false;
-    this.boss3Defeated = false;
+    this.boss3Defeated = false; // Key flag for winning
     this.bossPowerUpTimer = 0;
-
-    // Initialize using the DEFAULT values. spawnBoss will set the correct one later.
     this.bossPowerUpInterval =
-      this.defaultBossPowerUpBaseInterval + // <<< USE DEFAULT HERE
-      Math.random() * this.defaultBossPowerUpRandomInterval; // <<< USE DEFAULT HERE
-    // --- >>> END CORRECTION <<< ---
+      this.defaultBossPowerUpBaseInterval +
+      Math.random() * this.defaultBossPowerUpRandomInterval;
 
     // --- Initialize Core Components ---
-    // These need the 'this' (game instance) reference but their specific state
-    // (like player lives) will be managed by initializeLevel/reset methods.
     try {
       this.input = new InputHandler(this);
       this.background = new Background(this.width, this.height);
-      this.background.game = this; // Give background access to game instance
-      this.player = new Player(this); // Player reads its own defaults first
+      this.background.game = this;
+      this.player = new Player(this);
     } catch (error) {
       console.error("Error initializing core components:", error);
-      throw error; // Stop if core components fail
+      throw error;
     }
 
     // --- Get UI Elements ---
@@ -140,48 +121,58 @@ export class Game {
     this.powerupStatusElement = document.getElementById("powerup-status");
     this.gameOverElement = document.getElementById("game-over");
     this.restartButton = document.getElementById("restartButton");
+    // --- >>> GET NEW UI ELEMENTS <<< ---
+    this.gameWonElement = document.getElementById("game-won");
+    this.finalScoreWonElement = document.getElementById("final-score-won");
+    this.restartButtonWon = document.getElementById("restartButtonWon");
+    // --- >>> END GET <<< ---
 
     // --- Setup Event Listeners ---
     if (this.restartButton) {
-      // Use bind to ensure 'this' refers to the Game instance inside the handler
       this.restartButton.addEventListener("click", this.restart.bind(this));
     } else {
-      console.error("Restart button not found!");
+      console.error("Restart button (Game Over) not found!");
     }
 
-    console.log("Game Constructor: Finished successfully.");
-    // NOTE: updateUI() is NOT called here anymore.
-    // It's called by initializeLevel (which is called by start/restart).
-  } // End Constructor
+    // --- >>> ADD LISTENER FOR NEW BUTTON <<< ---
+    if (this.restartButtonWon) {
+      this.restartButtonWon.addEventListener("click", this.restart.bind(this));
+    } else {
+      console.error("Restart button (Game Won) not found!");
+    }
+    // --- >>> END ADD <<< ---
 
-  // Inside js/game.js -> Game class
+    // --- (Optional but recommended) Add a sound for winning ---
+    // Make sure you have a 'gameWon.wav' or similar in your sounds folder
+    playSound("gameWon", "sounds/gameWon.wav"); // Adjust path/filename if needed
+
+    console.log("Game Constructor: Finished successfully.");
+  } // End Constructor
 
   // --- Main Game Loop ---
   loop(timestamp) {
-    // Check context at START
-    if (!this.context) {
-      console.error(`LOOP ERROR (Start): this.context is missing!`);
-      this.isGameOver = true;
-      this.drawGameOver(); // Attempt to draw game over overlay even if context lost mid-game later
-      return;
+    // --- >>> ADD CHECK FOR GAME WON <<< ---
+    if (this.isGameWon) {
+      this.drawGameWon(); // Keep drawing overlay if game is won
+      return; // Stop the loop
     }
+    // --- >>> END ADD <<< ---
 
-    // Check game over state at START
+    // Check game over state (existing check)
     if (this.isGameOver) {
       this.drawGameOver(); // Keep drawing overlay if game is over
-      return;
+      return; // Stop the loop
     }
 
     // DeltaTime Calculation
     const currentTime = performance.now ? performance.now() : timestamp;
-    const MAX_DELTA_TIME_MS = 100; // Prevent excessive jumps if tab loses focus
+    const MAX_DELTA_TIME_MS = 100;
     let deltaTime = 0;
     if (this.lastTime > 0) {
       deltaTime = currentTime - this.lastTime;
-      // Clamp delta time: handle potential pauses/freezes or very fast frames
       deltaTime = Math.max(0.1, Math.min(MAX_DELTA_TIME_MS, deltaTime));
     } else {
-      deltaTime = 16.67; // Estimate for first frame (approx 60fps)
+      deltaTime = 16.67;
     }
     this.lastTime = currentTime;
 
@@ -193,7 +184,6 @@ export class Game {
       // 2. Update All Game Objects
       this.background.update(deltaTime, this.score);
       this.player.update(this.input, deltaTime);
-      // Use spread syntax for a single loop over all update-able arrays
       [
         ...this.projectiles,
         ...this.enemyProjectiles,
@@ -202,77 +192,55 @@ export class Game {
         ...this.powerUps,
       ].forEach((obj) => {
         if (obj && typeof obj.update === "function") {
-          // Safety check
           obj.update(deltaTime);
         } else {
-          console.warn("Update loop encountered invalid object:", obj);
+          // console.warn("Update loop encountered invalid object:", obj);
         }
       });
 
       // Timed Boss Power-up Logic
       if (this.bossActive) {
-        // Check general flag first
         this.bossPowerUpTimer += deltaTime;
         if (this.bossPowerUpTimer >= this.bossPowerUpInterval) {
           this.bossPowerUpTimer = 0; // Reset timer
           let baseInterval, randomInterval;
-          // Use faster intervals ONLY if Boss 2 fight is active
           if (this.currentBossNumber === 2) {
-            // Check specific boss number
             baseInterval = this.boss2PowerUpBaseInterval;
             randomInterval = this.boss2PowerUpRandomInterval;
           } else {
-            // Default for Boss 1, Boss 3, or potentially future bosses
             baseInterval = this.defaultBossPowerUpBaseInterval;
             randomInterval = this.defaultBossPowerUpRandomInterval;
           }
-          // Calculate interval for the *next* spawn
           this.bossPowerUpInterval =
             baseInterval + Math.random() * randomInterval;
 
-          // Spawn the power-up
           const spawnX = Math.random() * (this.width * 0.7) + this.width * 0.1;
           const spawnY = 50 + Math.random() * 50;
-          console.log(
-            `Spawning timed boss power-up (Next interval: ${this.bossPowerUpInterval.toFixed(
-              0
-            )}ms)`
-          );
-          this.createPowerUp(spawnX, spawnY, "air"); // Timed drops float down
+          // console.log( `Spawning timed boss power-up...`);
+          this.createPowerUp(spawnX, spawnY, "air");
         }
       }
 
       // 3. Game State Checks & Spawning
       this.updateDifficulty();
-      this.handleBossState(); // Checks for spawning new boss / ending current fight
-      this.handleSpawning(deltaTime); // Handles regular enemy and Boss 1 helper spawns
+      this.handleBossState(); // Checks for spawning/completion
+      this.handleSpawning(deltaTime); // Handles regular and boss helper spawns
 
       // 4. Collisions
       this.handleCollisions();
 
-      // --- 5. Draw Everything (Single Pass) ---
-      // Ensure context is still valid before drawing phase
+      // --- 5. Draw Everything ---
       if (!this.context) {
         throw new Error("Context lost before drawing phase!");
       }
-
       this.background.draw(this.context);
       this.powerUps.forEach((pu) => pu.draw(this.context));
-
-      // --- >>> SINGLE DRAW LOOP FOR ENEMIES <<< ---
       this.enemies.forEach((e) => {
-        if (e && typeof e.draw === "function") {
-          // Safety check
-          e.draw(this.context); // Includes bosses & B3 components
-        } else {
-          console.warn("Draw loop encountered invalid enemy object:", e);
-        }
+        if (e && typeof e.draw === "function") e.draw(this.context);
       });
-      // --- >>> END SINGLE DRAW LOOP <<< ---
-
-      this.enemyProjectiles.forEach((ep) => ep.draw(this.context)); // Includes mines
+      this.enemyProjectiles.forEach((ep) => ep.draw(this.context));
       this.player.draw(this.context);
-      this.projectiles.forEach((p) => p.draw(this.context)); // Includes SuperBomb
+      this.projectiles.forEach((p) => p.draw(this.context));
       this.explosions.forEach((ex) => ex.draw(this.context));
 
       // --- 6. Cleanup ---
@@ -284,33 +252,28 @@ export class Game {
       return; // Stop the loop on error
     }
 
-    // Request next frame ONLY if game is not over
-    if (!this.isGameOver) {
+    // Request next frame ONLY if game is not over or won
+    if (!this.isGameOver && !this.isGameWon) {
+      // <<< MODIFIED CONDITION
       requestAnimationFrame(this.loop.bind(this));
     } else {
-      // If game ended cleanly (e.g., player died), drawGameOver was already called
-      // If game ended via error, drawGameOver was called in catch block
-      console.log("Game loop stopped.");
+      console.log("Game loop stopped (Game Over or Game Won).");
     }
   } // End loop
 
+  // --- Game State and Boss Handling ---
   handleBossState() {
-    // --- Check for Spawning a NEW Boss Fight ---
+    // Check for Spawning a NEW Boss Fight
     if (!this.bossActive) {
-      // Check for Boss 1
       if (!this.boss1Defeated && this.score >= this.BOSS1_SCORE_THRESHOLD) {
         this.spawnBoss(1);
-      }
-      // Check for Boss 2 (only if Boss 1 is done)
-      else if (
+      } else if (
         this.boss1Defeated &&
         !this.boss2Defeated &&
         this.score >= this.BOSS2_SCORE_THRESHOLD
       ) {
         this.spawnBoss(2);
-      }
-      // Check for Boss 3 (only if Boss 1 & 2 are done)
-      else if (
+      } else if (
         this.boss1Defeated &&
         this.boss2Defeated &&
         !this.boss3Defeated &&
@@ -319,22 +282,16 @@ export class Game {
         this.spawnBoss(3);
       }
     }
-    // --- Check for Boss Fight Progression / Completion ---
+    // Check for Boss Fight Progression / Completion
     else {
-      // A boss IS currently active
-
-      // --- Handle Boss 3 Specific State ---
+      // Handle Boss 3 Specific State
       if (this.currentBossNumber === 3) {
-        // Get the current status of the Boss 3 components
         const shipExistsAndActive =
           this.boss3Ship && !this.boss3Ship.markedForDeletion;
         const planeExistsAndActive =
           this.boss3Plane && !this.boss3Plane.markedForDeletion;
 
-        // --- Trigger Reinforcements Based on Component Defeat ---
-
-        // Check if SHIP reinforcements should start:
-        // (Ship component is destroyed, Plane component is still active, and SHIP reinforcements haven't started yet)
+        // Trigger SHIP reinforcements
         if (
           !shipExistsAndActive &&
           planeExistsAndActive &&
@@ -343,12 +300,11 @@ export class Game {
           console.log(
             "Boss 3 Ship component down! Starting SHIP reinforcements."
           );
-          this.isSpawningShipHelpers = true; // Enable SHIP helper spawning
-          this.helperShipSpawnTimer = 0; // Reset SHIP helper timer to spawn quickly
-          this.isSpawningPlaneHelpers = false; // Safety check: Ensure PLANE helpers are disabled
+          this.isSpawningShipHelpers = true;
+          this.helperShipSpawnTimer = 0;
+          this.isSpawningPlaneHelpers = false;
         }
-        // Check if PLANE reinforcements should start:
-        // (Plane component is destroyed, Ship component is still active, and PLANE reinforcements haven't started yet)
+        // Trigger PLANE reinforcements
         else if (
           !planeExistsAndActive &&
           shipExistsAndActive &&
@@ -357,13 +313,11 @@ export class Game {
           console.log(
             "Boss 3 Plane component down! Starting PLANE reinforcements."
           );
-          this.isSpawningPlaneHelpers = true; // Enable PLANE helper spawning
-          this.helperPlaneSpawnTimer = 0; // Reset PLANE helper timer to spawn quickly
-          this.isSpawningShipHelpers = false; // Safety check: Ensure SHIP helpers are disabled
+          this.isSpawningPlaneHelpers = true;
+          this.helperPlaneSpawnTimer = 0;
+          this.isSpawningShipHelpers = false;
         }
-
-        // --- Check for COMPLETE Boss 3 Defeat ---
-        // (Both components are destroyed, and the Boss 3 defeated flag hasn't been set yet)
+        // Check for COMPLETE Boss 3 Defeat
         if (
           !shipExistsAndActive &&
           !planeExistsAndActive &&
@@ -372,13 +326,13 @@ export class Game {
           console.log(
             "handleBossState: Both Boss 3 components defeated! Calling bossDefeated(3)..."
           );
-          this.bossDefeated(3); // Signal that the entire Boss 3 encounter is over
+          this.bossDefeated(3); // Signal Boss 3 encounter is over
         }
       }
-      // --- Handle Boss 1 or Boss 2 Defeat ---
+      // Handle Boss 1 or Boss 2 Defeat
       else if (
-        this.currentBossInstance && // Check if there's a single boss instance (B1 or B2)
-        this.currentBossInstance.markedForDeletion // Check if that instance is marked for deletion
+        this.currentBossInstance &&
+        this.currentBossInstance.markedForDeletion
       ) {
         console.log(
           `handleBossState: Boss ${this.currentBossNumber} instance marked for deletion. Calling bossDefeated(${this.currentBossNumber})...`
@@ -388,53 +342,43 @@ export class Game {
     } // End else (bossActive)
   } // End handleBossState
 
-  // --- >>> REVISED spawnBoss Method <<< ---
   spawnBoss(bossNumber) {
-    // Prevent spawning if already active
     if (this.bossActive) {
       console.warn(
         `Attempted to spawn Boss ${bossNumber} while boss already active.`
       );
       return;
     }
-
     console.log(`--- Spawning Boss ${bossNumber} ---`);
-    this.bossActive = true; // Set flag immediately
-    this.currentBossNumber = bossNumber; // <<< Store which boss fight it is
+    this.bossActive = true;
+    this.currentBossNumber = bossNumber;
 
     // Clear regular enemies/projectiles
-    this.enemies = this.enemies.filter(
-      (e) =>
-        e instanceof Boss1 ||
-        e instanceof Boss2 ||
-        e instanceof Boss3Ship ||
-        e instanceof Boss3Plane
-    ); // Keep only existing boss parts? Or clear all?
-    this.enemies = []; // Let's clear all existing enemies for simplicity when a new boss starts
+    this.enemies = [];
     this.enemyProjectiles = [];
 
-    // --- Boss 3 Specific Spawning ---
+    // Boss 3 Specific Spawning
     if (bossNumber === 3) {
       console.log("Instantiating Boss 3 Dual Components...");
       try {
         this.boss3Ship = new Boss3Ship(this);
         this.boss3Plane = new Boss3Plane(this);
-        this.enemies.push(this.boss3Ship); // Add both to enemies array
+        this.enemies.push(this.boss3Ship);
         this.enemies.push(this.boss3Plane);
-        this.currentBossInstance = null; // No single "current" boss for B3
+        this.currentBossInstance = null; // No single instance for B3
         console.log(
           `   Spawned ${this.boss3Ship.id} and ${this.boss3Plane.id}`
         );
       } catch (error) {
         console.error(`ERROR Instantiating Boss 3 Components:`, error);
         this.bossActive = false;
-        this.currentBossNumber = null; // Reset state on error
+        this.currentBossNumber = null;
         this.boss3Ship = null;
         this.boss3Plane = null;
         return;
       }
     }
-    // --- Spawning for Boss 1 or 2 ---
+    // Spawning for Boss 1 or 2
     else {
       let bossInstance = null;
       try {
@@ -444,7 +388,8 @@ export class Game {
           bossInstance = new Boss2(this);
         }
       } catch (error) {
-        /* ... error handling ... */ this.bossActive = false;
+        console.error(`Error instantiating Boss ${bossNumber}:`, error);
+        this.bossActive = false;
         this.currentBossNumber = null;
         return;
       }
@@ -452,55 +397,44 @@ export class Game {
       if (bossInstance) {
         console.log(`Successfully instantiated ${bossInstance.id}`);
         this.enemies.push(bossInstance);
-        this.currentBossInstance = bossInstance; // <<< Store the single boss instance
+        this.currentBossInstance = bossInstance;
         this.boss3Ship = null;
         this.boss3Plane = null; // Ensure B3 refs are null
       } else {
-        /* ... handle unknown boss ... */ this.bossActive = false;
+        console.error(`Unknown boss number ${bossNumber} to spawn.`);
+        this.bossActive = false;
         this.currentBossNumber = null;
         return;
       }
     }
 
-    // Set Initial power-up interval (based on boss number now)
+    // Set Initial power-up interval
     this.bossPowerUpTimer = 0;
     let baseInterval, randomInterval;
     if (bossNumber === 2) {
       baseInterval = this.boss2PowerUpBaseInterval;
       randomInterval = this.boss2PowerUpRandomInterval;
-      console.log("Setting initial Boss 2 power-up interval.");
     } else {
       baseInterval = this.defaultBossPowerUpBaseInterval;
       randomInterval = this.defaultBossPowerUpRandomInterval;
-      console.log("Setting initial default power-up interval.");
     }
     this.bossPowerUpInterval = baseInterval + Math.random() * randomInterval;
+    console.log(`Initial boss power-up interval set for Boss ${bossNumber}.`);
   }
 
-  // --- >>> REVISED bossDefeated Method <<< ---
   bossDefeated(bossNumber) {
-    // ... (Check if already defeated - unchanged) ...
-    console.log(`--- Boss ${bossNumber} Defeated! ---`);
-    if (bossNumber === 1) {
-      this.boss1Defeated = true;
-    } else if (bossNumber === 2) {
-      this.boss2Defeated = true;
-    } else if (bossNumber === 3) {
-      this.boss3Defeated = true;
+    // Prevent multiple calls
+    if (
+      !this.bossActive &&
+      ((bossNumber === 1 && this.boss1Defeated) ||
+        (bossNumber === 2 && this.boss2Defeated) ||
+        (bossNumber === 3 && this.boss3Defeated))
+    ) {
+      // console.warn(`bossDefeated(${bossNumber}) called redundantly.`); // Optional warning
+      return;
     }
 
-    // --- Reset ALL boss state ---
-    this.bossActive = false;
-    this.currentBossInstance = null;
-    this.currentBossNumber = null;
-    this.boss3Ship = null;
-    this.boss3Plane = null;
-    // --- >>> Reset Reinforcement Flags <<< ---
-    this.isSpawningPlaneHelpers = false;
-    this.isSpawningShipHelpers = false;
-    // --- >>> END Reset <<< ---
-
-    console.log(`--- Boss ${bossNumber} Defeated! ---`);
+    console.log(`--- Boss ${bossNumber} Defeated! Processing... ---`);
 
     // Set the specific defeated flag
     if (bossNumber === 1) {
@@ -509,161 +443,135 @@ export class Game {
       this.boss2Defeated = true;
     } else if (bossNumber === 3) {
       this.boss3Defeated = true;
-    }
+    } // <<< Mark Boss 3 as done
 
     // Reset general boss state
     this.bossActive = false;
-    this.currentBossInstance = null; // Clear single boss ref
-    this.currentBossNumber = null; // Clear boss number tracker
-    // Ensure Boss 3 refs are cleared (might be redundant if cleanupObjects runs first, but safe)
+    this.currentBossInstance = null;
+    this.currentBossNumber = null;
     this.boss3Ship = null;
     this.boss3Plane = null;
+    this.isSpawningPlaneHelpers = false;
+    this.isSpawningShipHelpers = false;
+    console.log("   General boss state reset.");
 
     // Drop powerups
-    const numPowerups = bossNumber === 1 ? 3 : bossNumber === 2 ? 4 : 5; // More for later bosses
+    const numPowerups = bossNumber === 1 ? 3 : bossNumber === 2 ? 4 : 5;
+    const dropX = this.width / 2; // Center drop area
+    const dropY = 100;
+    console.log(`   Dropping ${numPowerups} powerups.`);
     for (let i = 0; i < numPowerups; i++) {
-      /* ... spawn powerups ... */
+      this.createPowerUp(
+        dropX + (Math.random() - 0.5) * 150,
+        dropY + (Math.random() - 0.5) * 40,
+        "air"
+      );
     }
 
     // Resume normal spawning timers
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
-    // Reset Boss 1 helper timer if Boss 1 was just defeated
-    if (bossNumber === 1) this.boss1HelperPlaneTimer = 0;
-  }
+    if (bossNumber === 1) this.boss1HelperPlaneTimer = 0; // Reset B1 helper timer specifically
+    console.log("   Normal enemy spawn timers reset.");
 
-  // --- >>> ADD Reinforcement Spawning Methods <<< ---
-  // These are called by the Boss components when THEY are destroyed
-  spawnBoss3HelperPlanes(count = 2, type = "mixed") {
-    // --- >>> ADD LOGGING <<< ---
-    console.log(
-      `SPAWN_HELPER_PLANES: Method called. Count=${count}, Type=${type}`
-    );
-    if (!this.enemies) {
-      console.error(
-        "SPAWN_HELPER_PLANES: ERROR - this.enemies array is missing!"
+    // --- >>> TRIGGER GAME WON CHECK <<< ---
+    if (bossNumber === 3) {
+      console.log(
+        "   Final Boss (Boss 3) defeated! Triggering Game Won sequence..."
       );
+      // Delay slightly to let defeat animations/sounds play out?
+      setTimeout(() => {
+        this.gameWon(); // Call the game won method
+      }, 1500); // Example 1.5 second delay
+    }
+    // --- >>> END TRIGGER <<< ---
+    console.log(`--- Boss ${bossNumber} Defeat Processing Complete ---`);
+  } // End bossDefeated
+
+  // --- >>> NEW gameWon Method <<< ---
+  gameWon() {
+    if (this.isGameWon || this.isGameOver) {
+      console.log("gameWon called but game already won or over.");
       return;
     }
-    // --- >>> END LOGGING <<< ---
+    console.log("--- GAME WON ---");
+    this.isGameWon = true; // Set the flag
 
-    for (let i = 0; i < count; i++) {
-      let PlaneClass = EnemyShooterPlane; // Default
-      if (type === "mixed" && Math.random() < 0.5)
-        PlaneClass = EnemyDodgingPlane;
-      else if (type === "dodger") PlaneClass = EnemyDodgingPlane;
+    // Optional: Clear remaining entities
+    // this.enemies = []; this.projectiles = []; this.enemyProjectiles = [];
 
-      // --- >>> ADD LOGGING <<< ---
-      console.log(
-        `   Spawning helper plane ${i + 1}/${count} of type ${PlaneClass.name}`
-      );
-      try {
-        const helperPlane = new PlaneClass(this, 0.2); // Create instance
-        this.enemies.push(helperPlane); // Add to array
-        console.log(
-          `       -> Added ${helperPlane.id} to enemies array. Total enemies: ${this.enemies.length}`
-        );
-      } catch (e) {
-        console.error(`       -> ERROR creating/pushing helper plane:`, e);
-      }
-      // --- >>> END LOGGING <<< ---
+    // Update final score display
+    if (this.finalScoreWonElement) {
+      this.finalScoreWonElement.textContent = `Final Score: ${this.score}`;
+    } else {
+      console.error("Final Score Won UI element not found!");
     }
-  }
-  spawnBoss3HelperShips(count = 2, type = "mixed") {
-    console.log(`GAME: Spawning ${count} Boss 3 SHIP helpers.`);
-    for (let i = 0; i < count; i++) {
-      let ShipClass = EnemyShooterShip; // Default
-      if (type === "mixed" && Math.random() < 0.4)
-        ShipClass = EnemyTrackingShip;
-      else if (type === "tracking") ShipClass = EnemyTrackingShip;
-      const ship = new ShipClass(this, 0.1);
-      ship.x = this.width + 60 + i * 90; // Stagger entry
-      ship.y -= i * 10;
-      this.enemies.push(ship);
-    }
-  }
-  // --- >>> END Reinforcement Methods <<< ---
 
-  // --- Other Helper Methods ---
-  updateDifficulty() {
-    if (!this.isGameOver && this.score >= this.scoreForNextLevel) {
-      this.difficultyLevel++;
-      this.scoreForNextLevel += 300 + this.difficultyLevel ** 2 * 50;
-      this.updateDifficultyUI();
-      this.powerUpDropChance = Math.min(
-        0.25,
-        0.1 + this.difficultyLevel * 0.015
-      );
+    // Show the game won screen overlay
+    if (this.gameWonElement) {
+      this.gameWonElement.style.display = "block";
+    } else {
+      console.error("Game Won UI element not found!");
     }
-  }
 
-  // --- >>> REVISED handleSpawning Method <<< ---
+    playSound("gameWon"); // Play victory sound
+    this.updatePowerUpStatus(""); // Clear power-up text
+    if (this.livesElement) {
+      this.livesElement.classList.remove("low-lives");
+    }
+    console.log("Game Won overlay displayed.");
+  }
+  // --- >>> END gameWon Method <<< ---
+
+  // --- Spawning ---
   handleSpawning(deltaTime) {
-    // --- SECTION 1: BOSS ACTIVE SPAWNING ---
+    // SECTION 1: BOSS ACTIVE SPAWNING
     if (this.bossActive) {
-      // --- >>> ADD THIS BLOCK FOR BOSS 1 HELPERS <<< ---
       // 1a. Boss 1 Helper Spawns
-      // Check if Boss 1 is the current boss, exists, and has 2 or 1 weak points left.
       if (
         this.currentBossNumber === 1 &&
-        this.currentBossInstance && // Check if the boss instance is valid
-        this.currentBossInstance.activeWeakPoints <= 2 && // Check if weak points are 2 or less
-        this.currentBossInstance.activeWeakPoints > 0 // Check if the boss is not already defeated (WP > 0)
+        this.currentBossInstance &&
+        this.currentBossInstance.activeWeakPoints <= 2 &&
+        this.currentBossInstance.activeWeakPoints > 0
       ) {
-        // Conditions met, manage the spawn timer
-        this.boss1HelperPlaneTimer -= deltaTime; // Decrement timer
-
+        this.boss1HelperPlaneTimer -= deltaTime;
         if (this.boss1HelperPlaneTimer <= 0) {
-          // Timer reached zero, spawn a helper plane
-
-          // Reset the timer for the next spawn
           this.boss1HelperPlaneTimer =
-            this.boss1HelperPlaneBaseInterval + // Base time
-            Math.random() * this.boss1HelperPlaneRandomInterval; // Plus random variance
-
-          // Choose the type of helper plane to spawn
-          const speedBoost = this.difficultyLevel * 0.2; // Optional speed boost based on difficulty
-          // Example: 60% chance for Shooter, 40% for Dodger
+            this.boss1HelperPlaneBaseInterval +
+            Math.random() * this.boss1HelperPlaneRandomInterval;
+          const speedBoost = this.difficultyLevel * 0.2;
           let PlaneClass =
             Math.random() < 0.6 ? EnemyShooterPlane : EnemyDodgingPlane;
-
-          // Spawn the plane instance
-          console.log(
-            `GAME: Spawning Boss 1 helper plane (Type: ${PlaneClass.name})`
-          ); // Log the spawn
-          this.enemies.push(new PlaneClass(this, speedBoost)); // Add the new enemy to the game
+          // console.log(`GAME: Spawning Boss 1 helper plane (Type: ${PlaneClass.name})`); // Optional log
+          this.enemies.push(new PlaneClass(this, speedBoost));
         }
       }
-      // --- >>> END OF BLOCK TO ADD <<< ---
-      // 1b. Boss 3 Helper Spawns (triggered by flags set in handleBossState)
+      // 1b. Boss 3 Helper Spawns
       else if (this.currentBossNumber === 3) {
         if (this.isSpawningPlaneHelpers) {
-          // Ship is down, spawn planes
           this.helperPlaneSpawnTimer -= deltaTime;
           if (this.helperPlaneSpawnTimer <= 0) {
-            this.spawnBoss3HelperPlanes(1, "mixed"); // Spawn 1 plane at a time? Or more?
+            this.spawnBoss3HelperPlanes(1, "mixed");
             this.helperPlaneSpawnTimer =
-              this.helperPlaneSpawnInterval + Math.random() * 1000 - 500; // Reset timer
+              this.helperPlaneSpawnInterval + Math.random() * 1000 - 500;
           }
         }
         if (this.isSpawningShipHelpers) {
-          // Plane is down, spawn ships
           this.helperShipSpawnTimer -= deltaTime;
           if (this.helperShipSpawnTimer <= 0) {
-            this.spawnBoss3HelperShips(1, "mixed"); // Spawn 1 ship at a time?
+            this.spawnBoss3HelperShips(1, "mixed");
             this.helperShipSpawnTimer =
-              this.helperShipSpawnInterval + Math.random() * 1500 - 750; // Reset timer
+              this.helperShipSpawnInterval + Math.random() * 1500 - 750;
           }
         }
       }
-      // NOTE: No regular spawns happen while bossActive is true
-      return; // Prevent regular spawning during any boss phase/reinforcement
-    } // --- End if(this.bossActive) ---
+      return; // Prevent regular spawning
+    } // End if(this.bossActive)
 
-    // --- SECTION 2: REGULAR SPAWNING (No boss active) ---
+    // SECTION 2: REGULAR SPAWNING (No boss active)
     const speedBoost = this.difficultyLevel * 0.3;
     const minPlaneInt = 500,
-      minShipInt = 1800; // Slightly faster min ship interval?
+      minShipInt = 1800;
     const planeReduct = this.difficultyLevel * 150,
       shipReduct = this.difficultyLevel * 300;
     const currentPlaneInt = Math.max(
@@ -674,233 +582,174 @@ export class Game {
       minShipInt,
       this.baseEnemyShipInterval - shipReduct
     );
-    const r = Math.random(); // Use one random number per spawn type check
+    const rPlane = Math.random();
+    const rShip = Math.random();
+    const level = this.difficultyLevel;
 
-    // --- Spawn Planes ---
+    // Spawn Planes
     this.enemyPlaneTimer += deltaTime;
     if (this.enemyPlaneTimer >= currentPlaneInt) {
-      this.enemyPlaneTimer -= currentPlaneInt;
+      this.enemyPlaneTimer = 0; // Reset timer more accurately
       let PlaneClass = null;
-
-      // Define base probabilities - these will be adjusted by difficulty/progression
-      let mineLayerChance = 0;
-      let dodgerChance = 0;
-      let shooterPlaneChance = 0.25; // Start with a base chance for shooters
-      let basicPlaneChance = 1.0; // Remainder will be basic
-
-      // --- Adjust Probabilities Based on Game Stage & Difficulty ---
-      const level = this.difficultyLevel;
+      let mineLayerChance = 0,
+        dodgerChance = 0,
+        shooterPlaneChance = 0.25;
 
       if (this.boss2Defeated && level > 4) {
-        // Stage 3: After Boss 2
-        mineLayerChance = 0.15 + level * 0.03; // Introduce Mine Layers
-        dodgerChance = 0.2 + level * 0.04; // Dodgers more common
-        shooterPlaneChance = 0.35 + level * 0.03; // Shooters still common
+        // Stage 3
+        mineLayerChance = 0.15 + level * 0.03;
+        dodgerChance = 0.2 + level * 0.04;
+        shooterPlaneChance = 0.35 + level * 0.03;
       } else if (this.boss1Defeated && level > 1) {
-        // Stage 2: After Boss 1
-        dodgerChance = 0.15 + level * 0.05; // Introduce Dodgers
-        shooterPlaneChance = 0.3 + level * 0.05; // Shooter chance increases
+        // Stage 2
+        dodgerChance = 0.15 + level * 0.05;
+        shooterPlaneChance = 0.3 + level * 0.05;
       } else {
-        // Stage 1: Before Boss 1
-        shooterPlaneChance = 0.2 + level * 0.1; // Shooter chance starts lower
+        // Stage 1
+        shooterPlaneChance = 0.2 + level * 0.1;
       }
-
-      // Normalize probabilities (ensure they roughly add up, basic takes remainder)
-      basicPlaneChance = Math.max(
-        0,
-        1.0 - mineLayerChance - dodgerChance - shooterPlaneChance
-      );
-      shooterPlaneChance = Math.max(
-        0,
-        1.0 - mineLayerChance - dodgerChance - basicPlaneChance
-      ); // Adjust shooter based on others
-      dodgerChance = Math.max(
-        0,
-        1.0 - mineLayerChance - shooterPlaneChance - basicPlaneChance
-      ); // Adjust dodger
-
-      // --- Select Plane Type Based on Random Number r ---
-      if (r < mineLayerChance) {
-        PlaneClass = EnemyMineLayerPlane;
-      } else if (r < mineLayerChance + dodgerChance) {
+      // Normalize probabilities and select class based on rPlane
+      if (rPlane < mineLayerChance) PlaneClass = EnemyMineLayerPlane;
+      else if (rPlane < mineLayerChance + dodgerChance)
         PlaneClass = EnemyDodgingPlane;
-      } else if (r < mineLayerChance + dodgerChance + shooterPlaneChance) {
+      else if (rPlane < mineLayerChance + dodgerChance + shooterPlaneChance)
         PlaneClass = EnemyShooterPlane;
-      } else {
-        // Remainder is Basic Plane
-        PlaneClass = EnemyPlane;
-      }
+      else PlaneClass = EnemyPlane;
 
-      if (PlaneClass) {
-        this.enemies.push(new PlaneClass(this, speedBoost));
-        // console.log(`Spawned: ${PlaneClass.name} (Lvl: ${level}, B1: ${this.boss1Defeated}, B2: ${this.boss2Defeated})`); // Debug log
-      }
-    } // End Plane Spawn Trigger
+      if (PlaneClass) this.enemies.push(new PlaneClass(this, speedBoost));
+    } // End Plane Spawn
 
-    // --- Spawn Ships ---
+    // Spawn Ships
     this.enemyShipTimer += deltaTime;
     if (this.enemyShipTimer >= currentShipInt) {
-      this.enemyShipTimer -= currentShipInt;
+      this.enemyShipTimer = 0; // Reset timer more accurately
       let ShipClass = null;
-      const rShip = Math.random(); // Separate random number for ships
-
-      // Define base probabilities
-      let beamShipChance = 0;
-      let trackingShipChance = 0;
-      let shooterShipChance = 0.25; // Start with base chance
-      let basicShipChance = 1.0;
-
-      // --- Adjust Probabilities Based on Game Stage & Difficulty ---
-      const level = this.difficultyLevel;
+      let beamShipChance = 0,
+        trackingShipChance = 0,
+        shooterShipChance = 0.25;
 
       if (this.boss2Defeated && level > 5) {
-        // Stage 3: After Boss 2
-        beamShipChance = 0.18 + level * 0.03; // Introduce Beam Ships
-        trackingShipChance = 0.2 + level * 0.04; // Trackers more common
-        shooterShipChance = 0.3 + level * 0.03; // Shooters still common
+        // Stage 3
+        beamShipChance = 0.18 + level * 0.03;
+        trackingShipChance = 0.2 + level * 0.04;
+        shooterShipChance = 0.3 + level * 0.03;
       } else if (this.boss1Defeated && level > 1) {
-        // Stage 2: After Boss 1
-        trackingShipChance = 0.15 + level * 0.05; // Introduce Trackers
-        shooterShipChance = 0.3 + level * 0.05; // Shooter chance increases
+        // Stage 2
+        trackingShipChance = 0.15 + level * 0.05;
+        shooterShipChance = 0.3 + level * 0.05;
       } else {
-        // Stage 1: Before Boss 1
-        shooterShipChance = 0.2 + level * 0.1; // Shooter chance starts lower
+        // Stage 1
+        shooterShipChance = 0.2 + level * 0.1;
       }
-
-      // Normalize probabilities
-      basicShipChance = Math.max(
-        0,
-        1.0 - beamShipChance - trackingShipChance - shooterShipChance
-      );
-      shooterShipChance = Math.max(
-        0,
-        1.0 - beamShipChance - trackingShipChance - basicShipChance
-      );
-      trackingShipChance = Math.max(
-        0,
-        1.0 - beamShipChance - shooterShipChance - basicShipChance
-      );
-
-      // --- Select Ship Type Based on Random Number rShip ---
-      if (rShip < beamShipChance) {
-        ShipClass = EnemyBeamShip;
-      } else if (rShip < beamShipChance + trackingShipChance) {
+      // Normalize probabilities and select class based on rShip
+      if (rShip < beamShipChance) ShipClass = EnemyBeamShip;
+      else if (rShip < beamShipChance + trackingShipChance)
         ShipClass = EnemyTrackingShip;
-      } else if (
-        rShip <
-        beamShipChance + trackingShipChance + shooterShipChance
-      ) {
+      else if (rShip < beamShipChance + trackingShipChance + shooterShipChance)
         ShipClass = EnemyShooterShip;
-      } else {
-        // Remainder is Basic Ship
-        ShipClass = EnemyShip;
-      }
+      else ShipClass = EnemyShip;
 
-      if (ShipClass) {
-        this.enemies.push(new ShipClass(this, speedBoost));
-        // console.log(`Spawned: ${ShipClass.name} (Lvl: ${level}, B1: ${this.boss1Defeated}, B2: ${this.boss2Defeated})`); // Debug log
-      }
-    } // End Ship Spawn Trigger
+      if (ShipClass) this.enemies.push(new ShipClass(this, speedBoost));
+    } // End Ship Spawn
   } // End handleSpawning
 
-  handleCollisions() {
-    // --- Player Projectiles vs Enemies ---
-    this.projectiles.forEach((p) => {
-      if (typeof p !== "object" || p === null || p.markedForDeletion) {
-        return;
+  // --- Boss 3 Helper Spawning Methods ---
+  spawnBoss3HelperPlanes(count = 2, type = "mixed") {
+    console.log(`SPAWN_HELPER_PLANES: Count=${count}, Type=${type}`);
+    if (!this.enemies) return;
+    for (let i = 0; i < count; i++) {
+      let PlaneClass = EnemyShooterPlane;
+      if (type === "mixed" && Math.random() < 0.5)
+        PlaneClass = EnemyDodgingPlane;
+      else if (type === "dodger") PlaneClass = EnemyDodgingPlane;
+      try {
+        const helperPlane = new PlaneClass(this, 0.2);
+        this.enemies.push(helperPlane);
+      } catch (e) {
+        console.error(`ERROR creating/pushing helper plane:`, e);
       }
+    }
+  }
+  spawnBoss3HelperShips(count = 2, type = "mixed") {
+    console.log(`GAME: Spawning ${count} Boss 3 SHIP helpers.`);
+    for (let i = 0; i < count; i++) {
+      let ShipClass = EnemyShooterShip;
+      if (type === "mixed" && Math.random() < 0.4)
+        ShipClass = EnemyTrackingShip;
+      else if (type === "tracking") ShipClass = EnemyTrackingShip;
+      const ship = new ShipClass(this, 0.1);
+      ship.x = this.width + 60 + i * 90;
+      ship.y -= i * 10;
+      this.enemies.push(ship);
+    }
+  }
 
+  // --- Collisions ---
+  handleCollisions() {
+    // Player Projectiles vs Enemies
+    this.projectiles.forEach((p) => {
+      if (!p || p.markedForDeletion) return;
       for (let i = 0; i < this.enemies.length; i++) {
         const e = this.enemies[i];
+        if (!e || e.markedForDeletion || p.markedForDeletion) continue;
 
-        if (
-          p.markedForDeletion ||
-          !e ||
-          typeof e !== "object" ||
-          e.markedForDeletion
-        ) {
-          continue;
-        }
-
-        // --- >>> USE STANDARD COLLISION CHECK ONLY <<< ---
-        // Remove the special 'if (p instanceof Bullet && e instanceof Boss3Plane)' block
-        // Perform the standard check for ALL projectile/enemy pairs here.
-        const collisionDetected = checkCollision(p, e);
-        // --- >>> END STANDARD CHECK <<< ---
-
-        // --- Process Hit if Collision Detected ---
-        if (collisionDetected) {
-          // Log the initial detection minimally if needed
-          // console.log(`[Game] Standard Collision DETECTED! P=${p.constructor.name} vs E=${e.constructor.name}. Calling e.hit().`);
-
-          // --- Determine Hit Action (This block remains the same) ---
+        if (checkCollision(p, e)) {
+          // SuperBomb direct hit vs Air Enemy
           if (
             p instanceof SuperBomb &&
             (e instanceof EnemyPlane ||
               e instanceof Boss3Plane ||
               e.enemyType === "air")
           ) {
-            // console.log(`   -> Handling SuperBomb direct hit vs Air Enemy ${e.constructor.name}...`);
-            e.hit(p); // Pass projectile to enemy hit method
+            e.hit(p);
             p.markedForDeletion = true;
             this.createExplosion(p.x + p.width / 2, p.y + p.height / 2, "air");
-          } else if (e instanceof Boss1 || e instanceof Boss2) {
-            // console.log(`   -> Handling Projectile vs Boss 1/2 ${e.constructor.name}...`);
-            e.hit(p); // Pass projectile
-          } else if (e instanceof Boss3Ship || e instanceof Boss3Plane) {
-            // console.log(`   -> Handling Projectile vs Boss 3 Component ${e.constructor.name}...`);
-            e.hit(p); // Pass projectile
-          } else if (!(p instanceof SuperBomb)) {
-            // Regular projectile vs Regular enemy
-            // console.log(`   -> Handling Regular Projectile vs Regular Enemy ${e.constructor.name}...`);
+          }
+          // Projectile vs Boss (handled by boss .hit method)
+          else if (
+            e instanceof Boss1 ||
+            e instanceof Boss2 ||
+            e instanceof Boss3Ship ||
+            e instanceof Boss3Plane
+          ) {
+            e.hit(p); // Pass projectile ref
+          }
+          // Regular projectile vs Regular enemy
+          else if (!(p instanceof SuperBomb)) {
             const pType = p instanceof Bomb ? "bomb" : "bullet";
-            e.hit(p.damage || 1, pType); // Pass damage and type
-            // Projectile deletion logic for regular hits
-            if (pType !== "bomb") {
+            e.hit(p.damage || 1, pType);
+            // Consume non-bomb projectiles, or bombs hitting valid targets
+            if (
+              pType !== "bomb" ||
+              e.enemyType === "ship" ||
+              e.enemyType === "ground_installation"
+            ) {
               p.markedForDeletion = true;
-            } else {
-              if (
-                e.enemyType === "ship" ||
-                e.enemyType === "ground_installation"
-              ) {
-                p.markedForDeletion = true;
-              }
             }
           }
-          // else: Ignore SuperBomb vs Ship direct hit, etc.
+          // If projectile was consumed, stop checking it against other enemies
+          if (p.markedForDeletion) break;
+        }
+      }
+    });
 
-          // --- Break inner loop if projectile was consumed ---
-          // This is important: if e.hit(p) marked p for deletion, stop checking p
-          if (p.markedForDeletion) {
-            break;
-          }
-        } // end if(collisionDetected)
-      } // end for (enemies)
-    }); // End forEach (projectiles)
-
-    // --- Player vs Enemy Projectiles (AND MINES) ---
+    // Player vs Enemy Projectiles (and Mines)
     this.enemyProjectiles.forEach((ep) => {
-      if (!ep || ep.markedForDeletion) return; // Safety check
-
+      if (!ep || ep.markedForDeletion) return;
       if (checkCollision(this.player, ep)) {
-        // Check shield first
         if (this.player.shieldActive) {
           ep.markedForDeletion = true;
-          this.player.deactivateShield(true); // Shield broken
+          this.player.deactivateShield(true);
           this.createExplosion(
             ep.x + ep.width / 2,
             ep.y + ep.height / 2,
             "tiny"
           );
-          // playSound("shieldDown"); // Sound handled by deactivateShield
-          return; // Skip other checks if shield absorbed it
+          return;
         }
-        // Check invincibility next
         if (this.player.invincible) {
-          // Player is immune, but should the projectile be destroyed? Often yes for fairness/visuals.
-          // Let's destroy tiny projectiles but maybe not mines?
+          // Maybe destroy projectiles but not mines?
           if (!(ep instanceof Mine)) {
-            // Example: destroy bullets/missiles but not mines
             ep.markedForDeletion = true;
             this.createExplosion(
               ep.x + ep.width / 2,
@@ -908,208 +757,89 @@ export class Game {
               "tiny"
             );
           }
-          return; // Player immune, no damage taken
+          return;
         }
-
-        // Player is vulnerable and hit
-        ep.markedForDeletion = true; // Consume projectile/mine
-
-        if (ep instanceof Mine) {
-          console.log("Player hit a Mine!");
-          this.createExplosion(
-            ep.x + ep.width / 2,
-            ep.y + ep.height / 2,
-            "ground"
-          ); // Larger explosion for mine
-          playSound("explosion"); // Use explosion sound for mine
-        } else {
-          // Hit by regular bullet/missile - small visual effect
-          this.createExplosion(
-            ep.x + ep.width / 2,
-            ep.y + ep.height / 2,
-            "tiny"
-          );
-        }
-        this.player.hit(); // Apply damage/invincibility frames to player
+        // Player hit
+        ep.markedForDeletion = true;
+        const explosionType = ep instanceof Mine ? "ground" : "tiny";
+        const sound = ep instanceof Mine ? "explosion" : null; // Only special sound for mine
+        this.createExplosion(
+          ep.x + ep.width / 2,
+          ep.y + ep.height / 2,
+          explosionType
+        );
+        if (sound) playSound(sound);
+        this.player.hit();
       }
-    }); // End Player vs Enemy Projectiles
+    });
 
-    // --- Player vs Enemies (Collision Damage) ---
+    // Player vs Enemies (Collision Damage)
     if (!this.player.shieldActive && !this.player.invincible) {
-      // Only check if player is vulnerable
       this.enemies.forEach((e) => {
-        if (!e || e.markedForDeletion) return; // Safety check
-
+        if (!e || e.markedForDeletion) return;
         if (checkCollision(this.player, e)) {
-          let playerTakesDamage = false; // Flag to track if player should be hit
-
-          // Specific handling for Bosses/Components
+          let playerTakesDamage = false;
+          // Boss collision
           if (
             e instanceof Boss1 ||
             e instanceof Boss2 ||
             e instanceof Boss3Ship ||
             e instanceof Boss3Plane
           ) {
-            // console.log(`Player collided with Boss object/component: ${e.constructor.name}`);
-            playerTakesDamage = true; // Colliding with any boss part damages player
-            // Optionally, do minor damage to the boss part on collision?
-            // e.hit(1, 'collision'); // Example: very minor damage
+            playerTakesDamage = true;
+            // Optionally damage boss slightly: e.hit(1, 'collision');
           }
-          // Handling for Regular Enemies
-          else {
-            // console.log(`Player collided with regular enemy: ${e.constructor.name}`);
-            if (e.enemyType !== "ground_installation") {
-              // Can't collide with background elements
-              e.hit(100, "collision"); // Destroy regular enemy instantly on collision
-              playerTakesDamage = true;
-            }
+          // Regular enemy collision
+          else if (e.enemyType !== "ground_installation") {
+            e.hit(100, "collision"); // Destroy regular enemy
+            playerTakesDamage = true;
           }
-
-          // Apply damage to player if collision occurred with a harmful enemy
+          // Apply damage to player if applicable
           if (playerTakesDamage) {
-            this.player.hit(); // Player takes damage, gains invincibility frames
+            this.player.hit(); // Player takes damage, gets invincibility
           }
-        } // End if(checkCollision)
-      }); // End forEach enemy
-    } // End Player vs Enemies invincibility check
+        }
+      });
+    }
 
-    // --- Player vs PowerUps ---
+    // Player vs PowerUps
     this.powerUps.forEach((pu) => {
-      if (!pu || pu.markedForDeletion) return; // Safety check
-
+      if (!pu || pu.markedForDeletion) return;
       if (checkCollision(this.player, pu)) {
-        // console.log(`Player collected PowerUp: ${pu.constructor.name}`);
-        pu.activate(this.player); // PowerUp handles its own activation and deletion
+        pu.activate(this.player); // PowerUp handles its own activation/deletion
       }
-    }); // End Player vs PowerUps
-  } // End of handleCollisions
+    });
+  } // End handleCollisions
 
-  // --- Modified cleanupObjects to trigger effect ---
+  // --- Cleanup and Effects ---
   cleanupObjects() {
-    let superBombsHitWater = []; // Track superbombs hitting water this frame
-
-    // Filter projectiles, identify superbombs hitting water
+    let superBombsHitWater = [];
     this.projectiles = this.projectiles.filter((p) => {
       if (p.markedForDeletion) {
-        // Check if it's a superbomb that specifically hit the water
         if (p instanceof SuperBomb && p.hitWater) {
-          superBombsHitWater.push(p); // Add to list for effect trigger
+          superBombsHitWater.push(p);
           this.createExplosion(
             p.x + p.width / 2,
             p.y + p.height / 2 - 10,
             "waterSplash"
-          ); // <<< Need a 'waterSplash' effect type
-          playSound("splash"); // <<< Need a splash sound
+          );
+          playSound("splash");
         }
-        return false; // Remove marked projectiles
+        return false;
       }
-      return true; // Keep non-marked projectiles
+      return true;
     });
 
-    // Trigger effect AFTER filtering if any superbombs hit water
     if (superBombsHitWater.length > 0) {
-      console.log(
-        `${superBombsHitWater.length} SuperBomb(s) hit water, triggering effect!`
-      );
-      this.triggerSuperBombEffect(); // Call the ship-damaging effect
+      this.triggerSuperBombEffect();
     }
 
-    // Cleanup other arrays (unchanged)
     this.enemyProjectiles = this.enemyProjectiles.filter(
       (o) => !o.markedForDeletion
     );
     this.enemies = this.enemies.filter((o) => !o.markedForDeletion);
     this.explosions = this.explosions.filter((o) => !o.markedForDeletion);
     this.powerUps = this.powerUps.filter((o) => !o.markedForDeletion);
-  }
-
-  addProjectile(p) {
-    this.projectiles.push(p);
-  }
-  addEnemyProjectile(p) {
-    this.enemyProjectiles.push(p);
-  }
-  createExplosion(x, y, t) {
-    this.explosions.push(new Explosion(this, x, y, t));
-  }
-  addScore(a) {
-    this.score += a;
-    this.updateScoreUI();
-  }
-  // --- UI Update Methods ---
-  updateUI() {
-    // Call all individual UI update functions
-    this.updateScoreUI();
-    this.updateLivesUI();
-    this.updateDifficultyUI();
-    this.updatePowerUpStatus(""); // Clear status initially or on reset
-  }
-
-  updateScoreUI() {
-    if (this.scoreElement) {
-      this.scoreElement.textContent = `Score: ${this.score}`;
-    } else {
-      // console.warn("Score UI element not found."); // Optional warning
-    }
-  }
-
-  updateLivesUI() {
-    if (this.livesElement && this.player) {
-      // Check if player exists too
-      this.livesElement.textContent = `Lives: ${this.player.lives}`;
-      // Apply/remove warning class based on lives
-      this.livesElement.classList.toggle("low-lives", this.player.lives <= 1);
-    } else {
-      // console.warn("Lives UI element or player not found.");
-    }
-  }
-
-  updateDifficultyUI() {
-    if (this.difficultyElement) {
-      this.difficultyElement.textContent = `Level: ${this.difficultyLevel}`;
-    } else {
-      // console.warn("Difficulty UI element not found.");
-    }
-  }
-
-  updatePowerUpStatus(text = "") {
-    // Default to empty string
-    if (this.powerupStatusElement) {
-      // Only display status if game is not over, otherwise ensure it's clear
-      this.powerupStatusElement.textContent = this.isGameOver ? "" : text;
-    } else {
-      // console.warn("Powerup Status UI element not found.");
-    }
-  }
-  // --- Game State Methods ---
-  gameOver() {
-    // Prevent multiple calls and ensure game isn't already over
-    if (!this.isGameOver) {
-      console.log("--- GAME OVER ---");
-      this.isGameOver = true; // Set game over flag
-
-      // Show the game over screen
-      if (this.gameOverElement) {
-        this.gameOverElement.style.display = "block"; // Use block or flex depending on CSS
-      } else {
-        console.error("Game Over UI element not found!");
-      }
-
-      playSound("gameOver"); // Play sound
-      this.updatePowerUpStatus(""); // Clear any active power-up text
-      if (this.livesElement) {
-        // Remove low-lives warning if present
-        this.livesElement.classList.remove("low-lives");
-      }
-      // Note: The game loop will stop itself because isGameOver is true
-    }
-  }
-
-  // --- NEW Method to be called by Boss1 ---
-  /** Resets the spawn timer for Boss 1's helper planes. */
-  resetBoss1HelperSpawnTimer() {
-    this.boss1HelperPlaneTimer = -(this.boss1HelperPlaneBaseInterval * 0.5); // Start with a half-interval delay? Or just 0?
-    console.log("Game: Resetting Boss 1 helper plane spawn timer.");
   }
 
   spawnBoss2HelperShips(count = 1, type = "shooter") {
@@ -1132,12 +862,10 @@ export class Game {
     }
   }
 
-  // --- Modified triggerSuperBombEffect (Now ONLY hits ships) ---
   triggerSuperBombEffect() {
     console.log("GAME: Triggering Super Bomb SHIP Effect!");
-    const shipDamage = 25; // Enough to kill most ships
+    const shipDamage = 25;
     const planeDamage = 1;
-
     this.enemies.forEach((enemy) => {
       if (
         enemy.markedForDeletion ||
@@ -1145,188 +873,197 @@ export class Game {
         enemy instanceof Boss2 ||
         enemy instanceof Boss3Ship ||
         enemy instanceof Boss3Plane
-      ) {
-        return; // Skip bosses and dying enemies
-      }
-      // Check if it's a ship type
+      )
+        return;
+      // Hit Ships
       if (
         enemy instanceof EnemyShip ||
         enemy instanceof EnemyShooterShip ||
         enemy instanceof EnemyTrackingShip ||
         enemy instanceof EnemyBeamShip
       ) {
-        console.log(
-          ` -> Super Bomb water effect hitting SHIP: ${enemy.id} (${enemy.constructor.name})`
-        );
-        enemy.hit(shipDamage, "bomb"); // Apply the reduced damage
-        // Still create an explosion near the ship for visual feedback
+        enemy.hit(shipDamage, "bomb");
         this.createExplosion(
           enemy.x + enemy.width / 2,
           enemy.y + enemy.height / 2,
           "ship"
         );
       }
-      // Optionally damage planes too
+      // Hit Planes (optional)
       else if (
         enemy instanceof EnemyPlane ||
         enemy instanceof EnemyShooterPlane ||
         enemy instanceof EnemyDodgingPlane ||
         enemy instanceof EnemyMineLayerPlane
       ) {
-        // console.log(` -> Super Bomb water effect hitting PLANE: ${enemy.id} (${enemy.constructor.name})`); // Optional log
         enemy.hit(planeDamage, "bomb");
-        // Maybe no explosion for planes hit by water effect? Or keep tiny?
-        // this.createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'tiny');
+        // this.createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'tiny'); // Optional explosion
       }
     });
-
-    // Add screen flash or large water visual effect here?
-    // this.triggerScreenFlash('rgba(255, 255, 100, 0.6)', 200);
   }
 
-  // --- Powerup Creation Method ---
+  // --- Helper Methods ---
+  addProjectile(p) {
+    this.projectiles.push(p);
+  }
+  addEnemyProjectile(p) {
+    this.enemyProjectiles.push(p);
+  }
+  createExplosion(x, y, t) {
+    this.explosions.push(new Explosion(this, x, y, t));
+  }
+  addScore(a) {
+    this.score += a;
+    this.updateScoreUI();
+  }
+
+  // --- UI Update Methods ---
+  updateUI() {
+    this.updateScoreUI();
+    this.updateLivesUI();
+    this.updateDifficultyUI();
+    this.updatePowerUpStatus("");
+  }
+  updateScoreUI() {
+    if (this.scoreElement)
+      this.scoreElement.textContent = `Score: ${this.score}`;
+  }
+  updateLivesUI() {
+    if (this.livesElement && this.player) {
+      this.livesElement.textContent = `Lives: ${this.player.lives}`;
+      this.livesElement.classList.toggle("low-lives", this.player.lives <= 1);
+    }
+  }
+  updateDifficultyUI() {
+    if (this.difficultyElement)
+      this.difficultyElement.textContent = `Level: ${this.difficultyLevel}`;
+  }
+  updatePowerUpStatus(text = "") {
+    if (this.powerupStatusElement)
+      this.powerupStatusElement.textContent =
+        this.isGameOver || this.isGameWon ? "" : text;
+  } // Clear on win too
+  updateDifficulty() {
+    if (
+      !this.isGameOver &&
+      !this.isGameWon &&
+      this.score >= this.scoreForNextLevel
+    ) {
+      // Check win flag too
+      this.difficultyLevel++;
+      this.scoreForNextLevel += 300 + this.difficultyLevel ** 2 * 50;
+      this.updateDifficultyUI();
+      this.powerUpDropChance = Math.min(
+        0.25,
+        0.1 + this.difficultyLevel * 0.015
+      );
+    }
+  }
+
+  // --- Powerup Creation ---
   createPowerUp(x, y, originType = "air") {
     const rand = Math.random();
-    let PowerUpClass = null; // Use null initially
+    let PowerUpClass = null;
+    const chances = {
+      shield: 0.15,
+      spread: 0.15,
+      life: 0.07,
+      bullet: 0.15,
+      bomb: 0.15,
+      rapid: 0.12,
+      invincibility: 0.11,
+      superBomb: 0.1,
+    };
+    let cumulative = 0;
 
-    // --- Adjust chances if needed ---
-    const shieldChance = 0.15;
-    const spreadChance = 0.15;
-    const lifeChance = 0.07;
-    const bulletChance = 0.15;
-    const bombChance = 0.15;
-    const rapidFireChance = 0.12;
-    const invincibilityChance = 0.11;
-    const superBombChance = 0.1; // Adjusted back slightly? Or keep high for testing?
-
-    if (rand < shieldChance) {
-      PowerUpClass = PowerUpShield;
-    } else if (rand < shieldChance + spreadChance) {
+    if (rand < (cumulative += chances.shield)) PowerUpClass = PowerUpShield;
+    else if (rand < (cumulative += chances.spread))
       PowerUpClass = PowerUpSpreadShot;
-    } else if (
-      rand < shieldChance + spreadChance + lifeChance &&
+    else if (
+      rand < (cumulative += chances.life) &&
       this.player &&
       this.player.lives < this.player.maxLives
-    ) {
-      // Only drop life if player not at max lives
+    )
       PowerUpClass = PowerUpExtraLife;
-    } else if (rand < shieldChance + spreadChance + lifeChance + bulletChance) {
+    else if (rand < (cumulative += chances.bullet))
       PowerUpClass = PowerUpBullet;
-    } else if (
-      rand <
-      shieldChance + spreadChance + lifeChance + bulletChance + bombChance
-    ) {
-      PowerUpClass = PowerUpBomb;
-      // >>> NEW Checks <<<
-    } else if (
-      rand <
-      shieldChance +
-        spreadChance +
-        lifeChance +
-        bulletChance +
-        bombChance +
-        rapidFireChance
-    ) {
+    else if (rand < (cumulative += chances.bomb)) PowerUpClass = PowerUpBomb;
+    else if (rand < (cumulative += chances.rapid))
       PowerUpClass = PowerUpRapidFire;
-    } else if (
-      rand <
-      shieldChance +
-        spreadChance +
-        lifeChance +
-        bulletChance +
-        bombChance +
-        rapidFireChance +
-        invincibilityChance
-    ) {
+    else if (rand < (cumulative += chances.invincibility))
       PowerUpClass = PowerUpInvincibility;
-    } // >>> NEW Check <<<
-    else if (
-      rand <
-      shieldChance +
-        spreadChance +
-        lifeChance +
-        bulletChance +
-        bombChance +
-        rapidFireChance +
-        invincibilityChance +
-        superBombChance
-    ) {
-      PowerUpClass = PowerUpSuperBomb; // Spawn the super bomb pickup
-    }
-    // Else: No powerup
-    // Else: No powerup drops for the remaining probability range
+    else if (rand < (cumulative += chances.superBomb))
+      PowerUpClass = PowerUpSuperBomb;
 
     if (PowerUpClass) {
-      console.log(`Spawning PowerUp: ${PowerUpClass.name}`); // Log which type
+      // console.log(`Spawning PowerUp: ${PowerUpClass.name}`); // Optional log
       this.powerUps.push(new PowerUpClass(this, x, y, originType));
-    } else {
-      // console.log("No power-up dropped this time."); // Optional log
     }
   }
+
+  // --- Game State Methods ---
+  gameOver() {
+    if (!this.isGameOver && !this.isGameWon) {
+      // Don't trigger if already won
+      console.log("--- GAME OVER ---");
+      this.isGameOver = true;
+      if (this.gameOverElement) this.gameOverElement.style.display = "block";
+      else console.error("Game Over UI element not found!");
+      playSound("gameOver");
+      this.updatePowerUpStatus("");
+      if (this.livesElement) this.livesElement.classList.remove("low-lives");
+    }
+  }
+
   drawGameOver() {
     if (!this.context) return;
     this.context.fillStyle = "rgba(0,0,0,0.5)";
     this.context.fillRect(0, 0, this.width, this.height);
   }
 
-  // --- >>> NEW Level Initialization Method <<< ---
-  /**
-   * Initializes or resets the game state based on configuration.
-   * @param {object} [config={}] - Configuration object.
-   * @param {number} [config.startScore=0] - The score to start with.
-   * @param {number} [config.startDifficulty=0] - The difficulty level to start at.
-   * @param {number} [config.playerLives=3] - Starting lives for the player.
-   * @param {number[]} [config.defeatedBosses=[]] - Array of boss numbers already defeated (e.g., [1, 2]).
-   * @param {string[]} [config.startWithPowerups=[]] - Array of powerup names ('shield', 'spread', 'bullet', 'bomb', 'rapid', 'invincibility').
-   */
+  // --- >>> NEW drawGameWon Method <<< ---
+  drawGameWon() {
+    if (!this.context) return;
+    // Optional: Draw something on canvas behind the HTML overlay
+    // this.context.fillStyle = "rgba(50, 100, 200, 0.5)";
+    // this.context.fillRect(0, 0, this.width, this.height);
+  }
+  // --- >>> END drawGameWon Method <<< ---
+
+  // --- Level Initialization / Start / Restart ---
   initializeLevel(config = {}) {
     console.log(`--- Initializing Level --- Config:`, JSON.stringify(config));
-
-    // Default configuration for a normal start (Level 0)
     const defaults = {
       startScore: 0,
       startDifficulty: 0,
-      playerLives: 3, // Default normal lives from Player constructor
+      playerLives: 3,
       defeatedBosses: [],
       startWithPowerups: [],
     };
-    // Get player's default starting lives if player exists
-    if (this.player) {
-      defaults.playerLives = this.player.initialLives || 3;
-    }
-
-    // Merge provided config with defaults
+    if (this.player) defaults.playerLives = this.player.initialLives || 3;
     const effectiveConfig = { ...defaults, ...config };
 
-    // --- Reset Core Game State Based on Config ---
+    // Reset flags
     this.isGameOver = false;
+    this.isGameWon = false; // <<< RESET GAME WON FLAG
+
+    // Reset core state
     this.lastTime = 0;
     this.score = effectiveConfig.startScore;
     this.difficultyLevel = effectiveConfig.startDifficulty;
-
-    // Calculate score needed for the *next* level based on starting level
-    this.scoreForNextLevel = 300; // Start calculation from base
+    this.scoreForNextLevel = 300;
     for (let i = 0; i < this.difficultyLevel; i++) {
-      // This formula should match updateDifficulty exactly
       this.scoreForNextLevel += 300 + i ** 2 * 50;
     }
     console.log(
       `   Level initialized to ${this.difficultyLevel}, Score ${this.score}, Next Level @ ${this.scoreForNextLevel}`
     );
 
-    // --- Reset Player State ---
+    // Reset Player
     if (this.player) {
-      this.player.initialLives = effectiveConfig.playerLives; // Set desired starting lives
-      this.player.reset(); // Resets to initialLives, clears powerups etc.
+      this.player.initialLives = effectiveConfig.playerLives;
+      this.player.reset();
       console.log(`   Player reset with ${this.player.lives} lives.`);
-
-      // Apply starting powerups if any
-      if (effectiveConfig.startWithPowerups.length > 0)
-        console.log(
-          `   Applying starting powerups: ${effectiveConfig.startWithPowerups.join(
-            ", "
-          )}`
-        );
       effectiveConfig.startWithPowerups.forEach((powerupName) => {
         switch (powerupName.toLowerCase()) {
           case "shield":
@@ -1348,9 +1085,7 @@ export class Game {
             this.player.activateInvincibilityPowerUp();
             break;
           default:
-            console.warn(
-              `   Unknown starting powerup specified: ${powerupName}`
-            );
+            console.warn(`   Unknown starting powerup: ${powerupName}`);
         }
       });
     } else {
@@ -1358,24 +1093,23 @@ export class Game {
       return;
     }
 
-    // --- Clear Dynamic Object Arrays ---
+    // Clear Dynamic Arrays
     this.projectiles = [];
     this.enemyProjectiles = [];
     this.enemies = [];
     this.explosions = [];
     this.powerUps = [];
 
-    // --- Reset Spawning Timers ---
+    // Reset Spawning Timers
     this.enemyPlaneTimer = 0;
     this.enemyShipTimer = 0;
     this.boss1HelperPlaneTimer = 0;
     this.bossPowerUpTimer = 0;
-    // Reset boss powerup interval to default (spawnBoss will override if needed)
     this.bossPowerUpInterval =
       this.defaultBossPowerUpBaseInterval +
       Math.random() * this.defaultBossPowerUpRandomInterval;
 
-    // --- Reset Boss State Based on Config ---
+    // Reset Boss State
     this.bossActive = false;
     this.currentBossInstance = null;
     this.currentBossNumber = null;
@@ -1384,63 +1118,44 @@ export class Game {
     this.boss1Defeated = effectiveConfig.defeatedBosses.includes(1);
     this.boss2Defeated = effectiveConfig.defeatedBosses.includes(2);
     this.boss3Defeated = effectiveConfig.defeatedBosses.includes(3);
-
-    // --- >>> Reset Reinforcement State <<< ---
     this.isSpawningPlaneHelpers = false;
-    this.helperPlaneSpawnTimer = 0; // Reset timers too
+    this.helperPlaneSpawnTimer = 0;
     this.isSpawningShipHelpers = false;
     this.helperShipSpawnTimer = 0;
-    // --- >>> END Reset <<< ---
     console.log(
       `   Boss Defeated Flags Set: B1=${this.boss1Defeated}, B2=${this.boss2Defeated}, B3=${this.boss3Defeated}`
     );
 
-    // --- Update UI to reflect initial state ---
+    // Update UI
     this.updateUI();
 
-    // --- Hide Game Over Screen ---
-    if (this.gameOverElement) {
-      this.gameOverElement.style.display = "none";
-    }
+    // --- Hide Overlays ---
+    if (this.gameOverElement) this.gameOverElement.style.display = "none";
+    if (this.gameWonElement) this.gameWonElement.style.display = "none"; // <<< HIDE GAME WON OVERLAY
 
     console.log("--- Level Initialization Complete ---");
   }
-  // --- >>> END initializeLevel Method <<< ---
 
-  // --- Start method calls initializeLevel ---
-  /**
-   * Starts the game with a given configuration.
-   * @param {object} [startConfig={}] - Optional configuration object passed to initializeLevel.
-   */
   start(startConfig = {}) {
     console.log("Game Starting...");
-    this.initializeLevel(startConfig); // Initialize with config (or defaults if empty)
-    // Start the Main Game Loop
-    console.log("DEBUG: START - Requesting first animation frame.");
-    if (!this.isGameOver) {
-      // Only request frame if not already ended by init error
-      requestAnimationFrame(this.loop.bind(this));
-    }
-  } // End of start method
-
-  // --- Restart method calls initializeLevel with defaults ---
-  /**
-   * Restarts the game from the beginning (Level 0, Score 0).
-   */
-  restart() {
-    console.log("--- Restarting Game (using default config) ---");
-    // Pass empty config to use defaults (score 0, level 0, lives 3, bosses false)
-    this.initializeLevel({});
-    // Reset specific boss references just in case
-    this.currentBossInstance = null;
-    this.currentBossNumber = null;
-    this.boss3Ship = null;
-    this.boss3Plane = null;
-    if (!this.isGameOver) {
-      requestAnimationFrame(this.loop.bind(this));
-    } else {
-      console.warn("Restart called but game loop wasn't stopped?");
+    this.initializeLevel(startConfig);
+    if (!this.isGameOver && !this.isGameWon) {
+      // Check both flags
       requestAnimationFrame(this.loop.bind(this));
     }
   }
-}
+
+  restart() {
+    console.log("--- Restarting Game ---");
+    this.initializeLevel({}); // Use default config
+    // Ensure loop restarts if called from an overlay state
+    if (this.isGameOver || this.isGameWon) {
+      console.log("Restarting loop after Game Over/Won.");
+      requestAnimationFrame(this.loop.bind(this));
+    } else if (!this.lastTime) {
+      // Handle case where loop might not have started yet
+      console.log("Starting loop on restart.");
+      requestAnimationFrame(this.loop.bind(this));
+    }
+  } // End restart
+} // End Game Class
