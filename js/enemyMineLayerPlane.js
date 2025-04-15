@@ -9,7 +9,7 @@ export class EnemyMineLayerPlane extends EnemyPlane {
     super(game, speedBoost); // Calls EnemyPlane constructor
     this.health = 3; // Make them slightly tougher?
     this.maxHealth = this.health;
-    this.scoreValue = 75; // Higher score value
+    this.scoreValue = 120; // Higher score value
     this.color = "#FF8C00"; // Dark Orange
 
     // Sine wave properties can be inherited or customized

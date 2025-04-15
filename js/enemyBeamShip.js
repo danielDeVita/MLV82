@@ -12,7 +12,7 @@ export class EnemyBeamShip extends EnemyShip {
       .substring(2, 9)}`;
     this.health = 10;
     this.maxHealth = this.health;
-    this.scoreValue = 190; // Slightly more score
+    this.scoreValue = 250; // Slightly more score
     this.color = "#483D8B";
     this.deckColor = "#778899";
     this.detailColor = "#FF00FF";

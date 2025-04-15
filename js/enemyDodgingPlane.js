@@ -2,12 +2,13 @@ import { EnemyPlane } from "./enemyPlane.js";
 import { randomInt } from "./utils.js";
 import { EnemyBullet } from "./enemyBullet.js"; // <<< Import EnemyBullet
 import { playSound } from "./audio.js"; // <<< Import playSound
+import { lerp } from "./utils.js";
 
-// Helper function for Lerp (if not globally available)
-function lerp(start, end, amount) {
-  amount = Math.max(0, Math.min(1, amount));
-  return start + (end - start) * amount;
-}
+// // Helper function for Lerp (if not globally available)
+// function lerp(start, end, amount) {
+//   amount = Math.max(0, Math.min(1, amount));
+//   return start + (end - start) * amount;
+// }
 
 export class EnemyDodgingPlane extends EnemyPlane {
   constructor(game, speedBoost = 0) {
@@ -15,7 +16,7 @@ export class EnemyDodgingPlane extends EnemyPlane {
     super(game, speedBoost);
     this.health = 1; // Still 1 hit kill
     this.maxHealth = this.health;
-    this.scoreValue = 55; // Increased score for added threat
+    this.scoreValue = 90; // Increased score for added threat
     this.color = "orange";
     this.enemyType = "air";
 
