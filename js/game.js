@@ -125,6 +125,12 @@ export class Game {
     this.powerupStatusElement = document.getElementById("powerup-status");
     this.gameOverElement = document.getElementById("game-over");
     this.restartButton = document.getElementById("restartButton");
+
+    // --- >>> GET Ammo UI Elements <<< ---
+    this.bulletAmmoElement = document.getElementById("bullet-ammo"); // Added
+    this.bombAmmoElement = document.getElementById("bomb-ammo"); // Added
+    // --- >>> END GET <<< ---
+
     // --- >>> GET NEW UI ELEMENTS <<< ---
     this.gameWonElement = document.getElementById("game-won");
     this.finalScoreWonElement = document.getElementById("final-score-won");
@@ -244,6 +250,10 @@ export class Game {
       this.player.draw(this.context);
       this.projectiles.forEach((p) => p.draw(this.context));
       this.explosions.forEach((ex) => ex.draw(this.context));
+
+      // --- >>> UPDATE AMMO UI IN LOOP <<< ---
+      this.updateAmmoUI(); // Added call to update ammo display every frame
+      // --- >>> END UPDATE <<< ---
 
       // --- 6. Cleanup ---
       this.cleanupObjects();
@@ -889,6 +899,7 @@ export class Game {
     this.updateLivesUI();
     this.updateDifficultyUI();
     this.updatePowerUpStatus("");
+    this.updateAmmoUI(); // <<< Call ammo update here too
   }
   updateScoreUI() {
     if (this.scoreElement)
@@ -1111,4 +1122,29 @@ export class Game {
       requestAnimationFrame(this.loop.bind(this));
     }
   } // End restart
+
+  // --- Ammo UI Update Method ---
+  updateAmmoUI() {
+    if (this.player) {
+      if (this.bulletAmmoElement) {
+        this.bulletAmmoElement.textContent = `Bullets: ${this.player.bulletAmmo}`;
+        this.bulletAmmoElement.classList.toggle(
+          "low-ammo",
+          this.player.bulletAmmo <= 50
+        );
+      }
+      if (this.bombAmmoElement) {
+        this.bombAmmoElement.textContent = `Bombs: ${this.player.bombAmmo}`;
+        this.bombAmmoElement.classList.toggle(
+          "low-ammo",
+          this.player.bombAmmo <= 5
+        );
+      }
+    } else {
+      if (this.bulletAmmoElement)
+        this.bulletAmmoElement.textContent = `Bullets: ---`;
+      if (this.bombAmmoElement) this.bombAmmoElement.textContent = `Bombs: ---`;
+    }
+  }
+  // --- End Ammo UI ---
 } // End Game Class

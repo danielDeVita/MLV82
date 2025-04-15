@@ -15,77 +15,71 @@ export class Player {
     this.x = 50;
     this.y = game.height / 2 - this.height / 2;
 
-    // --- Movement Physics Properties ---
-    // Remove old speed: // this.speed = 5;
-    this.velocityX = 0; // Current horizontal speed
-    this.velocityY = 0; // Current vertical speed
-    this.acceleration = 0.85; // How quickly speed builds up (pixels per frame^2, effectively) - ADJUST THIS
-    this.maxSpeed = 6; // Maximum speed in either X or Y direction - ADJUST THIS
-    this.friction = 0.9; // Slowdown factor (closer to 1 = less friction/more drift, closer to 0 = high friction/quick stop) - ADJUST THIS
-    // --- End Movement Physics ---
+    // --- Movement Physics ---
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.acceleration = 0.35;
+    this.maxSpeed = 6;
+    this.friction = 0.92; // Example friction
 
     this.color = "red";
-    this.initialLives = 3; // Starting lives for testing (change back to 3 for release)
+    this.initialLives = 3;
     this.lives = this.initialLives;
-    this.maxLives = 5; // Max lives (adjust if needed)
+    this.maxLives = 5;
+
+    // --- Ammo Limits ---
+    this.initialBulletAmmo = 3000;
+    this.initialBombAmmo = 400;
+    this.bulletAmmo = this.initialBulletAmmo;
+    this.bombAmmo = this.initialBombAmmo;
+    // --- End Ammo Limits ---
 
     // --- Shooting Cooldown ---
-    this.shootCooldown = 200; // Base cooldown in milliseconds
-    this.originalShootCooldown = this.shootCooldown; // Store the base value for rapid fire
-    this.lastShotTime = 0; // Time since last shot
+    this.shootCooldown = 200;
+    this.originalShootCooldown = this.shootCooldown;
+    this.lastShotTime = 0;
 
     // --- Bombing Cooldown ---
-    this.bombCooldown = 1000; // milliseconds
-    this.lastBombTime = 0; // Time since last bomb
+    this.bombCooldown = 1000;
+    this._lastBombTimestamp = 0; // Internal timestamp for cooldown
 
     // --- Power-up States & Timers ---
     this.bulletPowerUpActive = false;
     this.bulletPowerUpTimer = 0;
-    this.bulletPowerUpDuration = 10000; // 10 seconds
-
+    this.bulletPowerUpDuration = 10000;
     this.bombPowerUpActive = false;
     this.bombPowerUpTimer = 0;
-    this.bombPowerUpDuration = 15000; // 15 seconds
-
+    this.bombPowerUpDuration = 15000;
     this.spreadShotActive = false;
     this.spreadShotTimer = 0;
-    this.spreadShotDuration = 12000; // 12 seconds
-
+    this.spreadShotDuration = 12000;
     this.shieldActive = false;
     this.shieldTimer = 0;
-    this.shieldDuration = 8000; // 8 seconds
+    this.shieldDuration = 8000;
     this.shieldColor = "rgba(0, 255, 255, 0.3)";
-
     this.rapidFireActive = false;
     this.rapidFireTimer = 0;
-    this.rapidFireDuration = 8000; // 8 seconds duration
-    this.rapidFireMultiplier = 2.5; // Fire 2.5x faster
-
-    // --- Invincibility (Post-hit and Power-up) ---
+    this.rapidFireDuration = 8000;
+    this.rapidFireMultiplier = 2.5;
     this.invincible = false;
-    this.invincibilityDuration = 1500; // Post-hit duration (1.5s)
-    this.powerUpInvincibilityDuration = 6000; // Power-up duration (6s)
-    this.invincibilityTimer = 0; // Time remaining for current invincibility
-
-    // >>> NEW: Super Bomb State <<<
-    this.superBombArmed = false; // Is the special bomb ready to use?
-    // >>> END NEW <<<
+    this.invincibilityDuration = 1500;
+    this.powerUpInvincibilityDuration = 6000;
+    this.invincibilityTimer = 0;
+    this.superBombArmed = false;
   } // End Constructor
 
   // ========================
   //        UPDATE
   // ========================
   update(input, deltaTime) {
-    // Ensure deltaTime is valid
     const safeDeltaTime = Math.max(0.1, deltaTime);
-    const deltaScale = safeDeltaTime / 16.67; // Scale factor for 60fps baseline
+    const deltaScale = safeDeltaTime / 16.67;
 
-    // --- Movement ---
-    // --- Calculate Acceleration from Input ---
+    // --- Movement & Boundaries ---
+    // (Physics calculation remains the same)
     let accelX = 0;
     let accelY = 0;
-    const scaledAcceleration = this.acceleration * deltaScale; // Scale acceleration by frame time
-
+    const scaledAcceleration = this.acceleration * deltaScale;
     if (input.isKeyDown("arrowup") || input.isKeyDown("w"))
       accelY -= scaledAcceleration;
     if (input.isKeyDown("arrowdown") || input.isKeyDown("s"))
@@ -94,73 +88,48 @@ export class Player {
       accelX -= scaledAcceleration;
     if (input.isKeyDown("arrowright") || input.isKeyDown("d"))
       accelX += scaledAcceleration;
-
-    // --- Update Velocity based on Acceleration ---
     this.velocityX += accelX;
     this.velocityY += accelY;
-
-    // --- Apply Friction/Drag if NO input on that axis ---
-    // (Using a power curve for friction can feel smoother than linear multiplication)
-    const frictionPower = Math.pow(this.friction, deltaScale); // Scale friction effect by delta time
+    const frictionPower = Math.pow(this.friction, deltaScale);
     if (accelX === 0) {
       this.velocityX *= frictionPower;
-      // Stop completely if velocity is very low to prevent infinite small drift
       if (Math.abs(this.velocityX) < 0.1) this.velocityX = 0;
     }
     if (accelY === 0) {
       this.velocityY *= frictionPower;
       if (Math.abs(this.velocityY) < 0.1) this.velocityY = 0;
     }
-
-    // --- Clamp Velocity to Max Speed ---
-    // Clamp X
     this.velocityX = Math.max(
       -this.maxSpeed,
       Math.min(this.maxSpeed, this.velocityX)
     );
-    // Clamp Y
     this.velocityY = Math.max(
       -this.maxSpeed,
       Math.min(this.maxSpeed, this.velocityY)
     );
-
-    // --- Update Position based on Velocity ---
-    // Scale the final velocity by deltaScale to ensure consistent movement speed across frame rates
     this.x += this.velocityX * deltaScale;
     this.y += this.velocityY * deltaScale;
+    const bottomBoundary = this.game.height - this.height;
+    this.x = Math.max(0, Math.min(this.game.width - this.width, this.x));
+    this.y = Math.max(0, Math.min(bottomBoundary, this.y));
 
-    // --- Boundaries ---
-
-    if (this.y < 0) {
-      this.y = 0;
-    }
-    const bottomBoundary = this.game.height - this.height - 0; // Allow going to bottom - height - 5px padding
-
-    this.x = Math.max(0, Math.min(this.game.width - this.width, this.x)); // Clamp X
-    this.y = Math.max(0, Math.min(bottomBoundary, this.y)); // Clamp Y
-
-    // --- Shooting Logic ---
-    this.lastShotTime += safeDeltaTime; // Increment time since last shot
+    // --- Shooting Input Check ---
+    this.lastShotTime += safeDeltaTime;
     const currentShootCooldown = this.rapidFireActive
-      ? this.originalShootCooldown / this.rapidFireMultiplier // Use faster cooldown if active
-      : this.originalShootCooldown; // Use normal cooldown
-    // Check if player wants to shoot AND cooldown is ready
+      ? this.originalShootCooldown / this.rapidFireMultiplier
+      : this.originalShootCooldown;
     if (input.shouldShoot() && this.lastShotTime >= currentShootCooldown) {
-      this.shoot(); // Call the shoot method
-      this.lastShotTime = 0; // Reset the timer
+      this.shoot(); // Ammo check happens inside shoot()
     }
 
-    // --- Bombing Logic ---
-    this.lastBombTime += safeDeltaTime; // Increment time since last bomb
-    // --- Bombing Logic (Handles both regular and super bomb) ---
-    // We only need to check the *input* here. The dropBomb method handles cooldown/state.
+    // --- Bombing Input Check ---
     if (input.shouldDropBomb()) {
-      this.dropBomb(); // Attempt to drop a bomb (regular or super)
+      this.dropBomb(); // Ammo/cooldown check happens inside dropBomb()
     }
 
     // --- Power-up Timers & Status Display ---
-    let powerUpStatusText = ""; // Holds the text to display (only shows one at a time)
-
+    // (This section remains unchanged - displays timed powerups and super bomb status)
+    let powerUpStatusText = "";
     if (this.bulletPowerUpActive) {
       this.bulletPowerUpTimer -= safeDeltaTime;
       if (this.bulletPowerUpTimer <= 0) this.deactivateBulletPowerUp();
@@ -172,7 +141,6 @@ export class Player {
     if (this.bombPowerUpActive) {
       this.bombPowerUpTimer -= safeDeltaTime;
       if (this.bombPowerUpTimer <= 0) this.deactivateBombPowerUp();
-      // Show only if no higher priority status is active
       else if (!powerUpStatusText)
         powerUpStatusText = `Bomb Power: ${Math.ceil(
           this.bombPowerUpTimer / 1000
@@ -195,20 +163,16 @@ export class Player {
     if (this.rapidFireActive) {
       this.rapidFireTimer -= safeDeltaTime;
       if (this.rapidFireTimer <= 0) this.deactivateRapidFire();
-      // Rapid fire overrides previous displays if active
       else
         powerUpStatusText = `Rapid Fire: ${Math.ceil(
           this.rapidFireTimer / 1000
         )}s`;
     }
-
-    // --- Invincibility Timer (Handles both post-hit and power-up) ---
     if (this.invincible) {
       this.invincibilityTimer -= safeDeltaTime;
       if (this.invincibilityTimer <= 0) {
         this.invincible = false;
       } else {
-        // Show invincibility status only if shield/rapid fire/etc. aren't active
         if (!powerUpStatusText && !this.shieldActive) {
           powerUpStatusText = `Invincible: ${Math.ceil(
             this.invincibilityTimer / 1000
@@ -216,8 +180,6 @@ export class Player {
         }
       }
     }
-
-    // Display if Super Bomb is ready (if no other timed powerup is active)
     if (
       this.superBombArmed &&
       !powerUpStatusText &&
@@ -226,22 +188,17 @@ export class Player {
     ) {
       powerUpStatusText = "Super Bomb Ready (B)";
     }
-
-    // Update the UI element with the determined status text
     this.game.updatePowerUpStatus(powerUpStatusText);
+
+    // Ammo UI update handled by Game loop
   } // End of Player update
 
+  // --- Draw Method (Unchanged) ---
   draw(context) {
-    // --- ADD SAFETY CHECK ---
-    if (!context) {
-      console.error("Player.draw received undefined context!");
-      return; // Don't try to draw
-    }
+    if (!context) return;
     context.save();
-
-    // Draw Shield Visual
     if (this.shieldActive) {
-      context.fillStyle = this.shieldColor;
+      /* draw shield */ context.fillStyle = this.shieldColor;
       context.beginPath();
       context.arc(
         this.x + this.width / 2,
@@ -252,12 +209,9 @@ export class Player {
       );
       context.fill();
     }
-
-    // Invincibility Blink
     if (this.invincible && !this.shieldActive) {
       context.globalAlpha = Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1.0;
     }
-
     // Draw Player Shape
     context.fillStyle = this.color;
     context.beginPath();
@@ -270,42 +224,64 @@ export class Player {
     context.lineTo(this.x, this.y + this.height * 0.5);
     context.closePath();
     context.fill();
-
     context.restore();
   }
 
+  // --- Modified Shoot Method (Checks & Decrements Ammo) ---
   shoot() {
+    if (this.bulletAmmo <= 0) {
+      // playSound('ammoEmpty');
+      return; // Out of ammo
+    }
+
     const bulletX = this.x + this.width;
     const bulletY =
       this.y + this.height / 2 - (this.bulletPowerUpActive ? 3 : 2);
     const poweredUp = this.bulletPowerUpActive;
+    let bulletsFiredThisShot = 0;
 
-    // Base shot (angle 0)
-    this.game.addProjectile(
-      new Bullet(this.game, bulletX, bulletY, poweredUp, 0)
-    );
-
-    // Spread Shot Logic
-    if (this.spreadShotActive) {
-      const angleUp = -0.2; // Radians upwards
-      const angleDown = 0.2; // Radians downwards
-      // Add angled bullets (make sure Bullet class handles angle in its update)
+    // Base shot
+    if (this.bulletAmmo > 0) {
       this.game.addProjectile(
-        new Bullet(this.game, bulletX, bulletY - 5, poweredUp, angleUp)
+        new Bullet(this.game, bulletX, bulletY, poweredUp, 0)
       );
-      this.game.addProjectile(
-        new Bullet(this.game, bulletX, bulletY + 5, poweredUp, angleDown)
-      );
+      this.bulletAmmo--;
+      bulletsFiredThisShot++;
+      // REMOVED: this.game.debug_totalBulletsFired++;
     }
 
-    playSound("shoot");
-  }
+    // Spread Shot
+    if (this.spreadShotActive) {
+      const angleUp = -0.2;
+      const angleDown = 0.2;
+      if (this.bulletAmmo > 0) {
+        this.game.addProjectile(
+          new Bullet(this.game, bulletX, bulletY - 5, poweredUp, angleUp)
+        );
+        this.bulletAmmo--;
+        bulletsFiredThisShot++;
+        // REMOVED: this.game.debug_totalBulletsFired++;
+      }
+      if (this.bulletAmmo > 0) {
+        this.game.addProjectile(
+          new Bullet(this.game, bulletX, bulletY + 5, poweredUp, angleDown)
+        );
+        this.bulletAmmo--;
+        bulletsFiredThisShot++;
+        // REMOVED: this.game.debug_totalBulletsFired++;
+      }
+    }
 
-  // --- Modified dropBomb method ---
+    if (bulletsFiredThisShot > 0) {
+      playSound("shoot");
+      this.lastShotTime = 0; // Reset cooldown timer
+    }
+  } // End shoot
+
+  // --- Modified dropBomb Method (Checks & Decrements Ammo) ---
   dropBomb() {
-    // --- Check for SUPER BOMB first ---
+    // Super Bomb (no ammo cost)
     if (this.superBombArmed) {
-      // ... drop super bomb ...
       this.superBombArmed = false;
       this.game.addProjectile(
         new SuperBomb(
@@ -316,21 +292,26 @@ export class Player {
       );
       playSound("bomb");
       this.game.updatePowerUpStatus("");
+      // REMOVED: this.game.debug_totalBombsDropped++;
       return;
     }
-    // --- If not super bomb, try REGULAR BOMB ---
-    const currentTime = performance.now ? performance.now() : Date.now();
-    const timeSinceLastBomb = currentTime - (this._lastBombTimestamp || 0);
 
-    if (timeSinceLastBomb >= this.bombCooldown) {
-      const bombX = this.x + this.width / 2 - (this.bombPowerUpActive ? 6 : 4);
-      const bombY = this.y + this.height;
-      this.game.addProjectile(
-        new Bomb(this.game, bombX, bombY, this.bombPowerUpActive)
-      );
-      playSound("bomb");
-      this._lastBombTimestamp = currentTime; // Update timestamp for REGULAR bomb cooldown
-    }
+    // Regular Bomb
+    const currentTime = performance.now ? performance.now() : Date.now();
+    const timeSinceLastBomb = currentTime - this._lastBombTimestamp;
+    if (timeSinceLastBomb < this.bombCooldown) return; // Cooldown check
+    if (this.bombAmmo <= 0) return; // Ammo check
+
+    // Drop Regular Bomb
+    const bombX = this.x + this.width / 2 - (this.bombPowerUpActive ? 6 : 4);
+    const bombY = this.y + this.height;
+    this.game.addProjectile(
+      new Bomb(this.game, bombX, bombY, this.bombPowerUpActive)
+    );
+    playSound("bomb");
+    this._lastBombTimestamp = currentTime;
+    this.bombAmmo--; // Decrement ammo
+    // REMOVED: this.game.debug_totalBombsDropped++;
   } // End dropBomb
 
   // --- NEW Power-up Activation Method ---
@@ -442,16 +423,19 @@ export class Player {
     }
   }
 
+  // --- Reset Method ---
   reset() {
     this.x = 50;
     this.y = this.game.height / 2 - this.height / 2;
     this.lives = this.initialLives;
-
-    // --- >>> Reset Physics <<< ---
     this.velocityX = 0;
-    this.velocityY = 0;
-    // --- >>> End Reset <<< ---
+    this.velocityY = 0; // Reset Physics
 
+    // Reset Ammo
+    this.bulletAmmo = this.initialBulletAmmo;
+    this.bombAmmo = this.initialBombAmmo;
+
+    // Reset power-ups
     this.bulletPowerUpActive = false;
     this.bulletPowerUpTimer = 0;
     this.bombPowerUpActive = false;
@@ -464,13 +448,26 @@ export class Player {
     this.rapidFireTimer = 0;
     this.invincible = false;
     this.invincibilityTimer = 0;
-    this.lastBombTime = 0;
+    this.superBombArmed = false;
+
+    // Reset cooldown timers
     this.lastShotTime = 0;
+    this._lastBombTimestamp = 0;
 
-    this.superBombArmed = false; // <<< Reset Super Bomb state
-    this._lastBombTimestamp = 0; // Reset timestamp used for cooldown checkg
-
-    this.game.updateLivesUI();
-    this.game.updatePowerUpStatus("");
+    console.log(
+      `Player state reset. Lives: ${this.lives}, Bullets: ${this.bulletAmmo}, Bombs: ${this.bombAmmo}`
+    );
+    // UI update called by game.initializeLevel -> game.updateUI
   }
+
+  // --- Add Ammo Methods (Keep these) ---
+  addBulletAmmo(amount) {
+    this.bulletAmmo += amount;
+    console.log(`Added ${amount} bullet ammo. Total: ${this.bulletAmmo}`);
+  }
+  addBombAmmo(amount) {
+    this.bombAmmo += amount;
+    console.log(`Added ${amount} bomb ammo. Total: ${this.bombAmmo}`);
+  }
+  // --- End add ammo methods ---
 }

@@ -153,6 +153,17 @@ body {
   font-weight: bold;
 }
 
+/* --- >>> Add This Rule <<< --- */
+/* Style for low ammo warning (applied by JS) */
+#bullet-ammo.low-ammo,
+#bomb-ammo.low-ammo {
+  color: #ffcc00; /* Yellow/Orange for low ammo */
+  font-weight: bold;
+  /* You could add other effects like a subtle background pulse */
+  /* animation: pulse-warning 1s infinite alternate; */
+}
+/* --- >>> End Add <<< --- */
+
 /* OVERLAYS (Game Over / Game Won) */
 .overlay {
   position: absolute;
