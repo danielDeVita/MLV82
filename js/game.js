@@ -540,20 +540,36 @@ export class Game {
       return; // Prevent regular spawning
     } // End if(this.bossActive)
 
-    // SECTION 2: REGULAR SPAWNING (No boss active)
+    // --- SECTION 2: REGULAR SPAWNING (No boss active) ---
+
+    // --- >>> Adjust Spawn Rate Based on Progress <<< ---
+    let intervalMultiplier = 1.0; // Default speed
+    if (this.boss2Defeated) {
+      intervalMultiplier = 0.65; // Significantly faster spawns after Boss 2 (e.g., 65% of normal interval)
+    } else if (this.boss1Defeated) {
+      intervalMultiplier = 0.8; // Faster spawns after Boss 1 (e.g., 80% of normal interval)
+    }
+    // --- >>> END Spawn Rate Adjustment <<< ---
+
     const speedBoost = this.difficultyLevel * 0.3;
-    const minPlaneInt = 500,
-      minShipInt = 1800;
-    const planeReduct = this.difficultyLevel * 150,
-      shipReduct = this.difficultyLevel * 300;
-    const currentPlaneInt = Math.max(
+    const minPlaneInt = 400,
+      minShipInt = 1500;
+    const planeReduct = this.difficultyLevel * 120,
+      shipReduct = this.difficultyLevel * 250;
+
+    // Apply the multiplier to the calculated interval
+    const basePlaneInterval = Math.max(
       minPlaneInt,
       this.baseEnemyPlaneInterval - planeReduct
     );
-    const currentShipInt = Math.max(
+    const baseShipInterval = Math.max(
       minShipInt,
       this.baseEnemyShipInterval - shipReduct
     );
+
+    const currentPlaneInt = basePlaneInterval * intervalMultiplier;
+    const currentShipInt = baseShipInterval * intervalMultiplier;
+
     const rPlane = Math.random();
     const rShip = Math.random();
     const level = this.difficultyLevel;
@@ -565,22 +581,37 @@ export class Game {
       let PlaneClass = null;
       let mineLayerChance = 0,
         dodgerChance = 0,
-        shooterPlaneChance = 0.25;
+        shooterPlaneChance = 0.25,
+        basicPlaneChance = 1.0;
 
-      if (this.boss2Defeated && level > 4) {
-        // Stage 3
-        mineLayerChance = 0.15 + level * 0.03;
-        dodgerChance = 0.2 + level * 0.04;
-        shooterPlaneChance = 0.35 + level * 0.03;
-      } else if (this.boss1Defeated && level > 1) {
-        // Stage 2
-        dodgerChance = 0.15 + level * 0.05;
-        shooterPlaneChance = 0.3 + level * 0.05;
+      // --- >>> Adjust Enemy Mix Based on Progress <<< ---
+      if (this.boss2Defeated) {
+        // Stage 3: After Boss 2 - More challenging mix
+        mineLayerChance = 0.2 + level * 0.03; // Higher chance
+        dodgerChance = 0.3 + level * 0.04; // Higher chance
+        shooterPlaneChance = 0.35 + level * 0.03; // Still common
+        console.log("SPAWN DEBUG: Using Post-Boss2 PLANE Mix"); // Temporary log
+      } else if (this.boss1Defeated) {
+        // Stage 2: After Boss 1 - Introduce more variety
+        mineLayerChance = 0.1 + level * 0.02; // Introduce Mines earlier
+        dodgerChance = 0.25 + level * 0.05; // More Dodgers
+        shooterPlaneChance = 0.4 + level * 0.05; // More Shooters
+        console.log("SPAWN DEBUG: Using Post-Boss1 PLANE Mix"); // Temporary log
       } else {
-        // Stage 1
+        // Stage 1: Before Boss 1 - Mostly basic/shooters
         shooterPlaneChance = 0.2 + level * 0.1;
+        // No Mine Layers or Dodgers initially? Keep it simpler.
+        mineLayerChance = 0;
+        dodgerChance = 0;
       }
-      // Normalize probabilities and select class based on rPlane
+      // --- >>> END Enemy Mix Adjustment <<< ---
+
+      // Normalize probabilities and select class (Keep this logic)
+      basicPlaneChance = Math.max(
+        0,
+        1.0 - mineLayerChance - dodgerChance - shooterPlaneChance
+      );
+      // Make sure probabilities add up conceptually, adjust if needed
       if (rPlane < mineLayerChance) PlaneClass = EnemyMineLayerPlane;
       else if (rPlane < mineLayerChance + dodgerChance)
         PlaneClass = EnemyDodgingPlane;
@@ -590,30 +621,44 @@ export class Game {
 
       if (PlaneClass) this.enemies.push(new PlaneClass(this, speedBoost));
     } // End Plane Spawn
-
-    // Spawn Ships
+    // --- Spawn Ships ---
     this.enemyShipTimer += deltaTime;
     if (this.enemyShipTimer >= currentShipInt) {
-      this.enemyShipTimer = 0; // Reset timer more accurately
+      this.enemyShipTimer = 0; // Reset timer
       let ShipClass = null;
       let beamShipChance = 0,
         trackingShipChance = 0,
-        shooterShipChance = 0.25;
+        shooterShipChance = 0.25,
+        basicShipChance = 1.0;
 
-      if (this.boss2Defeated && level > 5) {
-        // Stage 3
-        beamShipChance = 0.18 + level * 0.03;
-        trackingShipChance = 0.2 + level * 0.04;
-        shooterShipChance = 0.3 + level * 0.03;
-      } else if (this.boss1Defeated && level > 1) {
-        // Stage 2
-        trackingShipChance = 0.15 + level * 0.05;
-        shooterShipChance = 0.3 + level * 0.05;
+      // --- >>> Adjust Enemy Mix Based on Progress <<< ---
+      if (this.boss2Defeated) {
+        // Stage 3: After Boss 2 - More dangerous ships
+        beamShipChance = 0.25 + level * 0.03; // Higher chance
+        trackingShipChance = 0.3 + level * 0.04; // Higher chance
+        shooterShipChance = 0.3 + level * 0.03; // Still appear
+        console.log("SPAWN DEBUG: Using Post-Boss2 SHIP Mix"); // Temporary log
+      } else if (this.boss1Defeated) {
+        // Stage 2: After Boss 1 - Introduce tougher ships
+        beamShipChance = 0.1 + level * 0.02; // Introduce Beam ships
+        trackingShipChance = 0.25 + level * 0.05; // More Trackers
+        shooterShipChance = 0.4 + level * 0.05; // More Shooters
+        console.log("SPAWN DEBUG: Using Post-Boss1 SHIP Mix"); // Temporary log
       } else {
-        // Stage 1
+        // Stage 1: Before Boss 1 - Mostly basic/shooters
         shooterShipChance = 0.2 + level * 0.1;
+        // No Beam or Tracking ships initially?
+        beamShipChance = 0;
+        trackingShipChance = 0;
       }
-      // Normalize probabilities and select class based on rShip
+      // --- >>> END Enemy Mix Adjustment <<< ---
+
+      // Normalize probabilities and select class (Keep this logic)
+      basicShipChance = Math.max(
+        0,
+        1.0 - beamShipChance - trackingShipChance - shooterShipChance
+      );
+      // Make sure probabilities add up conceptually
       if (rShip < beamShipChance) ShipClass = EnemyBeamShip;
       else if (rShip < beamShipChance + trackingShipChance)
         ShipClass = EnemyTrackingShip;
@@ -622,7 +667,7 @@ export class Game {
       else ShipClass = EnemyShip;
 
       if (ShipClass) this.enemies.push(new ShipClass(this, speedBoost));
-    } // End Ship Spawn
+    } // End Ship Spawn Trigger
   } // End handleSpawning
 
   // --- Boss 3 Helper Spawning Methods ---
