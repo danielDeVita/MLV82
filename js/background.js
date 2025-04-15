@@ -1,48 +1,5 @@
-// js/background.js
-// NOTE: This version ONLY handles drawing the sky color, sun, moon, and stars onto the CANVAS.
-// Scrolling layers are handled by CSS.
-
 import { randomInt, lerp, lerpColor } from "./utils.js";
 
-// function lerp(start, end, amount) {
-//   amount = Math.max(0, Math.min(1, amount));
-//   return start + (end - start) * amount;
-// }
-// function lerpColor(hexColor1, hexColor2, amount) {
-//   try {
-//     if (
-//       !/^#[0-9A-F]{6}$/i.test(hexColor1) ||
-//       !/^#[0-9A-F]{6}$/i.test(hexColor2)
-//     ) {
-//       throw new Error(`Invalid hex: ${hexColor1}, ${hexColor2}`);
-//     }
-//     const r1 = parseInt(hexColor1.slice(1, 3), 16),
-//       g1 = parseInt(hexColor1.slice(3, 5), 16),
-//       b1 = parseInt(hexColor1.slice(5, 7), 16);
-//     const r2 = parseInt(hexColor2.slice(1, 3), 16),
-//       g2 = parseInt(hexColor2.slice(3, 5), 16),
-//       b2 = parseInt(hexColor2.slice(5, 7), 16);
-//     if (isNaN(r1 + g1 + b1 + r2 + g2 + b2)) {
-//       throw new Error("NaN parsing hex");
-//     }
-//     const r = Math.round(lerp(r1, r2, amount)),
-//       g = Math.round(lerp(g1, g2, amount)),
-//       b = Math.round(lerp(b1, b2, amount));
-//     const toHex = (c) => c.toString(16).padStart(2, "0");
-//     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-//   } catch (e) {
-//     console.error("Error lerpColor:", e);
-//     return hexColor1;
-//   }
-// }
-
-// ======================================================
-// Represents a SINGLE background layer object (CSS Controlled Version)
-// NOTE: This class is now only used internally by the Background class below
-//       if we needed JS control over layer properties like opacity later.
-//       For the pure CSS layer approach, this class definition itself isn't
-//       strictly necessary anymore, but keeping it doesn't hurt.
-// ======================================================
 class BackgroundLayer {
   constructor(imageSrc, speedModifier, gameWidth, gameHeight, yOffset = 0) {
     this.gameWidth = gameWidth;
@@ -136,7 +93,7 @@ export class Background {
     this.phase2EndScore = 4800; // End of Sunset (around Boss 2)
     this.phase3EndScore = 13500; // End of Dusk (around Boss 3)
 
-    console.log("Background Initialized (Canvas Draw Version)");
+    
   }
 
   setGame(gameInstance) {
@@ -180,12 +137,7 @@ export class Background {
     this.phase2EndScore = this.t2_start; // Sunset ends when Sunset->Dusk starts
     this.phase3EndScore = this.t3_start; // Dusk ends when Dusk->Night starts
 
-    console.log(
-      `Background Phases Set: DayEnd ${this.phase1EndScore}, SunsetEnd ${this.phase2EndScore}, DuskEnd ${this.phase3EndScore}`
-    );
-    console.log(
-      `Background Transitions: T1(${this.t1_start}-${this.t1_end}), T2(${this.t2_start}-${this.t2_end}), T3(${this.t3_start}-${this.t3_end})`
-    );
+    
 
     // Validation
     if (this.t1_end >= this.t2_start || this.t2_end >= this.t3_start) {

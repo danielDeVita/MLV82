@@ -62,13 +62,7 @@ export class Boss3Plane extends EnemyPlane {
     this.missileInterval = 7000;
     this.missileSalvoCount = 3;
     this.missileSalvoDelay = 300;
-
-    console.log(
-      `${this.id} created with ${this.weakPoints.length} weak points. Health: ${this.health}/${this.maxHealth}`
-    );
   } // End Constructor
-
-  // Inside js/boss3Plane.js -> Boss3Plane class
 
   update(deltaTime) {
     // Exit if already marked for deletion
@@ -80,9 +74,6 @@ export class Boss3Plane extends EnemyPlane {
 
     // --- Entry Logic ---
     if (this.isEntering) {
-      // --- Log Entry State Start ---
-      // console.log(`Plane ${this.id} ENTERING: X=${this.x?.toFixed(0)}, SpeedX=${this.speedX}, EntryTargetX=${this.entryTargetX?.toFixed(0)}`);
-
       // Safety check for speed value
       if (typeof this.speedX !== "number" || isNaN(this.speedX)) {
         console.error(
@@ -94,21 +85,14 @@ export class Boss3Plane extends EnemyPlane {
       // Move right to enter
       const moveAmount = this.speedX * 2 * deltaScale; // Enter faster
       this.x += moveAmount;
-      // console.log(`   Moved by ${moveAmount.toFixed(1)}, New X = ${this.x.toFixed(0)}`);
 
       // Check if entry target reached
       // Safety check for target value
       if (typeof this.entryTargetX !== "number" || isNaN(this.entryTargetX)) {
-        console.error(
-          `Plane ${this.id} has invalid entryTargetX: ${this.entryTargetX}. Setting default.`
-        );
         this.entryTargetX = 100; // Default target if invalid
       }
 
       if (this.x >= this.entryTargetX) {
-        console.log(
-          `!!! Plane ${this.id} ENTRY COMPLETE at X=${this.x.toFixed(0)} !!!`
-        );
         this.x = this.entryTargetX; // Snap to position
         this.isEntering = false;
         // Ensure moveDirectionX is set for normal patrol start
@@ -174,11 +158,9 @@ export class Boss3Plane extends EnemyPlane {
       this.maxX = this.game.width - this.width - 20;
 
     if (this.x <= this.minX && this.moveDirectionX === -1) {
-      // console.log(`Plane ${this.id} HIT LEFT BOUNDARY at X=${this.x.toFixed(0)}. Reversing.`);
       this.x = this.minX;
       this.moveDirectionX = 1;
     } else if (this.x >= this.maxX && this.moveDirectionX === 1) {
-      // console.log(`Plane ${this.id} HIT RIGHT BOUNDARY at X=${this.x.toFixed(0)}. Reversing.`);
       this.x = this.maxX;
       this.moveDirectionX = -1;
     }
@@ -258,13 +240,11 @@ export class Boss3Plane extends EnemyPlane {
             this.isBombing = false;
             this.bombRunTimer =
               this.bombRunInterval + Math.random() * 2000 - 1000;
-            console.log(`${this.id}: Bombing run complete.`);
           }
         }
       } else if (this.isBombing) {
         // Stop bombing if bomb bay destroyed mid-run
         this.isBombing = false;
-        console.log(`${this.id}: Bombing run aborted (bomb bay destroyed).`);
       }
     } catch (e) {
       console.error(`Error during ${this.id} attack logic: ${e}`, this);
@@ -286,7 +266,6 @@ export class Boss3Plane extends EnemyPlane {
    * Fires a 5-bullet spread shot horizontally forwards (left).
    */
   fireSpreadShot() {
-    // console.log(`${this.id} firing spread shot`); // Optional log
     playSound("enemyShoot");
     const bulletSpeedX = -5.0; // Fire left
     const bulletX = this.x; // Fire from front edge (left side) of the plane's hitbox
@@ -310,7 +289,6 @@ export class Boss3Plane extends EnemyPlane {
     // Prevent starting if already bombing or destroyed
     if (this.isBombing || this.markedForDeletion) return;
 
-    console.log(`${this.id} starting bombing run!`);
     this.isBombing = true;
     this.bombDropCount = 0; // Reset count for this run
     this.bombDropTimer = 100; // Small initial delay before first bomb
@@ -323,7 +301,6 @@ export class Boss3Plane extends EnemyPlane {
    * Drops a single bomb projectile below the plane. Called repeatedly during a bombing run.
    */
   dropBomb() {
-    // console.log(`${this.id} dropping bomb ${this.bombDropCount + 1}`); // Optional log
     playSound("bomb_drop");
     const bombX = this.x + this.width / 2 - 5; // Center X relative to plane
     const bombY = this.y + this.height; // Drop from bottom edge
@@ -340,7 +317,6 @@ export class Boss3Plane extends EnemyPlane {
    * Fires a salvo of tracking missiles.
    */
   fireMissileSalvo() {
-    console.log(`${this.id} firing missile salvo!`);
     // Sound is played by TrackingMissile constructor
 
     const launchY = this.y + this.height / 2; // Launch from vertical center
@@ -431,14 +407,8 @@ export class Boss3Plane extends EnemyPlane {
       // --- Perform Collision Check ---
       const collisionResult = checkCollision(projectileHitbox, wp);
 
-      // --- Detailed Logging REMOVED ---
-      // console.log( `...` ); // <-- REMOVED
-
       // --- Process the Hit if Collision Occurred ---
       if (collisionResult) {
-        // --- Log Confirmation REMOVED ---
-        // console.log(`      >>> SUCCESSFUL WP COLLISION DETECTED with ${wp.type} <<<`); // <-- REMOVED
-
         wp.hit(effectiveDamage); // Notify weak point
         projectile.markedForDeletion = true; // Consume projectile hitting WP
         weakPointWasHit = true;
@@ -448,8 +418,6 @@ export class Boss3Plane extends EnemyPlane {
 
     // --- Handle Hits That Missed Weak Points ---
     if (!weakPointWasHit && !projectile.markedForDeletion && isBullet) {
-      // --- Logic to handle body hits REMOVED (no flash, no deletion) ---
-      // console.log(`  -> Bullet hit plane body but missed WPs. Bullet continues.`); // <-- REMOVED / Optional
     } else if (!weakPointWasHit && !projectile.markedForDeletion && isBomb) {
       // Bombs hitting body but missing WPs are ignored
     }
@@ -565,26 +533,17 @@ export class Boss3Plane extends EnemyPlane {
     // --- >>> END ADJUSTMENTS <<< ---
 
     this.activeWeakPoints = this.weakPoints.length; // Set initial count
-    console.log(
-      `DEBUG createWeakPoints: Created ${this.activeWeakPoints} plane weak points. Pods W/H=${wingPodWidth}/${wingPodHeight}, Bay W/H=${bombBayWidth}/${bombBayHeight}, Base HP=${wpHealth}`
-    );
   }
 
   weakPointDestroyed(type, index) {
     if (this.markedForDeletion) return;
 
     this.activeWeakPoints--;
-    console.log(
-      `Plane Weak Point Destroyed: ${type}! ${this.activeWeakPoints} remaining.`
-    );
+
     this.game.addScore(250); // Score per part
 
     // Check if ALL weak points are now destroyed
     if (this.activeWeakPoints <= 0) {
-      console.log(
-        `${this.id} All Weak Points destroyed! Marking for deletion. Game state will trigger PLANE Reinforcements!`
-      );
-
       this.markedForDeletion = true; // Set flag first
       this.game.addScore(this.scoreValue); // Final bonus score
 
@@ -601,7 +560,6 @@ export class Boss3Plane extends EnemyPlane {
    * Creates a series of explosions over the boss component's area upon defeat.
    */
   triggerDefeatExplosion() {
-    console.log(`Triggering Defeat Explosion for ${this.id}`);
     // Number of explosions for this component
     const numExplosions = this.enemyType === "ship" ? 15 : 12; // More for the ship?
     // Duration of the explosion sequence
@@ -644,7 +602,6 @@ export class Boss3Plane extends EnemyPlane {
    * Fires a 5-bullet spread shot horizontally forwards (left).
    */
   fireSpreadShot() {
-    // console.log(`${this.id} firing spread shot`); // Optional log
     playSound("enemyShoot");
     const bulletSpeedX = -5.0; // Fire left
     const bulletX = this.x; // Fire from front edge (left side) of the plane's hitbox
@@ -668,7 +625,6 @@ export class Boss3Plane extends EnemyPlane {
     // Prevent starting if already bombing or destroyed
     if (this.isBombing || this.markedForDeletion) return;
 
-    console.log(`${this.id} starting bombing run!`);
     this.isBombing = true;
     this.bombDropCount = 0; // Reset count for this run
     this.bombDropTimer = 100; // Small initial delay before first bomb
@@ -681,7 +637,6 @@ export class Boss3Plane extends EnemyPlane {
    * Drops a single bomb projectile below the plane. Called repeatedly during a bombing run.
    */
   dropBomb() {
-    // console.log(`${this.id} dropping bomb ${this.bombDropCount + 1}`); // Optional log
     playSound("bomb_drop");
     const bombX = this.x + this.width / 2 - 5; // Center X relative to plane
     const bombY = this.y + this.height; // Drop from bottom edge
@@ -698,7 +653,6 @@ export class Boss3Plane extends EnemyPlane {
    * Fires a salvo of tracking missiles.
    */
   fireMissileSalvo() {
-    console.log(`${this.id} firing missile salvo!`);
     // Sound is played by TrackingMissile constructor, can add another sound here if needed
 
     const launchY = this.y + this.height / 2; // Launch from vertical center

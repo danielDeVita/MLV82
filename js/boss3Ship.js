@@ -58,10 +58,6 @@ export class Boss3Ship extends EnemyShip {
     this.depthChargeInterval = 8500;
     this.depthChargeCount = 4;
     this.depthChargeDelay = 200;
-
-    // console.log(
-    //   `${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
-    // );
   } // End constructor
 
   update(deltaTime) {
@@ -75,7 +71,6 @@ export class Boss3Ship extends EnemyShip {
         this.x = this.entryTargetX; // Snap
         this.isEntering = false;
         this.moveDirectionX = -1; // Start patrolling LEFT after entry
-        //  console.log(`${this.id} entry complete.`);
       }
       // Update hit flash timer even during entry
       if (this.isHit) {
@@ -140,7 +135,6 @@ export class Boss3Ship extends EnemyShip {
 
   // --- Attack Methods ---
   fireMainCannon() {
-    console.log(`${this.id} firing main cannon`);
     playSound("explosion");
     const player = this.game.player;
     if (!player || player.markedForDeletion) return;
@@ -199,7 +193,6 @@ export class Boss3Ship extends EnemyShip {
   }
 
   fireDepthCharges() {
-    console.log(`${this.id} firing depth charge barrage!`);
     playSound("bomb_drop");
 
     const dropXStart = this.x + this.width * 0.2;
@@ -251,14 +244,6 @@ export class Boss3Ship extends EnemyShip {
         : "bullet";
     const incomingDamage = projectile.damage || 1;
 
-    console.log(
-      `Boss3Ship HIT: By ${
-        projectile.constructor.name
-      }, Type='${projectileType}', Dmg=${incomingDamage}, HealthBefore=${previousHealth.toFixed(
-        1
-      )}`
-    );
-
     // Calculate Effective Damage
     let effectiveDamage = incomingDamage;
     if (projectileType === "bomb") {
@@ -267,27 +252,13 @@ export class Boss3Ship extends EnemyShip {
       // Bullets
       effectiveDamage *= 0.5;
     }
-    console.log(
-      `   -> Applying ${effectiveDamage.toFixed(
-        1
-      )} effective damage (Bomb Pref: 1.5x, Bullet: 0.5x).`
-    );
 
     // --- Call base Enemy.hit DIRECTLY ---
     Enemy.prototype.hit.call(this, effectiveDamage, projectileType); // This handles health reduction and setting markedForDeletion
 
-    console.log(
-      `   -> Health After hit(): ${this.health?.toFixed(
-        1
-      )}, MarkedForDeletion: ${this.markedForDeletion}`
-    );
-
     // --- Trigger Reinforcements ONCE upon destruction ---
     // REMOVED THE DIRECT SPAWN CALL FROM HERE
     if (previousHealth > 0 && this.health <= 0 && this.markedForDeletion) {
-      console.log(
-        `${this.id} destroyed! Game state will trigger SHIP reinforcements.`
-      );
       // The Game.handleBossState method will now detect this ship's
       // markedForDeletion status and set the isSpawningShipHelpers flag.
     }
@@ -334,7 +305,6 @@ export class Boss3Ship extends EnemyShip {
    * Creates a series of explosions over the boss component's area upon defeat.
    */
   triggerDefeatExplosion() {
-    console.log(`Triggering Defeat Explosion for ${this.id}`);
     // Number of explosions for this component
     const numExplosions = this.enemyType === "ship" ? 15 : 12; // More for the ship?
     // Duration of the explosion sequence

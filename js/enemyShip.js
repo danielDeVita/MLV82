@@ -46,10 +46,6 @@ export class EnemyShip extends Enemy {
     this.color = "darkslategray";
     this.deckColor = "slategray";
     this.detailColor = "gray";
-
-    console.log(
-      `EnemyShip ${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
-    ); // Log health here
   } // End Constructor
 
   // Make sure update receives deltaTime
@@ -86,14 +82,11 @@ export class EnemyShip extends Enemy {
     if (projectileType === "bomb") {
       // Bombs are fully effective (or maybe even bonus damage?)
       resistanceFactor = 1.0; // Example: 100% effective
-      // console.log(` -> Ship Hit by BOMB: Applying ${resistanceFactor}x damage factor.`);
     } else if (projectileType === "bullet") {
       // Bullets are less effective against ship armor
       resistanceFactor = 0.25; // Example: Bullets only do 25% of their base damage
-      // console.log(` -> Ship Hit by BULLET: Applying ${resistanceFactor}x damage factor.`);
     } else {
       // Handle potential other types if needed, otherwise default
-      // console.log(` -> Ship Hit by UNKNOWN type '${projectileType}': Applying default 1.0x damage factor.`);
     }
 
     effectiveDamage *= resistanceFactor;
@@ -113,8 +106,6 @@ export class EnemyShip extends Enemy {
     // - Triggering explosion/sound via `this.destroy()` if markedForDeletion
     // - Adding score via `this.destroy()`
     super.hit(effectiveDamage, projectileType); // <<< Use super.hit()
-
-    // console.log(`   -> Ship health after super.hit: ${this.health.toFixed(1)}`); // Optional check
   } // --- >>> END UPDATED hit Method <<< ---
 
   // Overriding draw completely, need hit flash logic wrapper here

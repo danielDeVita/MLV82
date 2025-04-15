@@ -24,7 +24,6 @@ export class Enemy {
     this.hitDuration = 100;
 
     // Base constructor log no longer shows health, subclasses should log
-    // console.log(`Enemy ${this.id} (${this.constructor.name}) base constructed.`);
   } // End Constructor
 
   update(deltaTime) {
@@ -69,34 +68,21 @@ export class Enemy {
     context.fillRect(this.x, this.y, this.width, this.height);
     context.restore();
   }
-  
+
   hit(damage = 1, projectileType = "bullet") {
     if (this.markedForDeletion) return;
     // Safety check: Ensure health properties exist before using them
     if (typeof this.health !== "number" || typeof this.maxHealth !== "number") {
-      console.error(
-        `Enemy ${this.id} (${this.constructor.name}) hit() called before health initialized!`
-      );
       this.health = 0; // Force deletion if health wasn't set
     }
 
     const initialHealth = this.health;
-    console.log(
-      `ENEMY HIT: ${this.id} (${
-        this.constructor.name
-      }) Type=${projectileType}, Dmg=${damage}, HealthBefore=${initialHealth?.toFixed(
-        1
-      )}`
-    );
 
     this.isHit = true;
     this.hitTimer = this.hitDuration;
     this.health -= damage; // Apply damage
 
-    console.log(`   -> HealthAfter=${this.health?.toFixed(1)}`);
-
     if (this.health <= 0 && !this.markedForDeletion) {
-      console.log(`   -> Marked for deletion! Score: +${this.scoreValue}`);
       this.markedForDeletion = true;
       this.game.addScore(this.scoreValue);
       const dropOriginType =
@@ -109,9 +95,6 @@ export class Enemy {
         this.enemyType || "air"
       );
       if (Math.random() < this.game.powerUpDropChance) {
-        console.log(
-          `   -> Enemy ${this.id} type ${this.enemyType} dropping powerup.`
-        );
         this.game.createPowerUp(
           this.x + this.width / 2,
           this.y + this.height / 2,

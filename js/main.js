@@ -2,14 +2,12 @@
 import { Game } from "./game.js";
 
 window.addEventListener("load", function () {
-  console.log("Window loaded. Initializing game...");
   const canvasId = "gameCanvas";
   const gameWidth = 1280;
   const gameHeight = 720;
 
   try {
     const game = new Game(canvasId, gameWidth, gameHeight);
-    console.log("Game instance created. Starting game...");
 
     // --- CHOOSE YOUR STARTING CONFIGURATION ---
     // --- (Uncomment ONLY ONE `gameConfig` block at a time!) ---
@@ -70,8 +68,6 @@ window.addEventListener("load", function () {
 
     // --- Pass the CHOSEN config to game.start ---
     game.start(gameConfig);
-
-    console.log("game.start() called.");
   } catch (error) {
     console.error("Error during game initialization:", error);
   }

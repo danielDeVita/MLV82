@@ -9,7 +9,7 @@ function createAudio(name, volume = 0.5) {
       const audio = new Audio();
       audio.volume = volume;
       audio.src = path;
-      // console.log(`Attempting to load sound: ${path}`);
+
       audio.onerror = () => {
         console.error(`Error loading sound: ${path}.`);
       };
@@ -32,7 +32,6 @@ function createAudio(name, volume = 0.5) {
 }
 
 export function loadSounds() {
-  console.log("--- Loading Sounds ---");
   sounds.shoot = createAudio("shoot", 0.3);
   sounds.bomb = createAudio("bomb_drop", 0.5);
   sounds.explosion = createAudio("explosion", 0.4);
@@ -45,11 +44,10 @@ export function loadSounds() {
   sounds.shieldDown = createAudio("shield_down", 0.5);
   sounds.extraLife = createAudio("extra_life", 0.6);
   sounds.powerupExpire = createAudio("powerup_expire", 0.3);
-  sounds.rapidFirePickup = createAudio("powerup", 0.5); // Reuse or use specific sound
-  sounds.invinciblePickup = createAudio("shield_up", 0.5); // Reuse or use specific sound
-  sounds.charge_up = createAudio("charge_up", 0.4); // Find/create a suitable sound
-  sounds.laser_beam = createAudio("laser_beam", 0.6); // Find/create a suitable sound (might need looping/stopping logic
-  console.log("--- Sound Loading Complete ---");
+  sounds.rapidFirePickup = createAudio("rapidFirePickup", 0.5);
+  sounds.invinciblePickup = createAudio("invinciblePickup", 0.5);
+  sounds.charge_up = createAudio("charge_up", 0.4);
+  sounds.laser_beam = createAudio("laser_beam", 0.6);
 }
 
 export function playSound(name) {
@@ -61,8 +59,7 @@ export function playSound(name) {
       sound.play().catch((e) => {
         /* ... error handling ... */
       });
-    } // else if (sound.isPlaceholder) { console.warn(`Attempted to play placeholder sound: ${name}`); }
-    // else { console.error(`Sound object '${name}' is invalid.`); }
-  } // else { console.warn(`Sound not found: ${name}`); }
+    }
+  }
 }
 loadSounds();

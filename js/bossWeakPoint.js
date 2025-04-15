@@ -37,33 +37,13 @@ export class BossWeakPoint {
     this.x = this.boss.x + this.offsetX;
     this.y = this.boss.y + this.offsetY;
 
-    // --- >>> ADD DETAILED LOGGING FOR SPECIFIC WEAK POINTS <<< ---
     try {
       // Wrap logging in try-catch just in case boss/offset properties are weird
       if (this.type === "controlTower") {
-        // Log Tower's position calculation
-        console.log(
-          `UPDATE_POS Tower: bossXY=(${this.boss.x?.toFixed(
-            0
-          )},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
-            0
-          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(
-            0
-          )},${this.y?.toFixed(0)})`
-        );
       }
       // Identify Center AA gun by its unique RELATIVE Y offset (baseOffsetY - 15 => 30 - 15 = 15)
       else if (this.type === "aaGun" && Math.abs(this.offsetY - 15) < 1) {
         // Log Center AA Gun's position calculation
-        console.log(
-          `UPDATE_POS CenterAA: bossXY=(${this.boss.x?.toFixed(
-            0
-          )},${this.boss.y?.toFixed(0)}) + offsetXY=(${this.offsetX?.toFixed(
-            0
-          )},${this.offsetY?.toFixed(0)}) => finalXY=(${this.x?.toFixed(
-            0
-          )},${this.y?.toFixed(0)})`
-        );
       }
     } catch (e) {
       console.error("Error during position logging:", e, this);
@@ -88,24 +68,15 @@ export class BossWeakPoint {
   hit(damage) {
     // Damage value received from Boss3.hit
     if (!this.isActive) {
-      // console.log(`WP ${this.type} hit attempt ignored (inactive).`);
       return false;
     }
 
-    // --- Log Damage Received ---
-    console.log(
-      `   -> WP ${this.type} hit() received damage: ${damage.toFixed(
-        1
-      )}. Current health: ${this.health.toFixed(1)}`
-    );
     this.health -= damage;
-    console.log(`   -> WP ${this.type} new health: ${this.health.toFixed(1)}`);
 
     this.isHit = true;
     this.hitTimer = this.hitDuration;
 
     if (this.health <= 0) {
-      console.log(`   -> WP ${this.type} health <= 0, calling destroy.`);
       this.destroy();
       return true;
     }
@@ -122,12 +93,7 @@ export class BossWeakPoint {
 
     this.isActive = false;
     this.health = 0;
-    console.log(`WeakPoint ${this.type} (Index: ${this.index}) DESTROYED!`);
 
-    // --- LOG 2: Confirm boss notification is called ---
-    console.log(
-      `   -> Notifying Boss1 via weakPointDestroyed(${this.type}, ${this.index})`
-    );
     // Ensure 'this.boss' is valid and the method exists before calling
     if (this.boss && typeof this.boss.weakPointDestroyed === "function") {
       this.boss.weakPointDestroyed(this.type, this.index); // Pass index too
@@ -142,9 +108,6 @@ export class BossWeakPoint {
         explosionType
       );
       if (this.boss && typeof this.boss.weakPointDestroyed === "function") {
-        console.log(
-          `   Notifying boss ${this.boss.id} about destruction of ${this.type}`
-        ); // <<< Add log
         // Notify the boss, passing type and index
         this.boss.weakPointDestroyed(this.type, this.index); // Pass index too
       } else {
@@ -156,8 +119,6 @@ export class BossWeakPoint {
     }
 
     if (Math.random() < 0.75) {
-      console.log(`Spawning power-up from destroyed weak point ${this.type}`);
-
       // --- >>> Determine origin based on BOSS's enemyType <<< ---
       // Treat ground_installation like 'ship' for upward movement
       const bossOriginType =
@@ -167,9 +128,6 @@ export class BossWeakPoint {
           : "air";
       // --- >>> END Determine origin <<< ---
 
-      console.log(
-        `   Boss type: ${this.boss.enemyType}, Powerup origin: ${bossOriginType}`
-      );
       // --- >>> Pass determined originType <<< ---
       this.game.createPowerUp(
         this.x + this.width / 2,

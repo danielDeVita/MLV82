@@ -44,7 +44,6 @@ export class EnemyMineLayerPlane extends EnemyPlane {
   } // End of update
 
   dropMine() {
-    // console.log("Mine Layer dropping mine!");
     playSound("bomb_drop"); // Reuse bomb drop sound? Or add 'mine_drop'?
 
     // Calculate mine start position (below the plane)

@@ -92,7 +92,8 @@ export class EnemyDodgingPlane extends EnemyPlane {
     this.dodgeCheckTimer += safeDeltaTime;
     if (this.isReacting) {
       this.reactionTimer += safeDeltaTime;
-      this.targetReactionOffset = this.reactionDirection * this.reactionStrength;
+      this.targetReactionOffset =
+        this.reactionDirection * this.reactionStrength;
       if (this.reactionTimer >= this.reactionDuration) {
         this.isReacting = false;
         this.targetReactionOffset = 0;
@@ -107,7 +108,10 @@ export class EnemyDodgingPlane extends EnemyPlane {
     }
 
     // --- Smoothly Move Current Offset Towards Target Offset using DeltaTime ---
-    const reactionLerpAmount = Math.min(1, this.baseReactionLerpSpeed * deltaScale); // Calculate scaled lerp amount
+    const reactionLerpAmount = Math.min(
+      1,
+      this.baseReactionLerpSpeed * deltaScale
+    ); // Calculate scaled lerp amount
     // --- Apply the lerp calculation ---
     this.currentReactionOffset = lerp(
       this.currentReactionOffset, // Start value
@@ -117,10 +121,16 @@ export class EnemyDodgingPlane extends EnemyPlane {
 
     // --- Snap to target if very close ---
     const snapThreshold = 0.5;
-    if (Math.abs(this.currentReactionOffset - this.targetReactionOffset) < snapThreshold) {
+    if (
+      Math.abs(this.currentReactionOffset - this.targetReactionOffset) <
+      snapThreshold
+    ) {
       this.currentReactionOffset = this.targetReactionOffset;
     }
-    if (!this.isReacting && Math.abs(this.currentReactionOffset) < snapThreshold) {
+    if (
+      !this.isReacting &&
+      Math.abs(this.currentReactionOffset) < snapThreshold
+    ) {
       this.currentReactionOffset = 0;
     }
 
@@ -146,7 +156,11 @@ export class EnemyDodgingPlane extends EnemyPlane {
 
     // --- Shooting logic ---
     this.shootTimer += safeDeltaTime;
-    if (!this.markedForDeletion && this.shootTimer >= this.shootInterval && this.x < this.game.width * 0.9) {
+    if (
+      !this.markedForDeletion &&
+      this.shootTimer >= this.shootInterval &&
+      this.x < this.game.width * 0.9
+    ) {
       this.shoot();
       this.shootTimer = 0;
       this.shootInterval = 1800 + Math.random() * 1200;
@@ -159,16 +173,29 @@ export class EnemyDodgingPlane extends EnemyPlane {
 
   attemptReaction() {
     /* ... same as before ... */
-    const verticalDistance = Math.abs(this.y + this.height / 2 - (this.game.player.y + this.game.player.height / 2));
-    const horizontalDistance = this.x - (this.game.player.x + this.game.player.width);
+    const verticalDistance = Math.abs(
+      this.y +
+        this.height / 2 -
+        (this.game.player.y + this.game.player.height / 2)
+    );
+    const horizontalDistance =
+      this.x - (this.game.player.x + this.game.player.width);
     const triggerVerticalDistance = this.height * 5; // Keep wider trigger
     const triggerHorizontalDistance = this.game.width * 0.8;
 
-    if (!this.isReacting && verticalDistance < triggerVerticalDistance && horizontalDistance > 0 && horizontalDistance < triggerHorizontalDistance) {
+    if (
+      !this.isReacting &&
+      verticalDistance < triggerVerticalDistance &&
+      horizontalDistance > 0 &&
+      horizontalDistance < triggerHorizontalDistance
+    ) {
       this.isReacting = true;
       this.reactionTimer = 0;
-      this.reactionDirection = this.game.player.y + this.game.player.height / 2 > this.y + this.height / 2 ? -1 : 1; // Push UP if player below, DOWN otherwise
-      // console.log(`---> Reacting! Pushing ${this.reactionDirection === 1 ? 'DOWN' : 'UP'}`);
+      this.reactionDirection =
+        this.game.player.y + this.game.player.height / 2 >
+        this.y + this.height / 2
+          ? -1
+          : 1; // Push UP if player below, DOWN otherwise
     }
   }
 
@@ -177,7 +204,9 @@ export class EnemyDodgingPlane extends EnemyPlane {
     // Simple shot straight left from center
     const bulletX = this.x; // Fire from front edge
     const bulletY = this.y + this.height / 2 - 4; // Center vertically adjust for bullet height
-    this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletY, -5)); // Speed -5 (adjust as needed)
+    this.game.addEnemyProjectile(
+      new EnemyBullet(this.game, bulletX, bulletY, -5)
+    ); // Speed -5 (adjust as needed)
     playSound("enemyShoot"); // Use the generic enemy shoot sound
   }
 
@@ -203,7 +232,13 @@ export class EnemyDodgingPlane extends EnemyPlane {
     // --- Draw Cockpit ---
     context.fillStyle = "lightblue";
     context.beginPath();
-    context.arc(this.x + this.width * 0.6, this.y + this.height * 0.35, this.width * 0.1, 0, Math.PI * 2);
+    context.arc(
+      this.x + this.width * 0.6,
+      this.y + this.height * 0.35,
+      this.width * 0.1,
+      0,
+      Math.PI * 2
+    );
     context.fill();
 
     // --- Draw Chevron ---

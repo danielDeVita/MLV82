@@ -29,10 +29,6 @@ export class EnemyPlane extends Enemy {
     this.amplitude = 40 + Math.random() * 30;
     this.frequency = 0.04 + Math.random() * 0.025;
     this.initialY = this.y;
-
-    console.log(
-      `EnemyPlane ${this.id} constructed. Health: ${this.health}/${this.maxHealth}`
-    ); // Log health here
   } // End Constructor
 
   // Override update to ensure sine calculation uses the correct initialY and applies bounds

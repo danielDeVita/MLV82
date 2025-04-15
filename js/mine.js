@@ -23,8 +23,6 @@ export class Mine {
     // Optional: Blinking before despawn
     this.blinkDuration = 1000; // Start blinking 1 second before despawn
     this.isBlinking = false;
-
-    // console.log(`Mine created at ${this.x.toFixed(0)}, ${this.y.toFixed(0)}`);
   }
 
   update(deltaTime) {

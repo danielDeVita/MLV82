@@ -160,7 +160,6 @@ export class Player {
       this.invincibilityTimer -= safeDeltaTime;
       if (this.invincibilityTimer <= 0) {
         this.invincible = false;
-        // console.log("Invincibility ended."); // Optional log
       } else {
         // Show invincibility status only if shield/rapid fire/etc. aren't active
         if (!powerUpStatusText && !this.shieldActive) {
@@ -259,7 +258,6 @@ export class Player {
   dropBomb() {
     // --- Check for SUPER BOMB first ---
     if (this.superBombArmed) {
-      console.log("Dropping SUPER BOMB!");
       this.superBombArmed = false; // Consume the charge
       playSound("bomb"); // Use regular bomb drop sound or a special one?
 
@@ -281,7 +279,6 @@ export class Player {
     const timeSinceLastBomb = currentTime - (this._lastBombTimestamp || 0);
 
     if (timeSinceLastBomb >= this.bombCooldown) {
-      // console.log("Dropping regular bomb."); // Optional log
       const bombX = this.x + this.width / 2 - (this.bombPowerUpActive ? 6 : 4);
       const bombY = this.y + this.height;
       this.game.addProjectile(
@@ -294,7 +291,6 @@ export class Player {
 
   // --- NEW Power-up Activation Method ---
   activateSuperBombPickup() {
-    console.log("Super Bomb Armed!");
     this.superBombArmed = true;
     // Update UI immediately if possible
     if (
@@ -357,18 +353,15 @@ export class Player {
   }
 
   activateRapidFire() {
-    console.log("Rapid Fire Activated!");
     this.rapidFireActive = true;
     this.rapidFireTimer = this.rapidFireDuration;
   }
   deactivateRapidFire() {
     if (this.rapidFireActive) {
-      console.log("Rapid Fire Deactivated.");
     }
     this.rapidFireActive = false;
   }
   activateInvincibilityPowerUp() {
-    console.log("Invincibility Power-up Activated!");
     this.invincible = true;
     this.invincibilityTimer = Math.max(
       this.invincibilityTimer,
@@ -426,7 +419,7 @@ export class Player {
 
     this.superBombArmed = false; // <<< Reset Super Bomb state
     this._lastBombTimestamp = 0; // Reset timestamp used for cooldown checkg
-    console.log(`Player state reset. Lives set to: ${this.lives}`);
+
     this.game.updateLivesUI();
     this.game.updatePowerUpStatus("");
   }

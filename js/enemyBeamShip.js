@@ -46,8 +46,6 @@ export class EnemyBeamShip extends EnemyShip {
     // Movement Control
     this.originalSpeedX = this.speedX;
     this.stopMovement = false;
-
-    console.log(`${this.id} created.`);
   }
 
   // Inside js/enemyBeamShip.js -> EnemyBeamShip class
@@ -91,7 +89,6 @@ export class EnemyBeamShip extends EnemyShip {
         this.beamTimer = this.beamChargeTime; // Set charge duration timer
         this.stopMovement = true; // Stop movement to charge
         playSound("charge_up"); // Play charge sound
-        console.log(`${this.id} charging beam...`);
       }
       // >>> End Cooldown Check <<<
     } else if (this.beamState === "CHARGING") {
@@ -115,9 +112,6 @@ export class EnemyBeamShip extends EnemyShip {
           this.beamAngle = -Math.PI / 4;
         } // Default angle
         playSound("laser_beam"); // Play beam fire sound
-        console.log(
-          `${this.id} firing beam at angle ${this.beamAngle.toFixed(2)}!`
-        );
       }
     } else if (this.beamState === "FIRING") {
       this.stopMovement = true; // Ensure stopped
@@ -151,7 +145,6 @@ export class EnemyBeamShip extends EnemyShip {
             height: this.beamWidth,
           };
           if (checkCollision(player, beamSegmentRect)) {
-            console.log(`Player hit by beam from ${this.id}!`);
             player.hit();
             break;
           }
@@ -166,7 +159,7 @@ export class EnemyBeamShip extends EnemyShip {
         this.beamTimer = this.beamCooldownTime + Math.random() * 1000 - 500;
         this.stopMovement = false; // Allow movement again
         this.currentBeamLength = 0; // Reset beam length
-        console.log(`${this.id} beam cooldown.`);
+
         // playSound('laser_end'); // Optional beam end sound
       }
     } // End State Machine

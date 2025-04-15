@@ -86,8 +86,6 @@ export class Boss2 extends Enemy {
     this.powerUpRandomInterval = 3000;
     this.powerUpInterval =
       this.powerUpBaseInterval + Math.random() * this.powerUpRandomInterval;
-
-    console.log(`Boss2 Created (${this.id}) - Persistent Ship Support Added.`);
   } // End Constructor
 
   update(deltaTime) {
@@ -109,7 +107,6 @@ export class Boss2 extends Enemy {
       if (this.x <= this.entryTargetX) {
         this.x = this.entryTargetX;
         this.isEntering = false;
-        console.log("Boss 2 Entrance Complete!");
       }
     } else {
       // Dipping State Update
@@ -160,7 +157,6 @@ export class Boss2 extends Enemy {
         newPhase = 2;
       }
       if (newPhase > this.currentPhase) {
-        console.warn(`!!! Boss 2 Entering Phase ${newPhase} !!!`);
         this.currentPhase = newPhase;
       }
 
@@ -218,7 +214,6 @@ export class Boss2 extends Enemy {
             1,
             currentBombRunInterval + Math.random() * 2000 - 1000
           );
-          console.log("Boss2: Bombing run complete.");
         }
       }
 
@@ -227,11 +222,6 @@ export class Boss2 extends Enemy {
       if (healthPercent <= this.summonThreshold1) {
         this.shipWave1Timer -= safeDeltaTime;
         if (this.shipWave1Timer <= 0) {
-          console.log(
-            `Boss 2 spawning persistent Ship Wave 1 (Health: ${healthPercent.toFixed(
-              2
-            )})`
-          );
           this.game.spawnBoss2HelperShips(1, "shooter"); // Example: 1 Shooter
           this.shipWave1Timer =
             this.shipWave1Interval + Math.random() * 4000 - 2000; // Reset timer
@@ -242,11 +232,6 @@ export class Boss2 extends Enemy {
       if (healthPercent <= this.summonThreshold2) {
         this.shipWave2Timer -= safeDeltaTime;
         if (this.shipWave2Timer <= 0) {
-          console.log(
-            `Boss 2 spawning persistent Ship Wave 2 (Health: ${healthPercent.toFixed(
-              2
-            )})`
-          );
           this.game.spawnBoss2HelperShips(1, "tracking"); // Example: 1 Tracking
           this.shipWave2Timer =
             this.shipWave2Interval + Math.random() * 3000 - 1500; // Reset timer
@@ -263,7 +248,7 @@ export class Boss2 extends Enemy {
         const spawnX =
           this.x + this.width / 2 + (Math.random() - 0.5) * this.width * 0.5;
         const spawnY = this.y + this.height + 30;
-        console.log("Boss2 Spawning timed power-up");
+
         this.game.createPowerUp(spawnX, spawnY);
       } // End Power-up spawning
     } // --- END ATTACKS & OTHER UPDATES (if !isEntering) ---
@@ -279,10 +264,6 @@ export class Boss2 extends Enemy {
 
   hit(projectile) {
     if (typeof projectile !== "object" || projectile === null) {
-      console.error(
-        `Boss2.hit received invalid projectile type: ${typeof projectile}`,
-        projectile
-      );
       return;
     }
     if (projectile.markedForDeletion || this.markedForDeletion) {
@@ -299,7 +280,6 @@ export class Boss2 extends Enemy {
     projectile.markedForDeletion = true;
 
     if (this.health <= 0 && !this.markedForDeletion) {
-      console.log("Boss2 DEFEATED!");
       this.markedForDeletion = true;
       this.game.addScore(this.scoreValue);
       this.triggerDefeatExplosion();
@@ -345,9 +325,7 @@ export class Boss2 extends Enemy {
         // Use setTimeout for a slight delay
         if (!this.markedForDeletion && !this.game.isGameOver) {
           // Check validity when timeout runs
-          console.log(
-            `Boss2 firing second missile! (Phase ${this.currentPhase})`
-          );
+
           const missileX2 =
             this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -25 : 25); // Offset X
           const missileY2 = this.y + this.height * 0.5; // Same Y
@@ -361,7 +339,7 @@ export class Boss2 extends Enemy {
 
   startBombingRun() {
     if (this.isBombing) return;
-    console.log("Boss2: Starting bombing run!");
+
     this.isBombing = true;
     this.bombDropCount = 0;
     this.bombDropTimer = 100;
