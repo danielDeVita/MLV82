@@ -14,7 +14,16 @@ export class Player {
     this.height = 30;
     this.x = 50;
     this.y = game.height / 2 - this.height / 2;
-    this.speed = 5;
+
+    // --- Movement Physics Properties ---
+    // Remove old speed: // this.speed = 5;
+    this.velocityX = 0; // Current horizontal speed
+    this.velocityY = 0; // Current vertical speed
+    this.acceleration = 0.85; // How quickly speed builds up (pixels per frame^2, effectively) - ADJUST THIS
+    this.maxSpeed = 6; // Maximum speed in either X or Y direction - ADJUST THIS
+    this.friction = 0.9; // Slowdown factor (closer to 1 = less friction/more drift, closer to 0 = high friction/quick stop) - ADJUST THIS
+    // --- End Movement Physics ---
+
     this.color = "red";
     this.initialLives = 3; // Starting lives for testing (change back to 3 for release)
     this.lives = this.initialLives;
@@ -72,15 +81,53 @@ export class Player {
     const deltaScale = safeDeltaTime / 16.67; // Scale factor for 60fps baseline
 
     // --- Movement ---
-    const scaledSpeed = this.speed * deltaScale;
+    // --- Calculate Acceleration from Input ---
+    let accelX = 0;
+    let accelY = 0;
+    const scaledAcceleration = this.acceleration * deltaScale; // Scale acceleration by frame time
+
     if (input.isKeyDown("arrowup") || input.isKeyDown("w"))
-      this.y -= scaledSpeed;
+      accelY -= scaledAcceleration;
     if (input.isKeyDown("arrowdown") || input.isKeyDown("s"))
-      this.y += scaledSpeed;
+      accelY += scaledAcceleration;
     if (input.isKeyDown("arrowleft") || input.isKeyDown("a"))
-      this.x -= scaledSpeed;
+      accelX -= scaledAcceleration;
     if (input.isKeyDown("arrowright") || input.isKeyDown("d"))
-      this.x += scaledSpeed;
+      accelX += scaledAcceleration;
+
+    // --- Update Velocity based on Acceleration ---
+    this.velocityX += accelX;
+    this.velocityY += accelY;
+
+    // --- Apply Friction/Drag if NO input on that axis ---
+    // (Using a power curve for friction can feel smoother than linear multiplication)
+    const frictionPower = Math.pow(this.friction, deltaScale); // Scale friction effect by delta time
+    if (accelX === 0) {
+      this.velocityX *= frictionPower;
+      // Stop completely if velocity is very low to prevent infinite small drift
+      if (Math.abs(this.velocityX) < 0.1) this.velocityX = 0;
+    }
+    if (accelY === 0) {
+      this.velocityY *= frictionPower;
+      if (Math.abs(this.velocityY) < 0.1) this.velocityY = 0;
+    }
+
+    // --- Clamp Velocity to Max Speed ---
+    // Clamp X
+    this.velocityX = Math.max(
+      -this.maxSpeed,
+      Math.min(this.maxSpeed, this.velocityX)
+    );
+    // Clamp Y
+    this.velocityY = Math.max(
+      -this.maxSpeed,
+      Math.min(this.maxSpeed, this.velocityY)
+    );
+
+    // --- Update Position based on Velocity ---
+    // Scale the final velocity by deltaScale to ensure consistent movement speed across frame rates
+    this.x += this.velocityX * deltaScale;
+    this.y += this.velocityY * deltaScale;
 
     // --- Boundaries ---
 
@@ -258,22 +305,19 @@ export class Player {
   dropBomb() {
     // --- Check for SUPER BOMB first ---
     if (this.superBombArmed) {
-      this.superBombArmed = false; // Consume the charge
-      playSound("bomb"); // Use regular bomb drop sound or a special one?
-
-      // --- >>> Create and add SuperBomb projectile <<< ---
-      const bombX = this.x + this.width / 2 - 7; // Adjust for larger size
-      const bombY = this.y + this.height;
-      this.game.addProjectile(new SuperBomb(this.game, bombX, bombY));
-      // --- >>> END SuperBomb creation <<< ---
-
-      // Clear the UI status
+      // ... drop super bomb ...
+      this.superBombArmed = false;
+      this.game.addProjectile(
+        new SuperBomb(
+          this.game,
+          this.x + this.width / 2 - 7,
+          this.y + this.height
+        )
+      );
+      playSound("bomb");
       this.game.updatePowerUpStatus("");
-
-      // IMPORTANT: Do *not* check regular bomb cooldown or use timestamp here
-      return; // Exit the method after dropping super bomb
+      return;
     }
-
     // --- If not super bomb, try REGULAR BOMB ---
     const currentTime = performance.now ? performance.now() : Date.now();
     const timeSinceLastBomb = currentTime - (this._lastBombTimestamp || 0);
@@ -402,6 +446,12 @@ export class Player {
     this.x = 50;
     this.y = this.game.height / 2 - this.height / 2;
     this.lives = this.initialLives;
+
+    // --- >>> Reset Physics <<< ---
+    this.velocityX = 0;
+    this.velocityY = 0;
+    // --- >>> End Reset <<< ---
+
     this.bulletPowerUpActive = false;
     this.bulletPowerUpTimer = 0;
     this.bombPowerUpActive = false;
