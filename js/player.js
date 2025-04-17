@@ -28,8 +28,8 @@ export class Player {
     this.maxLives = 5;
 
     // --- Ammo Limits ---
-    this.initialBulletAmmo = 3000;
-    this.initialBombAmmo = 400;
+    this.initialBulletAmmo = 4500;
+    this.initialBombAmmo = 600;
     this.bulletAmmo = this.initialBulletAmmo;
     this.bombAmmo = this.initialBombAmmo;
     // --- End Ammo Limits ---
