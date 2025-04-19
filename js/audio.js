@@ -56,9 +56,9 @@ export function playSound(name) {
   if (sound) {
     if (!sound.isPlaceholder && sound instanceof Audio) {
       sound.currentTime = 0;
-      sound.play().catch((e) => {
-        /* ... error handling ... */
-      });
+      // sound.play().catch((e) => {
+      //   /* ... error handling ... */
+      // });
     }
   }
 }

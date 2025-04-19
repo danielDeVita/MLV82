@@ -10,8 +10,17 @@ export class Player {
   // ========================
   constructor(game) {
     this.game = game;
-    this.width = 50;
-    this.height = 30;
+
+    // --- Sprite Dimensions (Set to your new resized sprite) ---
+    this.spriteWidth = 128; // Width of the sprite frame
+    this.spriteHeight = 85; // Height of the sprite frame
+    // --- Scaling (Keep at 1.0 for now to use native size) ---
+    this.scale = 1.0;
+    // --- Gameplay dimensions match sprite dimensions (scaled) ---
+    this.width = this.spriteWidth * this.scale;
+    this.height = this.spriteHeight * this.scale;
+    // --- End Dimensions ---
+
     this.x = 50;
     this.y = game.height / 2 - this.height / 2;
 
@@ -21,6 +30,32 @@ export class Player {
     this.acceleration = 0.35;
     this.maxSpeed = 6;
     this.friction = 0.92; // Example friction
+
+    // --- >>> Load Player Idle Sprite <<< ---
+    this.imageIdle = new Image();
+    this.imageIdle.src = "images/mirage128.png"; // <<< YOUR RESIZED FILENAME HERE
+    // --- >>> END Load Player Sprite <<< ---
+
+    // --- Placeholder for other state images (Add later) ---
+    // this.imageThrustNozzle = new Image();
+    // this.imageThrustNozzle.src = 'images/mirage128_thrust.png';
+    // this.imageDamage = new Image();
+    // this.imageDamage.src = 'images/mirage128_damage.png';
+    // this.imageNoseUp = new Image();
+    // this.imageNoseUp.src = 'images/mirage128_noseup.png';
+    // ---
+
+    // --- Set initial image ---
+    this.currentImage = this.imageIdle;
+
+    // --- Animation State (Simplified for single static frame initially) ---
+    this.frameX = 0; // Current frame index on the sprite sheet (horizontal)
+    this.frameY = 0; // Current frame index on the sprite sheet (vertical)
+    this.maxFrame = 0; // Max frame index for the *current* animation (0 for static idle)
+    this.fps = 10; // Frames per second for animations (will be used later)
+    this.frameTimer = 0;
+    this.frameInterval = 1000 / this.fps;
+    // --- End Animation State ---
 
     this.color = "red";
     this.initialLives = 3;
@@ -190,15 +225,72 @@ export class Player {
     }
     this.game.updatePowerUpStatus(powerUpStatusText);
 
+    // --- Animation Logic (Simplified for now) ---
+    // TODO: Select correct image based on state (thrust, damage, nose-up) later
+    this.currentImage = this.imageIdle;
+
+    // TODO: Handle frame cycling for animations later (idle bob, damage flash)
+    // For now, just ensure static images use frame 0
+    this.frameX = 0;
+    this.maxFrame = 0; // Static image has only one frame (index 0)
+    // Frame timer logic (not really needed for static image, but keep for future)
+    // this.frameTimer += safeDeltaTime;
+    // if (this.frameTimer > this.frameInterval) {
+    //     this.frameTimer = 0;
+    //     if (this.maxFrame > 0) { // Only advance if maxFrame > 0
+    //          if (this.frameX < this.maxFrame) this.frameX++;
+    //          else this.frameX = 0;
+    //     }
+    // }
+    // --- End Animation Logic ---
+
     // Ammo UI update handled by Game loop
   } // End of Player update
 
-  // --- Draw Method (Unchanged) ---
+  // ========================
+  //         DRAW
+  // ========================
   draw(context) {
-    if (!context) return;
+    // if (!context) return;
+    // context.save();
+    // if (this.shieldActive) {
+    //   /* draw shield */ context.fillStyle = this.shieldColor;
+    //   context.beginPath();
+    //   context.arc(
+    //     this.x + this.width / 2,
+    //     this.y + this.height / 2,
+    //     Math.max(this.width, this.height) * 0.8,
+    //     0,
+    //     Math.PI * 2
+    //   );
+    //   context.fill();
+    // }
+    // if (this.invincible && !this.shieldActive) {
+    //   context.globalAlpha = Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1.0;
+    // }
+    // // Draw Player Shape
+    // context.fillStyle = this.color;
+    // context.beginPath();
+    // context.moveTo(this.x + this.width * 0.1, this.y + this.height * 0.2);
+    // context.lineTo(this.x + this.width * 0.5, this.y);
+    // context.lineTo(this.x + this.width * 0.9, this.y + this.height * 0.2);
+    // context.lineTo(this.x + this.width, this.y + this.height * 0.5);
+    // context.lineTo(this.x + this.width * 0.8, this.y + this.height);
+    // context.lineTo(this.x + this.width * 0.2, this.y + this.height);
+    // context.lineTo(this.x, this.y + this.height * 0.5);
+    // context.closePath();
+    // context.fill();
+    // context.restore();
+
+    if (!context) {
+      console.error("Player.draw context missing!");
+      return;
+    }
     context.save();
+
+    // Draw Shield Visual (Keep as is)
     if (this.shieldActive) {
-      /* draw shield */ context.fillStyle = this.shieldColor;
+      context.fillStyle = this.shieldColor;
       context.beginPath();
       context.arc(
         this.x + this.width / 2,
@@ -209,22 +301,46 @@ export class Player {
       );
       context.fill();
     }
+
+    // --- Draw Player Sprite ---
+    // (Invincibility blink can be added later by modifying image or alpha here)
     if (this.invincible && !this.shieldActive) {
-      context.globalAlpha = Math.floor(Date.now() / 100) % 2 === 0 ? 0.5 : 1.0;
+      // Example Blink: Draw normally sometimes, skip draw others
+      if (Math.floor(Date.now() / 100) % 2 === 0) {
+        // Don't draw - creates flicker (or draw damage frame)
+      } else {
+        this.drawSprite(context); // Draw normally
+      }
+    } else {
+      this.drawSprite(context); // Draw normally if not invincible/blinking
     }
-    // Draw Player Shape
-    context.fillStyle = this.color;
-    context.beginPath();
-    context.moveTo(this.x + this.width * 0.1, this.y + this.height * 0.2);
-    context.lineTo(this.x + this.width * 0.5, this.y);
-    context.lineTo(this.x + this.width * 0.9, this.y + this.height * 0.2);
-    context.lineTo(this.x + this.width, this.y + this.height * 0.5);
-    context.lineTo(this.x + this.width * 0.8, this.y + this.height);
-    context.lineTo(this.x + this.width * 0.2, this.y + this.height);
-    context.lineTo(this.x, this.y + this.height * 0.5);
-    context.closePath();
-    context.fill();
+
     context.restore();
+  } // End draw
+
+  // --- Helper method to draw the current sprite frame ---
+  drawSprite(context) {
+    if (
+      this.currentImage &&
+      this.currentImage.complete &&
+      this.currentImage.naturalWidth > 0
+    ) {
+      context.drawImage(
+        this.currentImage,
+        this.frameX * this.spriteWidth, // Source X
+        this.frameY * this.spriteHeight, // Source Y
+        this.spriteWidth, // Source Width
+        this.spriteHeight, // Source Height
+        this.x, // Destination X
+        this.y, // Destination Y
+        this.width, // Destination Width (scaled)
+        this.height // Destination Height (scaled)
+      );
+    } else {
+      // Fallback rectangle
+      context.fillStyle = "purple"; // Different color for fallback
+      context.fillRect(this.x, this.y, this.width, this.height);
+    }
   }
 
   // --- Modified Shoot Method (Checks & Decrements Ammo) ---

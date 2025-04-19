@@ -1,60 +1,67 @@
 // js/enemyShooterPlane.js
-import { EnemyPlane } from './enemyPlane.js';
-import { EnemyBullet } from './enemyBullet.js';
-import { playSound } from './audio.js';
+import { EnemyPlane } from "./enemyPlane.js";
+import { EnemyBullet } from "./enemyBullet.js";
+import { playSound } from "./audio.js";
 
 export class EnemyShooterPlane extends EnemyPlane {
-    constructor(game, speedBoost = 0) {
-        super(game, speedBoost); // Calls EnemyPlane constructor
-        this.health = 2; // Keep health at 2 (corrected from previous logs showing 'lives')
-        this.maxHealth = this.health;
-        this.scoreValue = 25;
-        this.color = 'purple'; // Distinguish shooter planes
+  constructor(game, speedBoost = 0) {
+    // --- Call parent constructor FIRST ---
+    // Inherits ALL properties calculated in EnemyPlane, including
+    // sprite dims, scale, movement params (freq, amp), and ROTATION params.
+    super(game, speedBoost);
 
-        // --- Shooting Properties ---
-        this.shootTimer = 0;
-        // --- DECREASE INTERVAL for more frequent shots ---
-        // Original: 1500 + Math.random() * 1000; // Range: 1.5s to 2.5s
-        this.shootInterval = 800 + Math.random() * 600; // New Range: 0.8s to 1.4s (Significantly faster)
-        this.shootTimer = Math.random() * this.shootInterval; // Start with random timer offset
+    // --- Override ONLY what's needed for Shooter ---
+    // 1. Sprite Source (Use the already calculated/inherited width/height)
+    this.image = new Image();
+    this.image.src = "images/blue-harrier128.png";
+
+    // 2. Override Stats
+    this.maxHealth = 5;
+    this.health = this.maxHealth;
+    this.scoreValue = 60;
+
+    // 3. Override Shooting Timers
+    this.shootTimer = Math.random() * 1000 + 500;
+    this.shootInterval = 1800 + Math.random() * 800;
+
+    // --- NO Rotation Overrides ---
+  } // End Constructor
+
+  // Override update ONLY to add shooting logic
+  update(deltaTime) {
+    super.update(deltaTime); // Handles movement AND rotation update via parent
+    // Add Shooter specific logic
+    const safeDeltaTime = Math.max(0.1, deltaTime);
+    this.shootTimer -= safeDeltaTime;
+    if (
+      this.shootTimer <= 0 &&
+      this.x < this.game.width * 0.95 &&
+      this.x > -this.width * 0.1 &&
+      !this.markedForDeletion
+    ) {
+      this.shoot();
+      this.shootInterval = 1800 + Math.random() * 800;
+      this.shootTimer = this.shootInterval;
     }
+  }
 
-    update(deltaTime) {
-        // Call parent's update FIRST for movement, sine wave, boundaries, hit flash
-        super.update(deltaTime); // Pass deltaTime to parent
+  shoot() {
+    const bulletX = this.x;
+    const bulletY = this.y + this.height / 2 - 2; // Use scaled height
+    this.game.addEnemyProjectile(
+      new EnemyBullet(this.game, bulletX, bulletY, -5, 0)
+    ); // Speed -5
+    playSound("enemyShoot");
+  }
 
-        // Shooting logic (Uses raw deltaTime for timers)
-        const safeDeltaTime = Math.max(0.1, deltaTime);
-        this.shootTimer += safeDeltaTime;
+  // Inherits draw() method from EnemyPlane, which handles rotated sprite drawing
+  // Only override if you need extra visuals like the gun barrels
+  draw(context) {
+    super.draw(context); // Draws the rotated plane + health bar
 
-        // Only shoot when mostly on screen and not marked for deletion
-        if (!this.markedForDeletion && this.shootTimer >= this.shootInterval && this.x < this.game.width * 0.9) {
-            this.shoot();
-            this.shootTimer = 0; // Reset timer
-            // --- RESET INTERVAL with the same new, lower range ---
-            this.shootInterval = 800 + Math.random() * 600; // New Range: 0.8s to 1.4s
-        }
-    } // End of EnemyShooterPlane update
-
-    shoot() {
-        // Calculate bullet start position (front-left of plane)
-        const bulletX = this.x; // Fire from the front
-        const bulletY = this.y + this.height / 2 - 4; // Center vertically adjust for bullet size
-        // Simple shot straight left
-        this.game.addEnemyProjectile(new EnemyBullet(this.game, bulletX, bulletY, -6)); // Speed -6
-        playSound('enemyShoot');
-    }
-
-    // Draw method uses super.draw() and adds barrels (keep as is)
-    draw(context) {
-        super.draw(context); // Draws plane shape, cockpit, handles hit flash via parent call chain
-        // Example addition: Draw gun barrels? (keep if you like it)
-        context.fillStyle = 'gray';
-        context.fillRect(this.x - 5, this.y + this.height * 0.4, 5, 3);
-        context.fillRect(this.x - 5, this.y + this.height * 0.6 - 3, 5, 3);
-
-        // Call Enemy.draw() for health bar (since health > 1)
-        // This is handled by the super.draw() call above if EnemyPlane calls its super.draw()
-        // No need for a second super.draw(context) call here if EnemyPlane already does it.
-    }
+    // Optional: Draw non-rotated barrels AFTER super.draw() if desired
+    // context.fillStyle = 'gray';
+    // context.fillRect(this.x - 5, this.y + this.height * 0.4, 5, 3);
+    // context.fillRect(this.x - 5, this.y + this.height * 0.6 - 3, 5, 3);
+  }
 }
