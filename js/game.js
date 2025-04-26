@@ -839,6 +839,20 @@ export class Game {
     }
   }
 
+  resetBoss1HelperSpawnTimer() {
+    // Reset the timer - potentially start negative for a quicker first spawn
+    this.boss1HelperPlaneTimer = -(
+      this.boss1HelperPlaneBaseInterval * 0.3 +
+      Math.random() * this.boss1HelperPlaneRandomInterval * 0.3
+    ); // Example: ~30% of interval delay
+    console.log(
+      `Game: Resetting Boss 1 helper plane spawn timer to ${this.boss1HelperPlaneTimer.toFixed(
+        0
+      )}ms.`
+    );
+  }
+  // --- >>> END ADDED METHOD <<< ---
+
   triggerSuperBombEffect() {
     const shipDamage = 25;
     const planeDamage = 1;

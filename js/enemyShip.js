@@ -4,9 +4,15 @@ import { randomInt } from "./utils.js";
 export class EnemyShip extends Enemy {
   constructor(game, speedBoost = 0) {
     super(game); // Calls base Enemy constructor
-    this.width = 80;
-    this.height = 40;
 
+    // --- >>> Sprite Dimensions & Scaling <<< ---
+    this.spriteWidth = 240; // <<< ACTUAL width of png
+    this.spriteHeight = 105; // <<< ACTUAL height of png
+    this.scale = 1.0; // Start with no scaling for base ship
+    // --- Gameplay dimensions based on sprite and scale ---
+    this.width = this.spriteWidth * this.scale;
+    this.height = this.spriteHeight * this.scale;
+    // --- End Dimensions ---
     // this.speedX = randomInt(1, 2) + speedBoost;
     this.enemyType = "ship"; // Set type
 
@@ -43,9 +49,23 @@ export class EnemyShip extends Enemy {
     // --- End Health ---
 
     this.scoreValue = 50;
-    this.color = "darkslategray";
-    this.deckColor = "slategray";
-    this.detailColor = "gray";
+    // this.color = "darkslategray";
+    // this.deckColor = "slategray";
+    // this.detailColor = "gray";
+
+    // --- >>> Load Sprite <<< ---
+    this.image = new Image();
+    this.image.src = "images/baseShip240x105.png"; // <<< YOUR FILENAME HERE
+    // --- >>> END Load Sprite <<< ---
+
+    // --- Animation State (Initialize for static sprite) ---
+    this.frameX = 0;
+    this.frameY = 0;
+    this.maxFrame = 0;
+    this.fps = 10;
+    this.frameTimer = 0;
+    this.frameInterval = 1000 / this.fps;
+    // --- END Animation State ---
   } // End Constructor
 
   // Make sure update receives deltaTime
@@ -111,45 +131,41 @@ export class EnemyShip extends Enemy {
   // Overriding draw completely, need hit flash logic wrapper here
   draw(context) {
     // Don't draw if marked for deletion
-    if (this.markedForDeletion) return;
+    if (!context || this.markedForDeletion) return;
+    context.save();
 
-    context.save(); // Save context state for potential hit flash changes
+    // --- Hit Flash Effect (Simple Flicker) ---
+    let shouldDraw = true;
+    if (this.isHit) {
+      // Reduce flicker chance for larger sprites?
+      if (Math.random() < 0.4) {
+        shouldDraw = false;
+      }
+    }
 
-    // Determine main fill color based on hit state
-    const currentHullColor = this.isHit ? "white" : this.color;
-    const currentDeckColor = this.isHit ? "white" : this.deckColor;
-    const currentDetailColor = this.isHit ? "white" : this.detailColor;
+    // --- Draw Sprite ---
+    if (shouldDraw && this.image?.complete && this.image.naturalWidth > 0) {
+      context.drawImage(
+        this.image,
+        this.frameX * this.spriteWidth, // Src X (0 for static)
+        this.frameY * this.spriteHeight, // Src Y (0 for static)
+        this.spriteWidth, // Src W (actual sprite width)
+        this.spriteHeight, // Src H (actual sprite height)
+        this.x, // Dest X
+        this.y, // Dest Y
+        this.width, // Dest W (scaled width)
+        this.height // Dest H (scaled height)
+      );
+    } else if (shouldDraw) {
+      // Fallback
+      context.fillStyle = "darkgrey"; // Fallback color
+      context.fillRect(this.x, this.y, this.width, this.height);
+    }
 
-    // --- Draw Custom Ship Shape ---
-    // Hull
-    context.fillStyle = currentHullColor;
-    context.fillRect(
-      this.x,
-      this.y + this.height * 0.3,
-      this.width,
-      this.height * 0.7
-    );
-    // Deck/Superstructure
-    context.fillStyle = currentDeckColor;
-    context.fillRect(
-      this.x + this.width * 0.2,
-      this.y,
-      this.width * 0.6,
-      this.height * 0.4
-    );
-    // Small turret/detail
-    context.fillStyle = currentDetailColor;
-    context.fillRect(
-      this.x + this.width * 0.45,
-      this.y - this.height * 0.1,
-      this.width * 0.1,
-      this.height * 0.2
-    );
-    // --- End Custom Shape ---
+    context.restore();
 
-    context.restore(); // Restore original context state (like fillStyle)
-
-    // --- Call Base Draw Method (which now ONLY draws health bar) ---
-    super.draw(context); // <<< This calls Enemy.draw() to draw the health bar
-  }
+    // --- Draw Health Bar ---
+    // Call parent Enemy.draw() AFTER restoring context
+    super.draw(context);
+  } // --- >>> END Draw Method <<< ---
 }

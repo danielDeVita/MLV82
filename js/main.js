@@ -48,23 +48,23 @@ window.addEventListener("load", function () {
 
     // 5. Test Mine Layers / Beam Ships (Mid-game after Boss 2):
     // ----------------------------------------------------
-    // const gameConfig = {
-    //   startScore: 7000, // Between B2 and B3 scores
-    //   startDifficulty: 7, // Level > 5, so Mine Layers & Beam Ships can spawn
-    //   playerLives: 30, // Decent lives for testing this phase
-    //   defeatedBosses: [1, 2], // B1 and B2 MUST be defeated
-    //   startWithPowerups: ["spread", "rapid"], // Example starting powerups
-    // };
+    const gameConfig = {
+      startScore: 7000, // Between B2 and B3 scores
+      startDifficulty: 7, // Level > 5, so Mine Layers & Beam Ships can spawn
+      playerLives: 30, // Decent lives for testing this phase
+      defeatedBosses: [1, 2], // B1 and B2 MUST be defeated
+      startWithPowerups: ["spread", "rapid"], // Example starting powerups
+    };
 
     // 6. Configuration for Extended Playthrough (Start from Scratch, Many Lives):
     // ----------------------------------------------------
-    const gameConfig = {
-      startScore: 0,
-      startDifficulty: 0,
-      playerLives: 300, // Set high lives in player.js maxLives too!
-      defeatedBosses: [],
-      startWithPowerups: [],
-    };
+    // const gameConfig = {
+    //   startScore: 0,
+    //   startDifficulty: 0,
+    //   playerLives: 300, // Set high lives in player.js maxLives too!
+    //   defeatedBosses: [],
+    //   startWithPowerups: [],
+    // };
 
     // --- Pass the CHOSEN config to game.start ---
     game.start(gameConfig);

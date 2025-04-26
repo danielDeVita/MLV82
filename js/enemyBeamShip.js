@@ -5,47 +5,83 @@ import { checkCollision, lerp } from "./utils.js";
 
 export class EnemyBeamShip extends EnemyShip {
   constructor(game, speedBoost = 0) {
-    super(game, speedBoost);
+    // --- Call parent constructor FIRST ---
+    // Initializes base EnemyShip properties (like hit logic, base enemy type)
+    // and loads the FRIGATE sprite into this.image temporarily.
+    super(game, speedBoost); // <<< MUST BE FIRST
 
+    // --- Recalculate gameplay dimensions ---
+
+    this.spriteWidth = 239; // <<< ACTUAL width of png
+    this.spriteHeight = 146; // <<< ACTUAL height of png
+
+    this.width = this.spriteWidth * this.scale;
+    this.height = this.spriteHeight * this.scale;
+    // --- End Dimension Override ---
+
+    // --- >>> Load SPECIFIC Sprite for Beam Cruiser <<< ---
+    // This REPLACES the inherited this.image with the new one.
+    this.image = new Image();
+    this.image.src = "images/beamShip241x110.png"; // <<< VERIFY FILENAME
+    // Add error handler to check if the image fails to load
+    this.image.onerror = () => {
+      console.error(
+        `!!! FAILED TO LOAD image: ${this.image.src} for ${this.id}`
+      );
+    };
+    // --- END Load Sprite ---
+
+    // --- Override Beam Ship Specific Stats ---
     this.id = `enemy_beamship_angled_${Math.random()
       .toString(36)
-      .substring(2, 9)}`;
-    this.health = 10;
-    this.maxHealth = this.health;
-    this.scoreValue = 250; // Slightly more score
-    this.color = "#483D8B";
-    this.deckColor = "#778899";
-    this.detailColor = "#FF00FF";
+      .substring(2, 9)}`; // Keep unique ID
+    this.maxHealth = 10; // Keep moderate health
+    this.health = this.maxHealth;
+    this.scoreValue = 250; // Keep high score value
+    this.enemyType = "ship"; // Ensure type is set correctly
 
-    this.speedX *= 0.85; // Example: 15% slower than default EnemyShip
+    // --- >>> Define Base Speed and Apply Slowdown (Safer Way) <<< ---
+    // Define a base speed range similar to EnemyShip, incorporating speedBoost
+    const baseSpeed = 0.8 + Math.random() * 0.4 + speedBoost; // Use the same base range as EnemyShip
+    // Apply the slowdown factor specific to BeamShip
+    this.speedX = baseSpeed * 0.85; // Slow it down by 15%
+    this.originalSpeedX = this.speedX; // Store for stopping/starting
+    // --- >>> END Speed Definition <<< ---
 
-    // Beam Attack State & Timers
+    // --- Beam Attack State & Timers ---
     this.beamState = "COOLDOWN";
     this.beamChargeTime = 1500;
-    this.beamFireTime = 1800; // Shorter fire time?
-    this.beamCooldownTime = 4500 + Math.random() * 1500; // Shorter range: 4.5s - 6s (was 5.5s - 7.5s)
-    // Start with maybe 1/3 to 2/3 of cooldown remaining?
+    this.beamFireTime = 1800;
+    this.beamCooldownTime = 4500 + Math.random() * 1500;
     this.beamTimer = this.beamCooldownTime * (0.33 + Math.random() * 0.33);
 
-    // Beam Visual Properties
+    // --- Beam Visual Properties ---
     this.beamWidth = 12;
     this.beamMaxLength = this.game.width * 0.8;
     this.beamColorOuter = "rgba(255, 0, 255, 0.3)";
     this.beamColorCore = "rgba(255, 150, 255, 0.8)";
     this.chargeColor = "rgba(255, 0, 255, 0.7)";
 
-    // Beam Angle & Origin
+    // --- Beam Angle & Origin (Initialized) ---
     this.beamAngle = 0;
     this.beamOriginX = 0;
     this.beamOriginY = 0;
+    this.currentBeamLength = 0; // Initialize beam length
 
-    // --- >>> NEW: Beam Extension <<< ---
-    this.currentBeamLength = 0; // How long the beam is *right now*
-    // --- >>> END NEW <<< ---
-
-    // Movement Control
-    this.originalSpeedX = this.speedX;
+    // --- Movement Control Flag ---
     this.stopMovement = false;
+
+    // --- Animation State (Initialize for static sprite) ---
+    this.frameX = 0;
+    this.frameY = 0;
+    this.maxFrame = 0;
+    this.fps = 10;
+    this.frameTimer = 0;
+    this.frameInterval = 1000 / this.fps;
+    // --- END Animation State ---
+
+    // Optional: Log constructor completion
+    // console.log(`EnemyBeamShip CONSTRUCTOR Finished for ${this.id}`);
   }
 
   // Inside js/enemyBeamShip.js -> EnemyBeamShip class
@@ -177,28 +213,23 @@ export class EnemyBeamShip extends EnemyShip {
     const currentDeckColor = this.isHit ? "white" : this.deckColor;
     const currentDetailColor = this.isHit ? "white" : this.detailColor;
 
-    // Draw Base Ship Shape & Emitter
-    // ... (ship drawing code remains the same) ...
-    const emitterWidth = 15;
-    const emitterHeight = 25;
-    const emitterX = this.x - emitterWidth;
-    const emitterY = this.y + this.height / 2 - emitterHeight / 2;
-    context.fillStyle = currentDetailColor;
-    context.fillRect(emitterX, emitterY, emitterWidth, emitterHeight);
-
-    // Draw Beam Effects
-    const beamDrawOriginX = this.x;
+    // Calculate origin based on scaled dimensions (MATCH UPDATE LOGIC)
+    const beamDrawOriginX = this.x; // Same as update logic origin
     const beamDrawOriginY = this.y + this.height / 2;
 
     if (this.beamState === "CHARGING") {
-      // Draw charging glow
+      // Draw charging glow (relative to beam origin)
       const chargeRadius =
-        ((this.beamChargeTime - this.beamTimer) / this.beamChargeTime) *
-          (emitterHeight * 0.8) +
-        5;
+        ((this.beamChargeTime - this.beamTimer) / this.beamChargeTime) * 15 + 5; // Size based on charge time
       context.fillStyle = this.chargeColor;
       context.beginPath();
-      context.arc(emitterX, beamDrawOriginY, chargeRadius, 0, Math.PI * 2);
+      context.arc(
+        beamDrawOriginX,
+        beamDrawOriginY,
+        chargeRadius,
+        0,
+        Math.PI * 2
+      );
       context.fill();
 
       // --- >>> DRAW AIMING LASER SIGHT <<< ---
