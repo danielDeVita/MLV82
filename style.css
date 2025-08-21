@@ -26,12 +26,7 @@ body {
   height: 720px; /* Match game height */
   overflow: hidden; /* Hide anything spilling out */
   border: 3px solid black;
-  /* --- Use CSS Variable for Background Color (updated by background.js) --- */
-  /* Set fallback color for initial load or if JS fails */
-  background-color: var(
-    --sky-color,
-    #87ceeb
-  ); /* Default day sky blue */
+  background-color: var(--sky-color, #87ceeb); /* Default day sky blue */
 }
 
 /* Canvas */
@@ -41,97 +36,89 @@ body {
   left: 0;
   width: 1280px;
   height: 720px;
-  z-index: 10; /* Above CSS backgrounds, below UI */
-  /* Optional: Make canvas transparent if ONLY relying on CSS container background */
-  /* background-color: transparent; */
-  /* Optional: Explicitly prevent browser scaling */
-  image-rendering: pixelated; /* Modern browsers */
-  image-rendering: -moz-crisp-edges; /* Firefox */
-  image-rendering: crisp-edges; /* Older standard / some browsers */
+  z-index: 10;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 /* Background Layers (General CSS Properties) */
 .background-layer {
   position: absolute;
   left: 0;
-  top: 0;
-  width: 200%;
+  top: 70px; /* Pushes sky layers down to clear HUD */
+  width: 200%; /* Make container twice as wide */
   height: 100%;
   background-repeat: repeat-x;
-  background-size: auto; /* Let browser determine size, maintaining aspect ratio */
   will-change: transform;
   animation-name: parallax-scroll;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
 
-/* Specific Layers - Sky/Mountains/Clouds */
-/* (Uncomment background-image lines when you have the image files) */
+/* Specific Layers - Sizing and Images */
 #sky-color-layer {
-  z-index: 0; /* Not visually rendered if container has background */
+  z-index: 0;
 }
 #distant-mountains-layer {
   z-index: 1;
   background-image: url('images/distant-mountains-layer3.png');
-  background-size: auto 100%; /* Stretch to full height of its container */
+  background-size: 50% 85px; /* 170px / 2 */
+  background-position: 0 435px; /* Positioned precisely above the sea */
   animation-duration: 120s;
 }
 #far-clouds-layer {
   z-index: 2;
   background-image: url('images/far-clouds-layer.png');
-  background-size: auto 150px; /* Fixed height for clouds */
+  background-size: 50% 125px; /* 250px / 2 */
   animation-duration: 80s;
 }
 #near-mountains-layer {
   z-index: 3;
   background-image: url('images/near-mountains-layer1.png');
-  background-size: auto 100%; /* Stretch to full height of its container */
+  background-size: 50% 150px; /* 300px / 2 */
+  background-position: 0 390px; /* Positioned precisely above the sea */
   animation-duration: 90s;
 }
 #mid-clouds-layer {
   z-index: 4;
   background-image: url('images/mid-clouds-layer.png');
-  background-size: auto 175px; /* Fixed height for clouds */
+  background-size: 50% 125px; /* 250px / 2 */
   animation-duration: 40s;
 }
 #near-clouds-layer {
-  z-index: 6; /* Drawn behind mid-sea but in front of far-sea */
+  z-index: 6;
   background-image: url('images/near-clouds-layer.png');
-  background-size: auto 200px; /* Fixed height for clouds */
+  background-size: 50% 200px; /* 400px / 2 */
   animation-duration: 20s;
 }
 
-/* --- Sea Layers (Positioned and Sized via CSS) --- */
-/* Common styles for sea layers */
+/* --- Sea Layers --- */
 #far-sea-layer,
 #mid-sea-layer,
 #close-sea-layer {
-  top: 60%;
-  height: 40%;
+  top: auto; /* Override general top rule */
+  bottom: 0; /* Anchor to the bottom of the screen */
+  height: 25%; /* Define height from the bottom up */
 }
-
-/* Assign background images and z-index */
 #far-sea-layer {
   z-index: 5;
   background-image: url('images/far-sea-layer .png');
-  background-size: auto 100%; /* Stretch to full height of its container */
+  background-size: 50% 100%; /* Stretch to fill container, no gaps */
   animation-duration: 70s;
 }
 #mid-sea-layer {
   z-index: 7;
   background-image: url('images/mid-sea-layer.png');
-  background-size: auto 100%; /* Stretch to full height of its container */
+  background-size: 50% 100%; /* Stretch to fill container, no gaps */
   animation-duration: 45s;
 }
 #close-sea-layer {
   z-index: 8;
   background-image: url('images/close-sea-layer.png');
-  background-size: auto 100%; /* Stretch to full height of its container */
+  background-size: 50% 100%; /* Stretch to fill container, no gaps */
   animation-duration: 25s;
 }
-/* --- END Sea Layers --- */
-
-/* Canvas is z-index: 10 */
 
 /* --- PARALLAX ANIMATIONS --- */
 /* Keyframes - Use transform for smooth, seamless scrolling */
@@ -140,40 +127,9 @@ body {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(-50%); /* Move left by half the container width */
   }
 }
-
-/* Apply animations (Uncomment when images are added) */
-/*
-#distant-mountains-layer {
-  animation: parallax-scroll 120s linear infinite;
-}
-#far-clouds-layer {
-  animation: parallax-scroll 80s linear infinite;
-}
-#near-mountains-layer {
-  animation: parallax-scroll 90s linear infinite;
-}
-#mid-clouds-layer {
-  animation: parallax-scroll 40s linear infinite;
-}
-#near-clouds-layer {
-  animation: parallax-scroll 20s linear infinite;
-}
-/* Apply to Sea Layers */
-/*
-#far-sea-layer {
-  animation: parallax-scroll 70s linear infinite;
-}
-#mid-sea-layer {
-  animation: parallax-scroll 45s linear infinite;
-}
-#close-sea-layer {
-  animation: parallax-scroll 25s linear infinite;
-}
-*/
-/* --- End Animations --- */
 
 /* --- UI Overlay --- */
 #ui {
@@ -183,12 +139,12 @@ body {
   color: white;
   font-size: 1.2em;
   text-shadow: 1px 1px 2px black;
-  z-index: 50; /* Above canvas */
+  z-index: 50;
   display: flex;
-  flex-wrap: wrap; /* Allow items to wrap */
-  gap: 15px; /* Space between items */
+  flex-wrap: wrap;
+  gap: 15px;
   align-items: center;
-  pointer-events: none; /* Prevent UI blocking clicks */
+  pointer-events: none;
 }
 
 #ui div {
@@ -199,17 +155,15 @@ body {
 }
 
 #lives.low-lives {
-  color: #ff4d4d; /* Red */
+  color: #ff4d4d;
   font-weight: bold;
 }
 
-/* Low Ammo Style */
 #bullet-ammo.low-ammo,
 #bomb-ammo.low-ammo {
-  color: #ffcc00; /* Yellow/Orange */
+  color: #ffcc00;
   font-weight: bold;
 }
-/* --- End UI --- */
 
 /* --- OVERLAYS (Game Over / Game Won) --- */
 .overlay {
@@ -222,10 +176,10 @@ body {
   padding: 40px;
   border-radius: 10px;
   text-align: center;
-  z-index: 100; /* Above everything */
+  z-index: 100;
   min-width: 300px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  pointer-events: auto; /* Allow interaction with overlays */
+  pointer-events: auto;
 }
 
 .overlay h1 {
@@ -244,7 +198,6 @@ body {
   transition: background-color 0.2s ease;
 }
 
-/* Game Over Specific Styles */
 #game-over h1 {
   color: #ff4d4d;
 }
@@ -255,7 +208,6 @@ body {
   background-color: #c82333;
 }
 
-/* Game Won Specific Styles */
 #game-won h1 {
   color: #4dd2ff;
 }
@@ -270,4 +222,3 @@ body {
 #game-won button#restartButtonWon:hover {
   background-color: #0056b3;
 }
-/* --- End Overlays --- */
