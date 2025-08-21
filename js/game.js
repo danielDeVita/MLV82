@@ -37,9 +37,20 @@ export class Game {
     // --- Set fixed dimensions and get context ---
     this.width = width;
     this.height = height;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    this.canvas.width = Math.floor(this.width * dpr);
+    this.canvas.height = Math.floor(this.height * dpr);
+
+    this.canvas.style.width = `${this.width}px`;
+    this.canvas.style.height = `${this.height}px`;
+
     this.context = this.canvas.getContext("2d");
+
+    this.context.imageSmoothingEnabled = false;
+
+    this.context.scale(dpr, dpr);
 
     // --- >>> ADD SEA LEVEL DEFINITION <<< ---
     // Example: Sea starts at 40% down the screen (60% sea area)
