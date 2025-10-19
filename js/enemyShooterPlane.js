@@ -13,7 +13,7 @@ export class EnemyShooterPlane extends EnemyPlane {
     // --- Override ONLY what's needed for Shooter ---
     // 1. Sprite Source (Use the already calculated/inherited width/height)
     this.image = new Image();
-    this.image.src = "images/blue-harrier128.png";
+    this.image.src = "images/AMENAZA 2.png";
 
     // 2. Override Stats
     this.maxHealth = 5;

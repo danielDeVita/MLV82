@@ -13,7 +13,7 @@ export class EnemyMineLayerPlane extends EnemyPlane {
     // --- Override ONLY what's needed for Mine Layer ---
     // 1. Sprite Properties (Use inherited scale/dims)
     this.image = new Image();
-    this.image.src = "images/dark-harrier128.png";
+    this.image.src = "images/AMENAZA 4.png";
     // If scale was different, recalculate width/height here
     // this.width = this.spriteWidth * this.scale;
     // this.height = this.spriteHeight * this.scale;

@@ -21,7 +21,7 @@ export class EnemyDodgingPlane extends EnemyPlane {
     // --- Override ONLY what's needed for Dodger ---
     // 1. Sprite Properties (Use inherited scale/dims)
     this.image = new Image();
-    this.image.src = "images/mid-harrier128.png";
+    this.image.src = "images/AMENAZA 3.png";
     // If scale different, recalc width/height
     // this.width = this.spriteWidth * this.scale; this.height = this.spriteHeight * this.scale;
 

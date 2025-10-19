@@ -7,8 +7,8 @@ export class EnemyPlane extends Enemy {
   constructor(game, speedBoost = 0) {
     super(game);
     // ... Sprite, Scale, Dimensions ...
-    this.spriteWidth = 128;
-    this.spriteHeight = 128;
+    this.spriteWidth = 256;
+    this.spriteHeight = 256;
     this.scale = 0.65;
     this.width = this.spriteWidth * this.scale;
     this.height = this.spriteHeight * this.scale;
@@ -61,7 +61,7 @@ export class EnemyPlane extends Enemy {
     this.health = this.maxHealth;
     this.scoreValue = 30;
     this.image = new Image();
-    this.image.src = "images/light-harrier128.png";
+    this.image.src = "images/AMENAZA 1.png";
     this.frameX = 0;
     this.frameY = 0;
     this.maxFrame = 0;
