@@ -85,7 +85,7 @@ export class Background {
     };
 
     this.moonImage = new Image();
-    this.moonImage.src = "images/moon.png";
+    this.moonImage.src = "images/larger-moon.png";
     this.moonImageLoaded = false;
     this.moonImage.onload = () => {
       this.moonImageLoaded = true;
@@ -322,7 +322,7 @@ export class Background {
 
       // --- 3. Draw Sun or Moon (clipped above safeSeaLevel) ---
       if (this.displaySunMoon) {
-        const sunMoonRadius = this.isMoon ? 30 : 40;
+        const sunMoonRadius = this.isMoon ? 40 : 40;
         const sunX = this.gameWidth * 0.25;
         const sunMoonX = this.isMoon ? this.lastSunX : sunX;
         // Ensure effectiveDrawY is calculated correctly and keeps object above sea

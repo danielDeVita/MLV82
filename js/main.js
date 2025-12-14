@@ -6,6 +6,23 @@ window.addEventListener("load", function () {
   const gameWidth = 1280;
   const gameHeight = 720;
 
+  const gameContainer = document.getElementById("game-container");
+  const applyResponsiveScale = () => {
+    if (!gameContainer) return;
+
+    const padding = 20;
+    const availableW = Math.max(0, window.innerWidth - padding);
+    const availableH = Math.max(0, window.innerHeight - padding);
+
+    const scale = Math.max(
+      0.1,
+      Math.min(availableW / gameWidth, availableH / gameHeight, 1)
+    );
+
+    gameContainer.style.transformOrigin = "center center";
+    gameContainer.style.transform = `scale(${scale})`;
+  };
+
   try {
     const game = new Game(canvasId, gameWidth, gameHeight);
 
@@ -68,6 +85,9 @@ window.addEventListener("load", function () {
 
     // --- Pass the CHOSEN config to game.start ---
     game.start(gameConfig);
+
+    applyResponsiveScale();
+    window.addEventListener("resize", applyResponsiveScale);
   } catch (error) {
     console.error("Error during game initialization:", error);
   }
