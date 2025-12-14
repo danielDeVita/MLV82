@@ -43,6 +43,9 @@ export class Background {
     // Sun/Moon position control
     this.sunMoonY = this.gameHeight * 0.15; // Initial Y for sun
     this.displaySunMoon = true; // Whether to draw the current celestial body
+    this.isMoon = false; // Track whether to show moon (true) or sun (false)
+    this.useBrightSun = true;
+    this.lastSunX = this.gameWidth * 0.25;
 
     // Stars
     this.stars = [];
@@ -63,6 +66,31 @@ export class Background {
         "Background constructor: Failed to get #game-container element!"
       );
     }
+
+    // --- Load Sun and Moon Images ---
+    this.sunImage = new Image();
+    this.sunImage.src = "images/sun.png";
+    this.sunImageLoaded = false;
+    this.sunImage.onload = () => {
+      this.sunImageLoaded = true;
+      console.log("Sun image loaded");
+    };
+
+    this.brightSunImage = new Image();
+    this.brightSunImage.src = "images/bright-sun.png";
+    this.brightSunImageLoaded = false;
+    this.brightSunImage.onload = () => {
+      this.brightSunImageLoaded = true;
+      console.log("Bright sun image loaded");
+    };
+
+    this.moonImage = new Image();
+    this.moonImage.src = "images/moon.png";
+    this.moonImageLoaded = false;
+    this.moonImage.onload = () => {
+      this.moonImageLoaded = true;
+      console.log("Moon image loaded");
+    };
 
     console.log("Background Initialized (Canvas Sky/Stars + CSS Layers)");
   }
@@ -144,49 +172,61 @@ export class Background {
       endState = this.dayState;
       transitionAmount = 0;
       targetSunMoonY = lerp(highY, midY, score / this.t1_start);
-      this.displaySunMoon = startState.isSun;
+      this.displaySunMoon = true;
+      this.isMoon = false; // Sun phase
+      this.useBrightSun = true;
     } else if (score < this.t1_end) {
       startState = this.dayState;
       endState = this.sunsetState;
       const duration = this.t1_end - this.t1_start;
       transitionAmount = duration <= 0 ? 1 : (score - this.t1_start) / duration;
       targetSunMoonY = lerp(midY, lowY, transitionAmount);
-      this.displaySunMoon = startState.isSun;
+      this.displaySunMoon = true;
+      this.isMoon = false; // Sun phase
+      this.useBrightSun = false;
     } else if (score < this.t2_start) {
       startState = this.sunsetState;
       endState = this.sunsetState;
       transitionAmount = 0;
       targetSunMoonY = lowY;
-      this.displaySunMoon = startState.isSun;
+      this.displaySunMoon = true;
+      this.isMoon = false; // Sun phase
+      this.useBrightSun = false;
     } else if (score < this.t2_end) {
       startState = this.sunsetState;
       endState = this.duskState;
       const duration = this.t2_end - this.t2_start;
       transitionAmount = duration <= 0 ? 1 : (score - this.t2_start) / duration;
-      targetSunMoonY = lerp(lowY, belowHorizonY, transitionAmount * 1.5);
-      this.displaySunMoon = !endState.isSun;
-      if (this.displaySunMoon) {
-        targetSunMoonY = lerp(belowHorizonY, midY, transitionAmount);
-      }
+      // Sun sets, moon rises
+      this.displaySunMoon = true;
+      this.isMoon = true; // Switch to moon during dusk transition
+      this.useBrightSun = false;
+      targetSunMoonY = lerp(belowHorizonY, midY, transitionAmount);
     } else if (score < this.t3_start) {
       startState = this.duskState;
       endState = this.duskState;
       transitionAmount = 0;
       targetSunMoonY = midY;
-      this.displaySunMoon = !startState.isSun;
+      this.displaySunMoon = true;
+      this.isMoon = true; // Moon phase
+      this.useBrightSun = false;
     } else if (score < this.t3_end) {
       startState = this.duskState;
       endState = this.nightState;
       const duration = this.t3_end - this.t3_start;
       transitionAmount = duration <= 0 ? 1 : (score - this.t3_start) / duration;
       targetSunMoonY = lerp(midY, highY, transitionAmount);
-      this.displaySunMoon = !startState.isSun;
+      this.displaySunMoon = true;
+      this.isMoon = true; // Moon phase
+      this.useBrightSun = false;
     } else {
       startState = this.nightState;
       endState = this.nightState;
       transitionAmount = 0;
       targetSunMoonY = highY;
-      this.displaySunMoon = !startState.isSun;
+      this.displaySunMoon = true;
+      this.isMoon = true; // Moon phase
+      this.useBrightSun = false;
     }
 
     // Clamp transition amount
@@ -282,11 +322,9 @@ export class Background {
 
       // --- 3. Draw Sun or Moon (clipped above safeSeaLevel) ---
       if (this.displaySunMoon) {
-        const isMoon =
-          this.currentSunMoonColor === this.nightState.sunMoon ||
-          this.currentSunMoonColor === this.duskState.sunMoon;
-        const sunMoonRadius = isMoon ? 30 : 40;
-        const sunMoonX = isMoon ? this.gameWidth * 0.75 : this.gameWidth * 0.25;
+        const sunMoonRadius = this.isMoon ? 30 : 40;
+        const sunX = this.gameWidth * 0.25;
+        const sunMoonX = this.isMoon ? this.lastSunX : sunX;
         // Ensure effectiveDrawY is calculated correctly and keeps object above sea
         const effectiveDrawY = Math.min(
           this.sunMoonY,
@@ -294,11 +332,46 @@ export class Background {
         );
 
         if (effectiveDrawY > -sunMoonRadius) {
-          // Draw if visible
-          context.fillStyle = this.currentSunMoonColor;
-          context.beginPath();
-          context.arc(sunMoonX, effectiveDrawY, sunMoonRadius, 0, Math.PI * 2);
-          context.fill();
+          if (!this.isMoon) {
+            this.lastSunX = sunMoonX;
+          }
+          // Draw if visible - use images if loaded, otherwise fallback to circles
+          const imageSize = sunMoonRadius * 2;
+          if (this.isMoon && this.moonImageLoaded) {
+            context.drawImage(
+              this.moonImage,
+              sunMoonX - sunMoonRadius,
+              effectiveDrawY - sunMoonRadius,
+              imageSize,
+              imageSize
+            );
+          } else if (
+            !this.isMoon &&
+            this.useBrightSun &&
+            this.brightSunImageLoaded
+          ) {
+            context.drawImage(
+              this.brightSunImage,
+              sunMoonX - sunMoonRadius,
+              effectiveDrawY - sunMoonRadius,
+              imageSize,
+              imageSize
+            );
+          } else if (!this.isMoon && this.sunImageLoaded) {
+            context.drawImage(
+              this.sunImage,
+              sunMoonX - sunMoonRadius,
+              effectiveDrawY - sunMoonRadius,
+              imageSize,
+              imageSize
+            );
+          } else {
+            // Fallback to circle if image not loaded
+            context.fillStyle = this.currentSunMoonColor;
+            context.beginPath();
+            context.arc(sunMoonX, effectiveDrawY, sunMoonRadius, 0, Math.PI * 2);
+            context.fill();
+          }
         }
       }
 
