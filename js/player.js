@@ -12,10 +12,10 @@ export class Player {
     this.game = game;
 
     // --- Sprite Dimensions (Set to your new resized sprite) ---
-    this.spriteWidth = 128; // Width of the sprite frame
-    this.spriteHeight = 85; // Height of the sprite frame
-    // --- Scaling (Keep at 1.0 for now to use native size) ---
-    this.scale = 1.0;
+    this.spriteWidth = 256; // Width of the sprite frame
+    this.spriteHeight = 256; // Height of the sprite frame
+    // --- Scaling (Match enemy scale for consistent sizing) ---
+    this.scale = 0.65;
     // --- Gameplay dimensions match sprite dimensions (scaled) ---
     this.width = this.spriteWidth * this.scale;
     this.height = this.spriteHeight * this.scale;
@@ -33,7 +33,7 @@ export class Player {
 
     // --- >>> Load Player Idle Sprite <<< ---
     this.imageIdle = new Image();
-    this.imageIdle.src = "images/mirage128.png"; // <<< YOUR RESIZED FILENAME HERE
+    this.imageIdle.src = "images/JUGADOR 1.png"; // <<< YOUR RESIZED FILENAME HERE
     // --- >>> END Load Player Sprite <<< ---
 
     // --- Placeholder for other state images (Add later) ---
