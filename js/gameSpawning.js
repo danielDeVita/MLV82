@@ -7,6 +7,29 @@ import { EnemyTrackingShip } from "./enemyTrackingShip.js";
 import { EnemyMineLayerPlane } from "./enemyMineLayerPlane.js";
 import { EnemyBeamShip } from "./enemyBeamShip.js";
 
+const SPECIAL_SPAWN_CAP = 0.95; // Aggressive preset
+
+function normalizeSpecialChances(chances, maxSpecialTotal = 0.85) {
+  const normalized = {};
+  let total = 0;
+
+  for (const [key, value] of Object.entries(chances)) {
+    const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    normalized[key] = safeValue;
+    total += safeValue;
+  }
+
+  if (total > maxSpecialTotal && total > 0) {
+    const scale = maxSpecialTotal / total;
+    for (const key of Object.keys(normalized)) {
+      normalized[key] *= scale;
+    }
+    total = maxSpecialTotal;
+  }
+
+  return { ...normalized, baseChance: Math.max(0, 1 - total) };
+}
+
 export function handleSpawning(game, deltaTime) {
   if (game.bossActive) {
     if (
@@ -59,8 +82,6 @@ export function handleSpawning(game, deltaTime) {
     minShipInt,
     game.baseEnemyShipInterval - shipReduct
   );
-  const rPlane = Math.random();
-  const rShip = Math.random();
   const level = game.difficultyLevel;
 
   game.enemyPlaneTimer += deltaTime;
@@ -82,10 +103,20 @@ export function handleSpawning(game, deltaTime) {
       shooterPlaneChance = 0.2 + level * 0.1;
     }
 
-    if (rPlane < mineLayerChance) PlaneClass = EnemyMineLayerPlane;
-    else if (rPlane < mineLayerChance + dodgerChance)
+    const planeChances = normalizeSpecialChances(
+      { mineLayerChance, dodgerChance, shooterPlaneChance },
+      SPECIAL_SPAWN_CAP
+    );
+    const rPlane = Math.random();
+    if (rPlane < planeChances.mineLayerChance) PlaneClass = EnemyMineLayerPlane;
+    else if (rPlane < planeChances.mineLayerChance + planeChances.dodgerChance)
       PlaneClass = EnemyDodgingPlane;
-    else if (rPlane < mineLayerChance + dodgerChance + shooterPlaneChance)
+    else if (
+      rPlane <
+      planeChances.mineLayerChance +
+        planeChances.dodgerChance +
+        planeChances.shooterPlaneChance
+    )
       PlaneClass = EnemyShooterPlane;
     else PlaneClass = EnemyPlane;
 
@@ -111,10 +142,20 @@ export function handleSpawning(game, deltaTime) {
       shooterShipChance = 0.2 + level * 0.1;
     }
 
-    if (rShip < beamShipChance) ShipClass = EnemyBeamShip;
-    else if (rShip < beamShipChance + trackingShipChance)
+    const shipChances = normalizeSpecialChances(
+      { beamShipChance, trackingShipChance, shooterShipChance },
+      SPECIAL_SPAWN_CAP
+    );
+    const rShip = Math.random();
+    if (rShip < shipChances.beamShipChance) ShipClass = EnemyBeamShip;
+    else if (rShip < shipChances.beamShipChance + shipChances.trackingShipChance)
       ShipClass = EnemyTrackingShip;
-    else if (rShip < beamShipChance + trackingShipChance + shooterShipChance)
+    else if (
+      rShip <
+      shipChances.beamShipChance +
+        shipChances.trackingShipChance +
+        shipChances.shooterShipChance
+    )
       ShipClass = EnemyShooterShip;
     else ShipClass = EnemyShip;
 
@@ -167,4 +208,3 @@ export function spawnBoss2HelperShips(game, count = 1, type = "shooter") {
     }
   }
 }
-

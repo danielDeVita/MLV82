@@ -48,9 +48,16 @@ export class EnemyShooterPlane extends EnemyPlane {
   shoot() {
     const bulletX = this.x;
     const bulletY = this.y + this.height / 2 - 2; // Use scaled height
+    let speedY = 0;
+    const player = this.game?.player;
+    if (player && !player.markedForDeletion) {
+      const playerCenterY = player.y + player.height / 2;
+      const shooterCenterY = bulletY + 4;
+      speedY = Math.max(-1.9, Math.min(1.9, (playerCenterY - shooterCenterY) / 125));
+    }
     this.game.addEnemyProjectile(
-      new EnemyBullet(this.game, bulletX, bulletY, -5, 0)
-    ); // Speed -5
+      new EnemyBullet(this.game, bulletX, bulletY, -5, speedY)
+    );
     playSound("enemyShoot");
   }
 

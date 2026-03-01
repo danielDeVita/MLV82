@@ -12,21 +12,56 @@ export class EnemyPlane extends Enemy {
     this.scale = 0.65;
     this.width = this.spriteWidth * this.scale;
     this.height = this.spriteHeight * this.scale;
+
     // ... Positioning & Movement ...
-    this.x = this.game.width;
-    const topSpawnMargin = 20;
-    const bottomSpawnMargin = 150 + this.height;
-    const maxPossibleY = this.game.height - bottomSpawnMargin;
-    const minPossibleY = topSpawnMargin;
-    this.initialY = randomInt(
-      minPossibleY,
-      Math.max(minPossibleY + 1, maxPossibleY)
-    );
-    this.y = this.initialY;
+    // Stagger spawn off-screen to avoid "single-file" enemy columns.
+    this.x = this.game.width + randomInt(0, 220);
     this.speedX = 2.0 + Math.random() * 1.0 + speedBoost;
     this.angle = Math.random() * Math.PI * 2;
-    this.amplitude = 40 + Math.random() * 30; // Random Amplitude
-    this.frequency = 0.004 + Math.random() * 0.0025; // Random Frequency
+    this.amplitude = 45 + Math.random() * 28; // Random Amplitude
+    // Slower base wave so trajectories are longer and less twitchy.
+    this.frequency = 0.0022 + Math.random() * 0.0014;
+    const { topBound, bottomBound } = this.getVerticalBounds();
+    const maxVerticalSwing = Math.max(14, (bottomBound - topBound) * 0.5 - 4);
+    this.primaryAmplitude = Math.min(
+      this.amplitude,
+      maxVerticalSwing * (0.62 + Math.random() * 0.2)
+    );
+    const tentativeSecondaryAmplitude =
+      this.primaryAmplitude * (0.12 + Math.random() * 0.1);
+    this.secondaryAmplitude = Math.min(
+      tentativeSecondaryAmplitude,
+      Math.max(0, maxVerticalSwing - this.primaryAmplitude)
+    );
+    this.totalAmplitude = this.primaryAmplitude + this.secondaryAmplitude;
+    this.amplitude = this.primaryAmplitude;
+    this.secondaryAngle = Math.random() * Math.PI * 2;
+    this.secondaryFrequency = this.frequency * (0.55 + Math.random() * 0.35);
+
+    const minInitialY = topBound + this.totalAmplitude;
+    const maxInitialY = bottomBound - this.totalAmplitude;
+    this.initialY =
+      maxInitialY <= minInitialY
+        ? (topBound + bottomBound) / 2
+        : randomInt(Math.floor(minInitialY), Math.ceil(maxInitialY));
+    this.targetInitialY = this.initialY;
+    this.y = this.calculateWaveY();
+
+    // Add subtle variation so planes do not move at perfectly fixed pace/center line.
+    this.speedOscillationPhase = Math.random() * Math.PI * 2;
+    this.speedOscillationFrequency = 0.0018 + Math.random() * 0.0016;
+    this.speedOscillationAmplitude = 0.08 + Math.random() * 0.1;
+    this.verticalDriftInterval = 3600 + Math.random() * 3400;
+    // Fully random initial phase to avoid synchronized direction changes.
+    this.verticalDriftTimer = Math.random() * this.verticalDriftInterval;
+    this.verticalDriftLerpRate = 0.008 + Math.random() * 0.007;
+    this.playerBiasChance = 0.65;
+    this.playerBiasWeight = 0.42;
+    this.minDriftStep = 40 + Math.random() * 35;
+    this.maxDriftStep = this.minDriftStep + 40 + Math.random() * 35;
+    this.driftDirection = Math.random() < 0.5 ? -1 : 1;
+    this.directionFlipChance = 0.28;
+    this.directionPersistence = 1 - this.directionFlipChance;
 
     // --- >>> Calculate Rotation Params Dynamically ONCE <<< ---
     this.rotation = 0;
@@ -34,25 +69,23 @@ export class EnemyPlane extends Enemy {
     this.lastY = this.y;
     this.targetRotationFromVelocity = 0;
     this.targetRotationFromSine = 0;
-    const baseMaxRotationDeg = 8;
-    const baseRotationSpeed = 0.08;
+
+    const baseMaxRotationDeg = 10;
     const freqRange = 0.0065 - 0.004;
     const normalizedFreq =
       freqRange <= 0 ? 0.5 : (this.frequency - 0.004) / freqRange;
-    const ampRange = 70 - 40;
+    const ampRange = maxVerticalSwing - 40;
     const normalizedAmp =
-      ampRange <= 0 ? 0.5 : (this.amplitude - 40) / ampRange;
+      ampRange <= 0 ? 0.5 : (this.totalAmplitude - 40) / ampRange;
     this.maxRotationDegrees =
-      baseMaxRotationDeg + (normalizedFreq + normalizedAmp) * 0.5 * 10;
-    this.rotationSpeed =
-      baseRotationSpeed + (normalizedFreq + normalizedAmp) * 0.5 * 0.07;
+      baseMaxRotationDeg + normalizedFreq * 6 + normalizedAmp * 4;
     this.maxRotationDegrees = Math.max(
-      5,
-      Math.min(25, this.maxRotationDegrees)
+      9,
+      Math.min(22, this.maxRotationDegrees)
     ); // Clamp
-    this.rotationSpeed = Math.max(0.05, Math.min(0.25, this.rotationSpeed)); // Clamp
-    this.sineInfluenceFactor = 0.6;
-    this.velocityInfluenceFactor = 1.0;
+    this.rotationResponsiveness = 0.18 + normalizedFreq * 0.18;
+    this.rotationVelocityForMaxTilt = 2.1 + normalizedFreq * 0.9;
+    this.rotationLevelingFactor = 0.08 + normalizedAmp * 0.07;
     // --- >>> END Dynamic Calculation <<< ---
 
     // ... (rest of constructor: type, health, score, image loading, animation state) ...
@@ -70,6 +103,64 @@ export class EnemyPlane extends Enemy {
     this.frameInterval = 1000 / this.fps;
   } // End Constructor
 
+  getVerticalBounds() {
+    const topBound = 5;
+    const bottomBound = this.game.height - this.height - 85;
+    return { topBound, bottomBound: Math.max(topBound + 1, bottomBound) };
+  }
+
+  randomRange(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  getInitialYRange() {
+    const { topBound, bottomBound } = this.getVerticalBounds();
+    const waveSpan = Math.max(8, this.totalAmplitude + 2);
+    const minY = topBound + waveSpan;
+    const maxY = bottomBound - waveSpan;
+    if (maxY <= minY) {
+      const center = (topBound + bottomBound) / 2;
+      return { minY: center, maxY: center };
+    }
+    return { minY, maxY };
+  }
+
+  calculateWaveY() {
+    return (
+      this.initialY +
+      Math.sin(this.angle) * this.primaryAmplitude +
+      Math.sin(this.secondaryAngle) * this.secondaryAmplitude
+    );
+  }
+
+  chooseNextDriftTarget() {
+    const { minY, maxY } = this.getInitialYRange();
+    const edgePadding = 18;
+    if (this.initialY <= minY + edgePadding) {
+      this.driftDirection = 1;
+    } else if (this.initialY >= maxY - edgePadding) {
+      this.driftDirection = -1;
+    } else if (Math.random() > this.directionPersistence) {
+      this.driftDirection *= -1;
+    }
+
+    const driftDistance = this.randomRange(this.minDriftStep, this.maxDriftStep);
+    let targetY = this.initialY + this.driftDirection * driftDistance;
+
+    const player = this.game?.player;
+    if (
+      player &&
+      !player.markedForDeletion &&
+      Math.random() < this.playerBiasChance
+    ) {
+      const playerCenterY = player.y + player.height / 2;
+      const clampedPlayerY = Math.max(minY, Math.min(maxY, playerCenterY));
+      targetY = lerp(targetY, clampedPlayerY, this.playerBiasWeight);
+    }
+
+    this.targetInitialY = Math.max(minY, Math.min(maxY, targetY));
+  }
+
   // Override update to ensure sine calculation uses the correct initialY and applies bounds
   update(deltaTime) {
     const safeDeltaTime = Math.max(0.1, deltaTime);
@@ -79,7 +170,10 @@ export class EnemyPlane extends Enemy {
     this.lastY = this.y;
 
     // --- Horizontal Movement --- (Scaled)
-    this.x -= this.speedX * deltaScale;
+    this.speedOscillationPhase += this.speedOscillationFrequency * safeDeltaTime;
+    const speedMultiplier =
+      1 + Math.sin(this.speedOscillationPhase) * this.speedOscillationAmplitude;
+    this.x -= this.speedX * Math.max(0.65, speedMultiplier) * deltaScale;
     if (this.x + this.width < 0) {
       this.markedForDeletion = true;
       return; // Exit early
@@ -88,60 +182,75 @@ export class EnemyPlane extends Enemy {
     // --- Sine Wave Vertical Movement ---
     // Ensure initialY is valid
     if (this.initialY === undefined || isNaN(this.initialY)) {
-      this.initialY = this.game.height / 2;
+      const { minY, maxY } = this.getInitialYRange();
+      this.initialY = (minY + maxY) / 2;
+      this.targetInitialY = this.initialY;
     } // Fallback
 
+    this.verticalDriftTimer -= safeDeltaTime;
+    if (this.verticalDriftTimer <= 0) {
+      this.chooseNextDriftTarget();
+      const driftJitter = this.verticalDriftInterval * 0.6;
+      this.verticalDriftTimer =
+        this.verticalDriftInterval + this.randomRange(-driftJitter, driftJitter);
+      if (this.verticalDriftTimer < 900) this.verticalDriftTimer = 900;
+    }
+    this.initialY = lerp(
+      this.initialY,
+      this.targetInitialY,
+      this.verticalDriftLerpRate * deltaScale
+    );
+
     this.angle += this.frequency * deltaScale; // Scale frequency based on time
-    this.y = this.initialY + Math.sin(this.angle) * this.amplitude;
+    this.secondaryAngle += this.secondaryFrequency * deltaScale;
+    this.y = this.calculateWaveY();
 
     // --- Boundaries ---
-    const topBound = 5;
-    const bottomBound = this.game.height - this.height - 85; // Keep consistent bounds
+    const { topBound, bottomBound } = this.getVerticalBounds();
     this.y = Math.max(topBound, Math.min(bottomBound, this.y));
 
     // --- Calculate Rotation Components ---
-    // 1. Rotation based on Vertical Velocity
-    const verticalVelocity = (this.y - this.lastY) / deltaScale;
-    const maxTiltVelocity = 1.5; // Velocity for max tilt
-    const clampedVelocityInfluence = Math.max(
+    // 1. Rotation based on actual Vertical Velocity
+    const verticalVelocity = (this.y - this.lastY) / Math.max(0.001, deltaScale);
+    const normalizedVelocity = Math.max(
       -1,
-      Math.min(1, verticalVelocity / maxTiltVelocity)
+      Math.min(1, verticalVelocity / this.rotationVelocityForMaxTilt)
     );
-    // Remember: We flipped the sign before, so keep it flipped if that worked visually
+    const velocityDeadZone = 0.03;
+    const velocityForTilt =
+      Math.abs(normalizedVelocity) < velocityDeadZone ? 0 : normalizedVelocity;
+    const maxRotationRadians = (this.maxRotationDegrees * Math.PI) / 180;
     this.targetRotationFromVelocity =
-      -1 *
-      ((this.maxRotationDegrees * Math.PI) / 180) *
-      clampedVelocityInfluence *
-      this.velocityInfluenceFactor;
+      -velocityForTilt * maxRotationRadians;
 
-    // 2. Rotation based on Sine Wave Position
-    // Cosine gives us the horizontal position in the cycle:
-    // Cos(angle) is 1 at the peak (rightmost turning point of sine y), -1 at the trough (leftmost).
-    // We want to tilt DOWN (positive rotation) at the peak (Cos=1)
-    // We want to tilt UP (negative rotation) at the trough (Cos=-1)
-    // So, target rotation = max_radians * (-cosine(angle)) seems right.
-    const maxSineRotationRadians =
-      ((this.maxRotationDegrees * Math.PI) / 180) * this.sineInfluenceFactor; // Apply influence factor
-    // Flip the cosine sign to get the desired tilt direction
+    // 2. Small leveling assist so planes settle naturally between maneuvers.
+    const verticalError = this.targetInitialY - this.y;
+    const normalizationDenominator = Math.max(25, this.totalAmplitude * 2);
+    const levelingInfluence = Math.max(
+      -1,
+      Math.min(1, verticalError / normalizationDenominator)
+    );
     this.targetRotationFromSine =
-      maxSineRotationRadians * -Math.cos(this.angle);
+      -levelingInfluence * this.rotationLevelingFactor;
 
-    // 3. Combine Target Rotations (Simple addition for now, can use averaging or weighting)
+    // 3. Combine target rotations.
     this.targetRotation =
       this.targetRotationFromVelocity + this.targetRotationFromSine;
 
-    // 4. Clamp combined rotation to prevent excessive tilting
-    const maxTotalRotationRadians = (this.maxRotationDegrees * Math.PI) / 180;
+    // 4. Clamp combined rotation to prevent excessive tilting.
+    const maxTotalRotationRadians = maxRotationRadians;
     this.targetRotation = Math.max(
       -maxTotalRotationRadians,
       Math.min(maxTotalRotationRadians, this.targetRotation)
     );
 
-    // 5. Smoothly rotate towards the combined target rotation
+    // 5. Smoothly rotate towards the combined target rotation.
+    const rotationLerpAmount =
+      1 - Math.exp(-this.rotationResponsiveness * deltaScale);
     this.rotation = lerp(
       this.rotation,
       this.targetRotation,
-      this.rotationSpeed * deltaScale
+      rotationLerpAmount
     );
 
     // --- Hit Flash Update (From Base Class logic) ---
