@@ -321,12 +321,18 @@ export class Boss3Plane extends EnemyPlane {
 
     const launchY = this.y + this.height / 2; // Launch from vertical center
     const launchOffsetX = 30; // Horizontal distance between missile launches
+    const runId = this.game?.runId;
 
     for (let i = 0; i < this.missileSalvoCount; i++) {
       // Use setTimeout to stagger the launches slightly
       setTimeout(() => {
         // Check if boss component is still alive when timeout fires
-        if (this.markedForDeletion || !this.game || this.game.isGameOver)
+        if (
+          !this.game ||
+          this.game.runId !== runId ||
+          this.markedForDeletion ||
+          this.game.isGameOver
+        )
           return;
 
         // Alternate launch position slightly left/right of center based on i
@@ -564,12 +570,13 @@ export class Boss3Plane extends EnemyPlane {
     const numExplosions = this.enemyType === "ship" ? 15 : 12; // More for the ship?
     // Duration of the explosion sequence
     const duration = this.enemyType === "ship" ? 2000 : 1600; // Slightly longer for ship?
+    const runId = this.game?.runId;
 
     for (let i = 0; i < numExplosions; i++) {
       // Use setTimeout to stagger the explosions over the duration
       setTimeout(() => {
         // Double-check game isn't over when the timeout actually runs
-        if (!this.game || this.game.isGameOver) {
+        if (!this.game || this.game.runId !== runId || this.game.isGameOver) {
           return;
         }
 
@@ -596,86 +603,4 @@ export class Boss3Plane extends EnemyPlane {
     // else playSound('bossPlaneDestroyed');
   } // End triggerDefeatExplosion
 
-  // --- Attack Methods ---
-
-  /**
-   * Fires a 5-bullet spread shot horizontally forwards (left).
-   */
-  fireSpreadShot() {
-    playSound("enemyShoot");
-    const bulletSpeedX = -5.0; // Fire left
-    const bulletX = this.x; // Fire from front edge (left side) of the plane's hitbox
-    const bulletYCenter = this.y + this.height / 2 - 4; // Vertically centered, adjust for bullet height
-    const angles = [-0.35, -0.15, 0, 0.15, 0.35]; // Radians relative to negative X axis
-
-    angles.forEach((angle) => {
-      const speedX = Math.cos(angle) * bulletSpeedX;
-      // Ensure Y speed calculation correctly uses bulletSpeedX for magnitude and angle sign
-      const speedY = Math.sin(angle) * Math.abs(bulletSpeedX); // Or use * bulletSpeed for different effect
-      this.game.addEnemyProjectile(
-        new EnemyBullet(this.game, bulletX, bulletYCenter, speedX, speedY)
-      );
-    });
-  }
-
-  /**
-   * Initiates the bombing run state.
-   */
-  startBombingRun() {
-    // Prevent starting if already bombing or destroyed
-    if (this.isBombing || this.markedForDeletion) return;
-
-    this.isBombing = true;
-    this.bombDropCount = 0; // Reset count for this run
-    this.bombDropTimer = 100; // Small initial delay before first bomb
-    // Optional: Stop horizontal patrol during bombing run?
-    // this.originalSpeedX = this.speedX; // Store current speed
-    // this.speedX = 0; // Stop horizontal movement
-  }
-
-  /**
-   * Drops a single bomb projectile below the plane. Called repeatedly during a bombing run.
-   */
-  dropBomb() {
-    playSound("bomb_drop");
-    const bombX = this.x + this.width / 2 - 5; // Center X relative to plane
-    const bombY = this.y + this.height; // Drop from bottom edge
-
-    // Use EnemyBullet styled as a bomb
-    const bombProjectile = new EnemyBullet(this.game, bombX, bombY, 0, 5.5); // Falls straight down (speedX=0), speedY=5.5
-    bombProjectile.width = 10;
-    bombProjectile.height = 10;
-    bombProjectile.color = this.detailColor; // Use plane's detail color (Orange)
-    this.game.addEnemyProjectile(bombProjectile);
-  }
-
-  /**
-   * Fires a salvo of tracking missiles.
-   */
-  fireMissileSalvo() {
-    // Sound is played by TrackingMissile constructor, can add another sound here if needed
-
-    const launchY = this.y + this.height / 2; // Launch from vertical center
-    const launchOffsetX = 30; // Horizontal distance between missile launches
-
-    for (let i = 0; i < this.missileSalvoCount; i++) {
-      // Use setTimeout to stagger the launches slightly
-      setTimeout(() => {
-        // Check if boss component is still alive when timeout fires
-        if (this.markedForDeletion || !this.game || this.game.isGameOver)
-          return;
-
-        // Alternate launch position slightly left/right of center based on i
-        // Calculation for centering the salvo: (i - (totalCount - 1) / 2) * offset
-        const launchX =
-          this.x +
-          this.width / 2 +
-          (i - (this.missileSalvoCount - 1) / 2) * launchOffsetX;
-        this.game.addEnemyProjectile(
-          new TrackingMissile(this.game, launchX, launchY)
-        );
-      }, i * this.missileSalvoDelay); // Stagger using delay (e.g., 0ms, 300ms, 600ms for 3 missiles)
-    }
-  }
-  // --- END Attack Methods ---
 } // End Boss3Plane class

@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificación de Sprite Sheets - Mirage III (Player)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .toc {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .toc h2 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .toc li:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .section-header h2 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .section-header p {
+            font-style: italic;
+            opacity: 0.9;
+        }
+
+        .subsection {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 5px solid #2a5298;
+        }
+
+        .subsection h3 {
+            color: #1e3c72;
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .info-box h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-box li {
+            padding: 8px 0 8px 25px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .info-box li:before {
+            content: "▸";
+            position: absolute;
+            left: 5px;
+            color: #ffc107;
+            font-weight: bold;
+        }
+
+        .sprite-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 30px 0;
+            padding: 20px;
+            background: #e8f4f8;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+        }
+
+        .grid-frame {
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grid-frame:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .grid-frame.empty {
+            border-style: dashed;
+            border-color: #999;
+            background: #f0f0f0;
+        }
+
+        .frame-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 0.95em;
+        }
+
+        .grid-frame.empty .frame-header {
+            background: #999;
+            font-style: italic;
+        }
+
+        .frame-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .grid-frame.empty .frame-content {
+            color: #999;
+            font-style: italic;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .row-label {
+            grid-column: 1 / -1;
+            background: #1e3c72;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .row-label span:first-child {
+            font-size: 1.1em;
+        }
+
+        .row-label span:last-child {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .frame-description {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+
+        .frame-description ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .frame-description li {
+            padding: 8px 0 8px 20px;
+            margin-bottom: 8px;
+            border-bottom: 1px dotted #ddd;
+            position: relative;
+        }
+
+        .frame-description li:before {
+            content: "•";
+            position: absolute;
+            left: 5px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .usage-example {
+            background: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .usage-example h4 {
+            color: #0d47a1;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .notes-section {
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .notes-section h4 {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .notes-section p {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .notes-section strong {
+            color: #1e3c72;
+        }
+
+        .bilingual {
+            background: #f1f3f4;
+            border-radius: 5px;
+            padding: 3px 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .footer {
+            background: #1e3c72;
+            color: white;
+            text-align: center;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+            margin-right: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .sprite-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 5px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        .example-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .example-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .example-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .example-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .visual-summary {
+            background: #e8f5e8;
+            border: 2px solid #f39c12;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .visual-summary h4 {
+            color: #d35400;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .character-info {
+            background: #fff3e0;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .character-info h4 {
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .grid-label {
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            font-size: 0.7em;
+            border-top-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        .plane-icon {
+            font-size: 3em;
+            opacity: 0.8;
+        }
+
+        .bank-up {
+            transform: rotate(-20deg);
+        }
+
+        .bank-down {
+            transform: rotate(20deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎨 Planificación de Sprite Sheets</h1>
+            <p>DOCUMENTO (SPRITE SHEETS PLAN)</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                <strong>Personaje:</strong> Mirage III (Player - Jugador)
+            </p>
+        </div>
+
+        <!-- Table of Contents -->
+        <div class="toc">
+            <h2>📋 ÍNDICE / TABLE OF CONTENTS</h2>
+            <ul>
+                <li><span class="bilingual">1.</span> ¿Qué son los Sprite Sheets? (What are Sprite Sheets?)</li>
+                <li><span class="bilingual">2.</span> Especificaciones Técnicas Generales (General Technical Specifications)</li>
+                <li><span class="bilingual">3.</span> Estructura de la Cuadrícula (Grid Structure)</li>
+                <li><span class="bilingual">4.</span> Desglose de Frame por Frame - Mirage III (Player)</li>
+                <li><span class="bilingual">5.</span> Cuándo se Usa Cada Fila (When Each Row is Used)</li>
+            </ul>
+        </div>
+
+        <div class="content">
+            <!-- Section 1: Introduction -->
+            <div class="section">
+                <div class="section-header">
+                    <h2><span class="bilingual">1.</span> ¿QUÉ SON LOS SPRITE SHEETS?</h2>
+                    <p>(WHAT ARE SPRITE SHEETS?)</p>
+                </div>
+                
+                <div style="padding: 20px;">
+                    <p style="margin-bottom: 15px;">
+                        Un <strong>sprite sheet</strong> es una imagen grande que contiene múltiples animaciones de un personaje organizadas en una cuadrícula (grid). El juego luego muestra solo una pequeña sección (un frame) a la vez para crear la animación.
+                    </p>
+
+                    <div class="info-box">
+                        <h4>✨ VENTAJAS (ADVANTAGES)</h4>
+                        <ul>
+                            <li>Un solo archivo por personaje (más fácil de gestionar)</li>
+                            <li>Carga más rápida del juego</li>
+                            <li>Permite animaciones fluidas</li>
+                            <li>Estándar en la industria de videojuegos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Technical Specifications -->
+            <div class="section">
+                <div class="section-header">
+                    <h2><span class="bilingual">2.</span> ESPECIFICACIONES TÉCNICAS GENERALES</h2>
+                    <p>(GENERAL TECHNICAL SPECIFICATIONS)</p>
+                </div>
+
+                <div class="subsection">
+                    <h3>📁 FORMATO DE ARCHIVO (FILE FORMAT)</h3>
+                    <ul class="frame-description">
+                        <li><strong>Tipo:</strong> PNG con transparencia (PNG with transparency)</li>
+                        <li><strong>Canales:</strong> RGBA (Red, Green, Blue, Alpha/Transparency)</li>
+                        <li><strong>Importante:</strong> El fondo debe ser completamente transparente</li>
+                    </ul>
+                </div>
+
+                <div class="subsection">
+                    <h3>📐 TAMAÑO DE LA CUADRÍCULA (GRID SIZE)</h3>
+                    <ul class="frame-description">
+                        <li><strong>Columnas:</strong> 4 columnas (4 columns)</li>
+                        <li><strong>Filas:</strong> 4 filas (4 rows)</li>
+                        <li><strong>Total:</strong> 16 frames máximo por hoja (16 frames max per sheet)</li>
+                    </ul>
+                </div>
+
+                <div class="subsection">
+                    <h3>📏 ESPACIADO ENTRE FRAMES (FRAME PADDING)</h3>
+                    <ul class="frame-description">
+                        <li><strong>Entre frames:</strong> 5 píxeles de espacio (5 pixels spacing)</li>
+                        <li><strong>En bordes externos:</strong> 10 píxeles de espacio (10 pixels outer padding)</li>
+                        <li><strong>Propósito:</strong> Esto evita que las imágenes se "desborden" (bleed edges)</li>
+                    </ul>
+                </div>
+
+                <div class="subsection">
+                    <h3>🎨 TAMAÑO DEL JUGADOR (PLAYER SIZE)</h3>
+                    <ul class="frame-description">
+                        <li><strong>Jugador (Player):</strong> 256 × 256 píxeles</li>
+                    </ul>
+                </div>
+
+                <div class="notes-section">
+                    <h4>⚠️ IMPORTANTE: EXPLICACIÓN DEL TAMAÑO (SIZE EXPLANATION)</h4>
+                    <p><strong>256 × 256 píxeles NO incluye el padding.</strong></p>
+                    <ul class="frame-description">
+                        <li><strong>Área de dibujo por frame:</strong> 256 × 256 píxeles (el espacio donde dibujas el avión)</li>
+                        <li><strong>Padding entre frames:</strong> 5 píxeles de espacio adicional</li>
+                        <li><strong>Padding externo:</strong> 10 píxeles en los bordes del sprite sheet</li>
+                    </ul>
+                    <div class="info-box" style="background: #d1ecf1; border-color: #0dcaf0; margin: 15px 0;">
+                        <h4 style="color: #084298;">📊 CÁLCULO DEL TAMAÑO TOTAL DEL SPRITE SHEET</h4>
+                        
+                        <p style="margin-bottom: 10px;"><strong>Dimension HORIZONTAL (Width):</strong></p>
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 0.95em;">
+                            10px + 256px + 5px + 256px + 5px + 256px + 5px + 256px + 10px = <strong>1059px</strong> (total width)
+                        </div>
+
+                        <p style="margin-bottom: 10px;"><strong>Dimension VERTICAL (Height):</strong></p>
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: 'Courier New', monospace; font-size: 0.95em;">
+                            10px (padding externo superior)<br>
+                            + 256px (frame fila 1)<br>
+                            + 5px (gap entre filas 1-2)<br>
+                            + 256px (frame fila 2)<br>
+                            + 5px (gap entre filas 2-3)<br>
+                            + 256px (frame fila 3)<br>
+                            + 5px (gap entre filas 3-4)<br>
+                            + 256px (frame fila 4)<br>
+                            + 10px (padding externo inferior)<br>
+                            = <strong>1059px</strong> (total height)
+                        </div>
+                    </div>
+                    <p class="info-box" style="background: #fff3cd; border-color: #ffc107; margin: 10px 0;">
+                        <strong>RESUMEN:</strong> El archivo final de la imagen player_sheet.png debe ser <strong>1059 × 1059 píxeles</strong>.<br>
+                        Cada frame individual (área de dibujo) es <strong>256 × 256 píxeles</strong> dentro de esa grilla.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Section 3: Grid Structure -->
+            <div class="section">
+                <div class="section-header">
+                    <h2><span class="bilingual">3.</span> ESTRUCTURA DE LA CUADRÍCULA</h2>
+                    <p>(GRID STRUCTURE)</p>
+                </div>
+
+                <div style="margin: 25px 0;">
+                    <h4 style="color: #1e3c72; margin-bottom: 15px;">🎯 PLANTILLA GENERAL (GENERAL TEMPLATE)</h4>
+                    
+                    <div class="sprite-grid">
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 1, Col 1</span>
+                            <div class="frame-header">[Col 1]</div>
+                            <div class="frame-content">
+                                ← Fila 1 (Row 1)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 1, Col 2</span>
+                            <div class="frame-header">[Col 2]</div>
+                            <div class="frame-content">
+                                ← Fila 1 (Row 1)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 1, Col 3</span>
+                            <div class="frame-header">[Col 3]</div>
+                            <div class="frame-content">
+                                ← Fila 1 (Row 1)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 1, Col 4</span>
+                            <div class="frame-header">[Col 4]</div>
+                            <div class="frame-content">
+                                ← Fila 1 (Row 1)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 2, Col 1</span>
+                            <div class="frame-header">[Col 1]</div>
+                            <div class="frame-content">
+                                ← Fila 2 (Row 2)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 2, Col 2</span>
+                            <div class="frame-header">[Col 2]</div>
+                            <div class="frame-content">
+                                ← Fila 2 (Row 2)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 2, Col 3</span>
+                            <div class="frame-header">[Col 3]</div>
+                            <div class="frame-content">
+                                ← Fila 2 (Row 2)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 2, Col 4</span>
+                            <div class="frame-header">[Col 4]</div>
+                            <div class="frame-content">
+                                ← Fila 2 (Row 2)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 3, Col 1</span>
+                            <div class="frame-header">[Col 1]</div>
+                            <div class="frame-content">
+                                ← Fila 3 (Row 3)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 3, Col 2</span>
+                            <div class="frame-header">[Col 2]</div>
+                            <div class="frame-content">
+                                ← Fila 3 (Row 3)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 3, Col 3</span>
+                            <div class="frame-header">[Col 3]</div>
+                            <div class="frame-content">
+                                ← Fila 3 (Row 3)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 3, Col 4</span>
+                            <div class="frame-header">[Col 4]</div>
+                            <div class="frame-content">
+                                ← Fila 3 (Row 3)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 4, Col 1</span>
+                            <div class="frame-header">[Col 1]</div>
+                            <div class="frame-content">
+                                ← Fila 4 (Row 4)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 4, Col 2</span>
+                            <div class="frame-header">[Col 2]</div>
+                            <div class="frame-content">
+                                ← Fila 4 (Row 4)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 4, Col 3</span>
+                            <div class="frame-header">[Col 3]</div>
+                            <div class="frame-content">
+                                ← Fila 4 (Row 4)
+                            </div>
+                        </div>
+                        <div class="grid-frame">
+                            <span class="grid-label">Row 4, Col 4</span>
+                            <div class="frame-header">[Col 4]</div>
+                            <div class="frame-content">
+                                ← Fila 4 (Row 4)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <h4>📋 ORGANIZACIÓN DE FILAS (ROW ORGANIZATION)</h4>
+                        <ul>
+                            <li><strong>Fila 1 (Row 1):</strong> Animación Idle (reposo)</li>
+                            <li><strong>Fila 2 (Row 2):</strong> Animación de Bancada Arriba (Bank Up)</li>
+                            <li><strong>Fila 3 (Row 3):</strong> Animación de Bancada Abajo (Bank Down)</li>
+                            <li><strong>Fila 4 (Row 4):</strong> Animaciones Futuras / Vacío (Reserved/Empty)</li>
+                        </ul>
+                    </div>
+
+                    <div class="notes-section">
+                        <h4>💾 CONVENCIÓN DE NOMENCLATURA (NAMING CONVENTION)</h4>
+                        <p><code style="background: #333; color: white; padding: 5px 10px; border-radius: 3px;">player_sheet.png</code></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Frame by Frame Breakdown -->
+            <div class="section">
+                <div class="section-header">
+                    <h2><span class="bilingual">4.</span> DESGLOSE DE FRAME POR FRAME - MIRAGE III</h2>
+                    <p>(PLAYER - FRAME BY FRAME BREAKDOWN)</p>
+                </div>
+
+                <div class="character-info">
+                    <h4>ℹ️ INFORMACIÓN DEL PERSONAJE (CHARACTER INFO)</h4>
+                    <ul class="frame-description">
+                        <li><strong>Archivo:</strong> player_sheet.png</li>
+                        <li><strong>Tamaño del Frame:</strong> 256 × 256 píxeles</li>
+                        <li><strong>Total de Frames:</strong> 7 frames activos (9 frames quedarán vacíos/transparentes)</li>
+                        <li><strong>Aeronave:</strong> Mirage III (caza a reacción)</li>
+                        <li><strong>Propulsión:</strong> Motor a reacción con llama visible</li>
+                        <li><strong>Nota:</strong> No incluye hélice (es avión a reacción)</li>
+                    </ul>
+                </div>
+
+                <!-- Row 1: Idle -->
+                <div class="subsection">
+                    <h3>🔄 FILA 1 - IDLE (REPOSO) [ROW 1] [FRAMES 1-4]</h3>
+                    
+                    <div class="row-label">
+                        <span>Fila 1 - Animación Idle (reposo)</span>
+                        <span>Row 1 - Idle Animation</span>
+                    </div>
+
+                    <div class="sprite-grid">
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 1</div>
+                            <div class="frame-content">
+                                <div class="plane-icon">✈️</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 2</div>
+                            <div class="frame-content">
+                                <div class="plane-icon">✈️</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 3</div>
+                            <div class="frame-content">
+                                <div class="plane-icon">✈️</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame empty">
+                            <div class="frame-header">Frame 4</div>
+                            <div class="frame-content">
+                                VACÍO / TRANSPARENTE
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 1 (Columna 1, Fila 1):</h4>
+                        <ul>
+                            <li>Mirage III en posición horizontal nivelada</li>
+                            <li>Sin inclinación hacia arriba ni abajo</li>
+                            <li>Postura relajada y estable</li>
+                            <li>Todo visible: fuselaje, alas, cola, motor</li>
+                            <li>Motor expulsando llama de empuje (thrust) - <strong>tamaño normal</strong></li>
+                            <li><strong>FONDO TRANSPARENTE</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 2 (Columna 2, Fila 1):</h4>
+                        <p style="margin-bottom: 10px;"><strong>Casi idéntico a Frame 1</strong></p>
+                        <ul>
+                            <li><strong>Diferencias sutiles</strong> (elegir UNA o COMBINAR varias):</li>
+                            <li>a) Pequeño cambio de posición: <strong>2-3 píxeles hacia arriba o abajo</strong></li>
+                            <li>b) Llama del motor: ligeramente <strong>más grande (+2-3 píxeles)</strong></li>
+                            <li>c) Vibración de alas: <strong>1 píxel de diferencia</strong></li>
+                            <li>d) Cambio de iluminación: un frame más brillante, otro más oscuro</li>
+                        </ul>
+                        <div class="usage-example">
+                            <h4>🤔 ¿Por qué es diferente?</h4>
+                            <p>El juego ciclará entre <strong>Frame 1 → 2 → 3 → 1...</strong> Esto crea una animación de <em>"idle sutil"</em> para que el avión parezca "vivo" y no estático, como si estuviera flotando suavemente en el aire.</p>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 3 (Columna 3, Fila 1):</h4>
+                        <p style="margin-bottom: 10px;"><strong>Casi idéntico a Frame 1</strong></p>
+                        <ul>
+                            <li><strong>Diferencias sutiles</strong> (elegir UNA o COMBINAR varias):</li>
+                            <li>a) Pequeño cambio de posición: <strong>2-3 píxeles hacia abajo o arriba</strong></li>
+                            <li>b) Llama del motor: ligeramente <strong>más pequeña (-2-3 píxeles)</strong></li>
+                            <li>c) Vibración de alas: <strong>1 píxel de diferencia</strong></li>
+                            <li>d) Cambio de iluminación: otro tono de brillo</li>
+                        </ul>
+                        <div class="usage-example">
+                            <h4>🤔 ¿Por qué es diferente?</h4>
+                            <p>Completa el ciclo de animación idle. Al alternar <strong>Frame 1 → 2 → 3 → 1</strong>, se crea una sensación de movimiento sutil, como si el avión estuviera "flotando" en el aire, dándole vida sin necesidad de movimiento constante.</p>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 4 (Columna 4, Fila 1):</h4>
+                        <p style="color: #999;"><strong>VACÍO / TRANSPARENTE (EMPTY/TRANSPARENT)</strong></p>
+                        <p>No dibujar nada en este espacio</p>
+                    </div>
+                </div>
+
+                <!-- Row 2: Bank Up -->
+                <div class="subsection">
+                    <h3>⬆️ FILA 2 - BANCADA ARRIBA (BANK UP) [ROW 2] [FRAMES 5-8]</h3>
+                    
+                    <div class="row-label">
+                        <span>Fila 2 - Animación Bancada Arriba (Bank Up)</span>
+                        <span>Row 2 - Bank Up Animation</span>
+                    </div>
+
+                    <div class="sprite-grid">
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 5</div>
+                            <div class="frame-content">
+                                <div class="plane-icon bank-up">✈️</div>
+                                <div style="margin-top: 10px; font-size: 0.8em;">15° ↑</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 6</div>
+                            <div class="frame-content">
+                                <div class="plane-icon bank-up" style="font-size: 2.5em;">✈️</div>
+                                <div style="margin-top: 10px; font-size: 0.8em;">20-25° ↑</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame empty">
+                            <div class="frame-header">Frame 7</div>
+                            <div class="frame-content">
+                                VACÍO / TRANSPARENTE
+                            </div>
+                        </div>
+
+                        <div class="grid-frame empty">
+                            <div class="frame-header">Frame 8</div>
+                            <div class="frame-content">
+                                VACÍO / TRANSPARENTE
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 5 (Columna 1, Fila 2):</h4>
+                        <ul>
+                            <li>Avión inclinado <strong>LIGERAMENTE hacia arriba (15 grados)</strong></li>
+                            <li>Nariz del Mirage apuntando hacia arriba</li>
+                            <li>Fuselaje mantiene posición centrada</li>
+                            <li>Ala izquierda: ligeramente más visible (vista desde abajo)</li>
+                            <li>Ala derecha: ligeramente menos visible (perspectiva)</li>
+                            <li>Motor expulsando llama de empuje (thrust) - <strong>tamaño normal</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 6 (Columna 2, Fila 2):</h4>
+                        <p style="margin-bottom: 10px;"><strong>Más inclinado que Frame 5</strong></p>
+                        <ul>
+                            <li>Avión inclinado <strong>MÁS hacia arriba (20-25 grados)</strong></li>
+                            <li><strong>Misma posición base</strong> que Frame 5</li>
+                            <li><strong>Diferencias con Frame 5:</strong></li>
+                        </ul>
+                        <table class="example-table">
+                            <tr>
+                                <th>Aspecto</th>
+                                <th>Frame 5</th>
+                                <th>Frame 6</th>
+                            </tr>
+                            <tr>
+                                <td>Inclinación</td>
+                                <td>15 grados</td>
+                                <td><strong>20-25 grados</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Posición Y</td>
+                                <td>Normal</td>
+                                <td><strong>+2-3 píxeles más arriba</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Ala izquierda</td>
+                                <td>Visible</td>
+                                <td><strong>Aún más visible</strong> (mayor perspectiva)</td>
+                            </tr>
+                        </table>
+                        <div class="usage-example">
+                            <h4>🤔 ¿Por qué es diferente?</h4>
+                            <p>El juego <strong>alternará entre Frame 5 y 6</strong> mientras el jugador mantenga presionada la tecla Arriba. Esto crea una animación de <em>inclinación progresiva hacia arriba</em>, dando sensación de movimiento fluido en lugar de un frame estático fijo.</p>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAMES 7-8 (Columnas 3-4, Fila 2):</h4>
+                        <p style="color: #999;"><strong>VACÍOS / TRANSPARENTES (EMPTY/TRANSPARENT)</strong></p>
+                        <p>No dibujar nada en estos espacios</p>
+                    </div>
+                </div>
+
+                <!-- Row 3: Bank Down -->
+                <div class="subsection">
+                    <h3>⬇️ FILA 3 - BANCADA ABAJO (BANK DOWN) [ROW 3] [FRAMES 9-12]</h3>
+                    
+                    <div class="row-label">
+                        <span>Fila 3 - Animación Bancada Abajo (Bank Down)</span>
+                        <span>Row 3 - Bank Down Animation</span>
+                    </div>
+
+                    <div class="sprite-grid">
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 9</div>
+                            <div class="frame-content">
+                                <div class="plane-icon bank-down">✈️</div>
+                                <div style="margin-top: 10px; font-size: 0.8em;">15° ↓</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame">
+                            <div class="frame-header">Frame 10</div>
+                            <div class="frame-content">
+                                <div class="plane-icon bank-down" style="font-size: 2.5em;">✈️</div>
+                                <div style="margin-top: 10px; font-size: 0.8em;">20-25° ↓</div>
+                            </div>
+                        </div>
+
+                        <div class="grid-frame empty">
+                            <div class="frame-header">Frame 11</div>
+                            <div class="frame-content">
+                                VACÍO / TRANSPARENTE
+                            </div>
+                        </div>
+
+                        <div class="grid-frame empty">
+                            <div class="frame-header">Frame 12</div>
+                            <div class="frame-content">
+                                VACÍO / TRANSPARENTE
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 9 (Columna 1, Fila 3):</h4>
+                        <ul>
+                            <li>Avión inclinado <strong>LIGERAMENTE hacia abajo (15 grados)</strong></li>
+                            <li>Nariz del Mirage apuntando hacia abajo</li>
+                            <li>Fuselaje mantiene posición centrada</li>
+                            <li>Ala derecha: ligeramente más visible (vista desde arriba)</li>
+                            <li>Ala izquierda: ligeramente menos visible (perspectiva)</li>
+                            <li>Motor expulsando llama de empuje (thrust) - <strong>tamaño normal</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAME 10 (Columna 2, Fila 3):</h4>
+                        <p style="margin-bottom: 10px;"><strong>Más inclinado que Frame 9</strong></p>
+                        <ul>
+                            <li>Avión inclinado <strong>MÁS hacia abajo (20-25 grados)</strong></li>
+                            <li><strong>Misma posición base</strong> que Frame 9</li>
+                            <li><strong>Diferencias con Frame 9:</strong></li>
+                        </ul>
+                        <table class="example-table">
+                            <tr>
+                                <th>Aspecto</th>
+                                <th>Frame 9</th>
+                                <th>Frame 10</th>
+                            </tr>
+                            <tr>
+                                <td>Inclinación</td>
+                                <td>15 grados</td>
+                                <td><strong>20-25 grados</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Posición Y</td>
+                                <td>Normal</td>
+                                <td><strong>-2-3 píxeles más abajo</strong></td>
+                            </tr>
+                            <tr>
+                                <td>Ala derecha</td>
+                                <td>Visible</td>
+                                <td><strong>Aún más visible</strong> (mayor perspectiva)</td>
+                            </tr>
+                        </table>
+                        <div class="usage-example">
+                            <h4>🤔 ¿Por qué es diferente?</h4>
+                            <p>El juego <strong>alternará entre Frame 9 y 10</strong> mientras el jugador mantenga presionada la tecla Abajo. Esto crea una animación de <em>inclinación progresiva hacia abajo</em>, dando sensación de movimiento fluido en lugar de un frame estático fijo.</p>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAMES 11-12 (Columnas 3-4, Fila 3):</h4>
+                        <p style="color: #999;"><strong>VACÍOS / TRANSPARENTES (EMPTY/TRANSPARENT)</strong></p>
+                        <p>No dibujar nada en estos espacios</p>
+                    </div>
+                </div>
+
+                <!-- Row 4: Empty/Reserved -->
+                <div class="subsection">
+                    <h3>🔮 FILA 4 - VACÍO / RESERVADO (EMPTY / RESERVED) [ROW 4] [FRAMES 13-16]</h3>
+                    
+                    <div class="row-label">
+                        <span>Fila 4 - Animaciones Futuras / Vacío</span>
+                        <span>Row 4 - Future Animations / Empty</span>
+                    </div>
+
+                    <div class="sprite-grid">
+                        <div class="grid-frame empty" style="grid-column: span 4;">
+                            <div class="frame-header">Frames 13-16</div>
+                            <div class="frame-content" style="flex-direction: column;">
+                                <div class="plane-icon" style="font-size: 2em; margin-bottom: 15px; opacity: 0.3;">✈️</div>
+                                <div>
+                                    <div style="font-weight: bold; margin-bottom: 10px;">TODOS VACÍOS / TRANSPARENTES</div>
+                                    <div style="font-size: 0.9em;">(ALL EMPTY / TRANSPARENT)</div>
+                                    <div style="margin-top: 15px; font-style: italic;">Reservados para animaciones futuras</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="frame-description">
+                        <h4>FRAMES 13-16 (Columnas 1-4, Fila 4):</h4>
+                        <ul>
+                            <li><strong>TODOS VACÍOS / TRANSPARENTES (ALL EMPTY/TRANSPARENT)</strong></li>
+                            <li>No dibujar nada en estos espacios</li>
+                            <li><strong>Reservados para animaciones futuras</strong></li>
+                        </ul>
+                        <div class="usage-example">
+                            <h4>🚀 FUTURAS POSIBILIDADES PARA ESTA FILA:</h4>
+                            <ul>
+                                <li>Animación de daño (hit) cuando el jugador es golpeado</li>
+                                <li>Efecto de disparo (muzzle flash) al presionar Espacio</li>
+                                <li>Afterburner intenso cuando jugador obtiene power-up de velocidad</li>
+                                <li>Efectos de escudo/invencibilidad</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: When Each Row is Used -->
+            <div class="section">
+                <div class="section-header">
+                    <h2><span class="bilingual">5.</span> CUÁNDO SE USA CADA FILA</h2>
+                    <p>(WHEN EACH ROW IS USED)</p>
+                </div>
+
+                <div class="notes-section">
+                    <p style="margin-bottom: 20px; font-style: italic;">
+                        Esta sección explica cuándo el juego usará cada fila de animaciones del Mirage III. Esta información ayuda a entender el contexto de cada animación.
+                    </p>
+                    <p class="bilingual" style="background: #e8f5e8; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+                        This section explains when game will use each row of Mirage III animations. This information helps understand context of each animation.
+                    </p>
+                </div>
+
+                <!-- Row 1 Usage -->
+                <div class="subsection">
+                    <h4>🔄 FILA 1 - IDLE (REPOSO) [ROW 1]</h4>
+                    
+                    <div class="info-box" style="background: white; border-color: #667eea;">
+                        <h4 style="color: #667eea;">CUÁNDO SE USA (WHEN USED)</h4>
+                        <ul>
+                            <li>El avión está <strong>nivelado horizontalmente</strong></li>
+                            <li>Jugador <strong>NO presiona</strong> Flecha Arriba ni Flecha Abajo</li>
+                            <li>Movimiento puramente <strong>horizontal (izquierda/derecha)</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 style="color: #667eea;">CASOS DE USO (USAGE EXAMPLES)</h4>
+                        <ul>
+                            <li>Estado inicial del juego</li>
+                            <li>Avión volando nivelado</li>
+                            <li>Movimiento lateral sin inclinación</li>
+                            <li>Jugador presiona <strong>Solo Izquierda o Solo Derecha</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="usage-example">
+                        <h4>📺 FRAMES USADOS (FRAMES USED)</h4>
+                        <p><strong>Frames 1-3 (Idle Normal)</strong> se usan en ciclo sutil</p>
+                        <p style="margin-top: 10px;">El juego alterna: <span class="highlight">1 → 2 → 3 → 1 → 2 → 3...</span></p>
+                        <p style="margin-top: 5px; font-size: 0.9em;">Esto crea efecto de "idle sutil" para dar vida al avión</p>
+                    </div>
+                </div>
+
+                <!-- Row 2 Usage -->
+                <div class="subsection">
+                    <h4>⬆️ FILA 2 - BANCADA ARRIBA (BANK UP) [ROW 2]</h4>
+                    
+                    <div class="info-box" style="background: white; border-color: #667eea;">
+                        <h4 style="color: #667eea;">CUÁNDO SE USA (WHEN USED)</h4>
+                        <ul>
+                            <li>Jugador presiona <strong>Flecha Arriba (Up Arrow)</strong> o tecla W</li>
+                            <li>Avión se mueve hacia <strong>arriba en la pantalla</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 style="color: #667eea;">CASOS DE USO (USAGE EXAMPLES)</h4>
+                        <ul>
+                            <li>Subir para evadir proyectiles enemigos</li>
+                            <li>Subir para alcanzar enemigos aéreos</li>
+                            <li>Subir para volar sobre obstáculos</li>
+                            <li>Movimiento vertical hacia arriba</li>
+                        </ul>
+                    </div>
+
+                    <div class="usage-example">
+                        <h4>📺 FRAMES USADOS (FRAMES USED)</h4>
+                        <p><strong>Frames 5-6 (Bank Up)</strong> se usan alternadamente</p>
+                        <p style="margin-top: 10px;">El juego alterna: <span class="highlight">5 → 6 → 5 → 6 → 5 → 6...</span></p>
+                        <p style="margin-top: 5px; font-size: 0.9em;">Esto crea animación de <strong>inclinación progresiva hacia arriba</strong></p>
+                    </div>
+                </div>
+
+                <!-- Row 3 Usage -->
+                <div class="subsection">
+                    <h4>⬇️ FILA 3 - BANCADA ABAJO (BANK DOWN) [ROW 3]</h4>
+                    
+                    <div class="info-box" style="background: white; border-color: #667eea;">
+                        <h4 style="color: #667eea;">CUÁNDO SE USA (WHEN USED)</h4>
+                        <ul>
+                            <li>Jugador presiona <strong>Flecha Abajo (Down Arrow)</strong> o tecla S</li>
+                            <li>Avión se mueve hacia <strong>abajo en la pantalla</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 style="color: #667eea;">CASOS DE USO (USAGE EXAMPLES)</h4>
+                        <ul>
+                            <li>Bajar para evadir proyectiles enemigos</li>
+                            <li>Bajar para atacar barcos navales</li>
+                            <li>Bajar para volar bajo obstáculos</li>
+                            <li>Movimiento vertical hacia abajo</li>
+                        </ul>
+                    </div>
+
+                    <div class="usage-example">
+                        <h4>📺 FRAMES USADOS (FRAMES USED)</h4>
+                        <p><strong>Frames 9-10 (Bank Down)</strong> se usan alternadamente</p>
+                        <p style="margin-top: 10px;">El juego alterna: <span class="highlight">9 → 10 → 9 → 10 → 9 → 10...</span></p>
+                        <p style="margin-top: 5px; font-size: 0.9em;">Esto crea animación de <strong>inclinación progresiva hacia abajo</strong></p>
+                    </div>
+                </div>
+
+                <!-- Row 4 Usage -->
+                <div class="subsection">
+                    <h4>🔮 FILA 4 - VACÍO / RESERVADO (EMPTY / RESERVED) [ROW 4]</h4>
+                    
+                    <div class="info-box" style="background: white; border-color: #667eea;">
+                        <h4 style="color: #667eea;">CUÁNDO SE USA (WHEN USED)</h4>
+                        <ul>
+                            <li><strong>Actualmente NO se usa</strong> (todos los frames vacíos)</li>
+                            <li><strong>Reservado para animaciones futuras</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="usage-example">
+                        <h4>🚀 FUTURAS POSIBILIDADES:</h4>
+                        <ul>
+                            <li>Animación de daño (hit) cuando el jugador es golpeado</li>
+                            <li>Efecto de disparo (muzzle flash) al presionar Espacio</li>
+                            <li>Afterburner intenso cuando jugador obtiene power-up de velocidad</li>
+                            <li>Efectos de escudo/invencibilidad</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Visual Input Summary -->
+                <div class="visual-summary">
+                    <h4>🎮 RESUMEN VISUAL DE INPUT (VISUAL INPUT SUMMARY)</h4>
+                    <table class="example-table">
+                        <tr>
+                            <th>Input del Jugador</th>
+                            <th>Fila/Frames Usados (Row/Frames Used)</th>
+                        </tr>
+                        <tr>
+                            <td>Ninguna tecla</td>
+                            <td>Fila 1, Frames 1-3 (Idle - ciclo sutil)</td>
+                        </tr>
+                        <tr>
+                            <td>Flecha Arriba ⬆️</td>
+                            <td>Fila 2, Frames 5-6 (Nariz arriba - alternados)</td>
+                        </tr>
+                        <tr>
+                            <td>Flecha Abajo ⬇️</td>
+                            <td>Fila 3, Frames 9-10 (Nariz abajo - alternados)</td>
+                        </tr>
+                        <tr>
+                            <td>Flecha Izquierda ⬅️</td>
+                            <td>Fila 1 (Mismo sprite idle, posición X cambia)</td>
+                        </tr>
+                        <tr>
+                            <td>Flecha Derecha ➡️</td>
+                            <td>Fila 1 (Mismo sprite idle, posición X cambia)</td>
+                        </tr>
+                        <tr>
+                            <td>Espacio (disparar)</td>
+                            <td>Fila 1-3 (según movimiento vertical)</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Important Notes -->
+                <div class="notes-section" style="border: 3px solid #667eea;">
+                    <h4>⚠️ NOTAS IMPORTANTES (IMPORTANT NOTES)</h4>
+                    
+                    <p style="margin-bottom: 15px;"><strong>SOBRE MOVIMIENTO HORIZONTAL (ABOUT HORIZONTAL MOVEMENT)</strong></p>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                        <p><strong>ADELANTE (Forward/Derecha ➡️):</strong> El avión ya está orientado hacia adelante. El movimiento horizontal se logra cambiando la posición X, NO la orientación. NO se requieren sprites de "avión mirando derecha".</p>
+                        <p style="margin-top: 10px;"><strong>ATRÁS (Backward/Izquierda ⬅️):</strong> Cuando el jugador va "atrás", el avión simplemente se mueve hacia la izquierda pero <strong>NO cambia de orientación</strong>. El avión sigue mirando hacia la derecha/delantera del juego. NO se requieren sprites de "avión mirando izquierda".</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p style="font-size: 1.2em; margin-bottom: 10px;">🎨 ¡BUENA SUERTE CON EL ARTE!</p>
+            <p style="font-size: 1.1em;">GOOD LUCK WITH THE ARTWORK!</p>
+        </div>
+    </div>
+</body>
+</html>

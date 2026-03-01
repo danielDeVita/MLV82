@@ -3,6 +3,7 @@ import { Bullet } from "./bullet.js";
 import { Bomb } from "./bomb.js";
 import { SuperBomb } from "./superBomb.js";
 import { playSound } from "./audio.js";
+import { debugLog } from "./debug.js";
 
 export class Player {
   // ========================
@@ -570,7 +571,7 @@ export class Player {
     this.lastShotTime = 0;
     this._lastBombTimestamp = 0;
 
-    console.log(
+    debugLog(
       `Player state reset. Lives: ${this.lives}, Bullets: ${this.bulletAmmo}, Bombs: ${this.bombAmmo}`
     );
     // UI update called by game.initializeLevel -> game.updateUI
@@ -579,11 +580,11 @@ export class Player {
   // --- Add Ammo Methods (Keep these) ---
   addBulletAmmo(amount) {
     this.bulletAmmo += amount;
-    console.log(`Added ${amount} bullet ammo. Total: ${this.bulletAmmo}`);
+    debugLog(`Added ${amount} bullet ammo. Total: ${this.bulletAmmo}`);
   }
   addBombAmmo(amount) {
     this.bombAmmo += amount;
-    console.log(`Added ${amount} bomb ammo. Total: ${this.bombAmmo}`);
+    debugLog(`Added ${amount} bomb ammo. Total: ${this.bombAmmo}`);
   }
   // --- End add ammo methods ---
 }

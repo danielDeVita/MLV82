@@ -32,6 +32,20 @@ export class InputHandler {
             if (key === ' ') this.shootPressed = false;
             if (key === 'b') this.bombPressed = false;
         });
+
+        // Prevent sticky inputs when the tab/window loses focus.
+        window.addEventListener('blur', () => this.resetInputState());
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.resetInputState();
+            }
+        });
+    }
+
+    resetInputState() {
+        this.keysPressed = {};
+        this.shootPressed = false;
+        this.bombPressed = false;
     }
 
     // Check if a specific key is currently held down

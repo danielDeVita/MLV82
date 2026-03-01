@@ -321,18 +321,24 @@ export class Boss2 extends Enemy {
 
     // Check if the second missile should fire
     if (Math.random() < fireSecondChance) {
+      const runId = this.game?.runId;
       setTimeout(() => {
         // Use setTimeout for a slight delay
-        if (!this.markedForDeletion && !this.game.isGameOver) {
-          // Check validity when timeout runs
-
-          const missileX2 =
-            this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -25 : 25); // Offset X
-          const missileY2 = this.y + this.height * 0.5; // Same Y
-          this.game.addEnemyProjectile(
-            new TrackingMissile(this.game, missileX2, missileY2)
-          );
+        if (
+          !this.game ||
+          this.game.runId !== runId ||
+          this.markedForDeletion ||
+          this.game.isGameOver
+        ) {
+          return;
         }
+        // Check validity when timeout runs
+        const missileX2 =
+          this.x + this.width / 2 - 6 + (Math.random() < 0.5 ? -25 : 25); // Offset X
+        const missileY2 = this.y + this.height * 0.5; // Same Y
+        this.game.addEnemyProjectile(
+          new TrackingMissile(this.game, missileX2, missileY2)
+        );
       }, 250); // Delay in milliseconds
     }
   }
@@ -359,13 +365,15 @@ export class Boss2 extends Enemy {
   triggerDefeatExplosion() {
     const numExplosions = 12;
     const duration = 1800;
+    const runId = this.game?.runId;
     for (let i = 0; i < numExplosions; i++) {
       setTimeout(() => {
-        if (!this.game.isGameOver) {
-          const randomX = this.x + Math.random() * this.width;
-          const randomY = this.y + Math.random() * this.height;
-          this.game.createExplosion(randomX, randomY, "air");
+        if (!this.game || this.game.runId !== runId || this.game.isGameOver) {
+          return;
         }
+        const randomX = this.x + Math.random() * this.width;
+        const randomY = this.y + Math.random() * this.height;
+        this.game.createExplosion(randomX, randomY, "air");
       }, i * (duration / numExplosions) + Math.random() * 150);
     }
   }

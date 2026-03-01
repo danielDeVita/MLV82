@@ -199,10 +199,12 @@ export class Boss3Ship extends EnemyShip {
     const dropXEnd = this.x + this.width * 0.8;
     const dropY = this.y + this.height - 10;
     const chargeSize = 10;
+    const runId = this.game?.runId;
 
     for (let i = 0; i < this.depthChargeCount; i++) {
       setTimeout(() => {
-        if (this.markedForDeletion) return;
+        if (!this.game || this.game.runId !== runId || this.markedForDeletion)
+          return;
         const dropX = lerp(
           dropXStart,
           dropXEnd,
@@ -309,12 +311,13 @@ export class Boss3Ship extends EnemyShip {
     const numExplosions = this.enemyType === "ship" ? 15 : 12; // More for the ship?
     // Duration of the explosion sequence
     const duration = this.enemyType === "ship" ? 2000 : 1600; // Slightly longer for ship?
+    const runId = this.game?.runId;
 
     for (let i = 0; i < numExplosions; i++) {
       // Use setTimeout to stagger the explosions over the duration
       setTimeout(() => {
         // Double-check game isn't over when the timeout actually runs
-        if (!this.game || this.game.isGameOver) {
+        if (!this.game || this.game.runId !== runId || this.game.isGameOver) {
           return;
         }
 

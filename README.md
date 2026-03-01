@@ -73,6 +73,10 @@ A 2D side-scrolling airplane shoot 'em up game built with HTML5 Canvas and vanil
 - **Physics:** Simple position updates (direct and lerped), AABB collision detection (with beam approximation).
 - **Background:** Hybrid approach - Parallax scrolling layers via CSS animations, dynamic Sky/Sun/Moon/Stars via Canvas drawing.
 
+## Legacy Files
+
+- `js/legacy/script.js` is an old DOM-based prototype and is **not** loaded by `index.html`.
+
 ## How to Run
 
 1.  Clone or download the repository.
@@ -91,5 +95,10 @@ To test specific parts of the game without playing through:
 5.  Modify the `startScore`, `startDifficulty`, `playerLives`, `defeatedBosses`, and `startWithPowerups` values within that uncommented block as needed.
 6.  Save `main.js` and reload the game in your browser.
 7.  **Remember to revert back to the default config (`const gameConfig = {};`) for normal play!**
+
+## Quick Regression Checks
+
+- `node scripts/check-sound-keys.js` validates that every `playSound(...)` key is canonical or aliased.
+- `node scripts/smoke-regression.js` runs a lightweight static smoke suite (syntax checks + key guardrails).
 
 ---

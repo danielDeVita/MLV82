@@ -1,4 +1,5 @@
 import { randomInt, lerp, lerpColor } from "./utils.js";
+import { debugLog } from "./debug.js";
 
 export class Background {
   constructor(gameWidth, gameHeight) {
@@ -73,7 +74,7 @@ export class Background {
     this.sunImageLoaded = false;
     this.sunImage.onload = () => {
       this.sunImageLoaded = true;
-      console.log("Sun image loaded");
+      debugLog("Sun image loaded");
     };
 
     this.brightSunImage = new Image();
@@ -81,7 +82,7 @@ export class Background {
     this.brightSunImageLoaded = false;
     this.brightSunImage.onload = () => {
       this.brightSunImageLoaded = true;
-      console.log("Bright sun image loaded");
+      debugLog("Bright sun image loaded");
     };
 
     this.moonImage = new Image();
@@ -89,10 +90,10 @@ export class Background {
     this.moonImageLoaded = false;
     this.moonImage.onload = () => {
       this.moonImageLoaded = true;
-      console.log("Moon image loaded");
+      debugLog("Moon image loaded");
     };
 
-    console.log("Background Initialized (Canvas Sky/Stars + CSS Layers)");
+    debugLog("Background Initialized (Canvas Sky/Stars + CSS Layers)");
   }
 
   // Link to the main game instance to access score and thresholds
@@ -116,7 +117,7 @@ export class Background {
     this.t3_end = B3_SCORE;
     this.t3_start = Math.max(this.t2_end + 100, this.t3_end - T3_DURATION);
 
-    console.log(
+    debugLog(
       `Background Transitions Set: T1(${this.t1_start}-${this.t1_end}), T2(${this.t2_start}-${this.t2_end}), T3(${this.t3_start}-${this.t3_end})`
     );
 

@@ -1,9 +1,18 @@
-// js/audio.js - Should be the same as the last full version provided
+import { SOUND_ALIASES, SOUND_DEFS } from "./audioMap.js";
+
 const sounds = {};
 let isMuted = false;
+const warnedUnknownKeys = new Set();
+const warnedMissingFiles = new Set();
 
-function createAudio(name, volume = 0.5) {
-  const path = `sounds/${name}.wav`;
+function warnOnce(warnedSet, key, message) {
+  if (warnedSet.has(key)) return;
+  warnedSet.add(key);
+  console.warn(message);
+}
+
+function createAudio(fileName, volume = 0.5, soundKey = fileName) {
+  const path = `sounds/${fileName}.wav`;
   try {
     if (typeof Audio !== "undefined") {
       const audio = new Audio();
@@ -11,17 +20,25 @@ function createAudio(name, volume = 0.5) {
       audio.src = path;
 
       audio.onerror = () => {
-        console.error(`Error loading sound: ${path}.`);
+        warnOnce(
+          warnedMissingFiles,
+          soundKey,
+          `Error loading sound for key "${soundKey}": ${path}`
+        );
       };
       return audio;
     }
   } catch (e) {
     console.error(
-      `Could not create audio element for ${name} (${path}). Error:`,
+      `Could not create audio element for "${soundKey}" (${path}). Error:`,
       e
     );
   }
-  console.warn(`Using placeholder for sound: ${name}`);
+  warnOnce(
+    warnedMissingFiles,
+    soundKey,
+    `Using placeholder for sound "${soundKey}" (${path})`
+  );
   return {
     play: () => {},
     currentTime: 0,
@@ -31,35 +48,41 @@ function createAudio(name, volume = 0.5) {
   };
 }
 
+function resolveSoundKey(name) {
+  if (typeof name !== "string" || !name) return null;
+  return SOUND_ALIASES[name] || name;
+}
+
 export function loadSounds() {
-  sounds.shoot = createAudio("shoot", 0.3);
-  sounds.bomb = createAudio("bomb_drop", 0.5);
-  sounds.explosion = createAudio("explosion", 0.4);
-  sounds.powerup = createAudio("powerup", 0.5);
-  sounds.gameOver = createAudio("game_over", 0.6);
-  sounds.hit = createAudio("hit", 0.5);
-  sounds.enemyShoot = createAudio("enemy_shoot", 0.2);
-  sounds.missileLaunch = createAudio("missile_launch", 0.4);
-  sounds.shieldUp = createAudio("shield_up", 0.5);
-  sounds.shieldDown = createAudio("shield_down", 0.5);
-  sounds.extraLife = createAudio("extra_life", 0.6);
-  sounds.powerupExpire = createAudio("powerup_expire", 0.3);
-  sounds.rapidFirePickup = createAudio("rapidFirePickup", 0.5);
-  sounds.invinciblePickup = createAudio("invinciblePickup", 0.5);
-  sounds.charge_up = createAudio("charge_up", 0.4);
-  sounds.laser_beam = createAudio("laser_beam", 0.6);
+  Object.keys(sounds).forEach((key) => {
+    delete sounds[key];
+  });
+
+  Object.entries(SOUND_DEFS).forEach(([key, def]) => {
+    sounds[key] = createAudio(def.file, def.volume, key);
+  });
 }
 
 export function playSound(name) {
   if (isMuted) return;
-  const sound = sounds[name];
-  if (sound) {
-    if (!sound.isPlaceholder && sound instanceof Audio) {
-      sound.currentTime = 0;
-      sound.play().catch((e) => {
-        /* ... error handling ... */
-      });
-    }
+  const resolvedKey = resolveSoundKey(name);
+  if (!resolvedKey) return;
+
+  const sound = sounds[resolvedKey];
+  if (!sound) {
+    warnOnce(
+      warnedUnknownKeys,
+      String(name),
+      `Unknown sound key "${name}" (resolved as "${resolvedKey}").`
+    );
+    return;
+  }
+
+  if (!sound.isPlaceholder && sound instanceof Audio) {
+    sound.currentTime = 0;
+    sound.play().catch(() => {
+      // Playback can fail before first user interaction. Ignore silently.
+    });
   }
 }
 loadSounds();

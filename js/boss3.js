@@ -279,19 +279,17 @@ export class Boss3 extends Enemy {
   triggerDefeatExplosion() {
     const numExplosions = 20;
     const duration = 2500;
+    const runId = this.game?.runId;
     for (let i = 0; i < numExplosions; i++) {
       setTimeout(() => {
-        if (!this.game.isGameOver) {
-          const randomX = Math.random() * this.width;
-          const randomY = this.y + Math.random() * this.height;
-          const type =
-            Math.random() < 0.5
-              ? "ground"
-              : Math.random() < 0.8
-              ? "ship"
-              : "air";
-          this.game.createExplosion(randomX, randomY, type);
+        if (!this.game || this.game.runId !== runId || this.game.isGameOver) {
+          return;
         }
+        const randomX = Math.random() * this.width;
+        const randomY = this.y + Math.random() * this.height;
+        const type =
+          Math.random() < 0.5 ? "ground" : Math.random() < 0.8 ? "ship" : "air";
+        this.game.createExplosion(randomX, randomY, type);
       }, i * (duration / numExplosions) + Math.random() * 200);
     }
   }

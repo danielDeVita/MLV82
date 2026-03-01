@@ -1,3 +1,5 @@
+// LEGACY PROTOTYPE (not used by current canvas game loop in index.html).
+// Kept only for historical reference.
 const gameArea = document.getElementById("game-area");
 const playerElement = document.getElementById("player");
 
